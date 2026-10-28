@@ -1,0 +1,18 @@
+{
+  "name": "blender",
+  "version": "0.1.0",
+  "description": "Game-ready 3D assets in Blender through the Blender MCP connector: clean geometry, automated mesh validation, multi-angle visual checks, UVs, export to Unity",
+  "author": {
+    "name": "Narek"
+  },
+  "homepage": "https://github.com/NarekMynell/claude-skills",
+  "repository": "https://github.com/NarekMynell/claude-skills",
+  "license": "MIT",
+  "keywords": [
+    "blender",
+    "3d",
+    "modeling",
+    "gamedev",
+    "fbx"
+  ]
+}

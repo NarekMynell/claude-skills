@@ -1,0 +1,11 @@
+{
+    "name": "Company.Product.Core.Editor",
+    "rootNamespace": "Company.Product.Core.Editor",
+    "references": [
+        "Company.Product.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "autoReferenced": false
+}

@@ -1,0 +1,29 @@
+{
+  "name": "narek-skills",
+  "owner": {
+    "name": "Narek"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for professional Unity game development, Blender asset creation and project documentation"
+  },
+  "allowCrossMarketplaceDependenciesOn": [
+    "claude-plugins-official"
+  ],
+  "plugins": [
+    {
+      "name": "core",
+      "source": "./plugins/core",
+      "description": "Project-independent engineering skills: a documentation layout shared by people and Claude"
+    },
+    {
+      "name": "unity-dev",
+      "source": "./plugins/unity-dev",
+      "description": "Professional Unity development: architecture and C# standards, project setup, performance, UI, audio, VFX, game design, code library, toolchain check"
+    },
+    {
+      "name": "blender",
+      "source": "./plugins/blender",
+      "description": "Game-ready 3D assets in Blender through the Blender MCP connector, with automated validation and export to Unity"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "extraKnownMarketplaces": {
+    "narek-skills": {
+      "source": {
+        "source": "github",
+        "repo": "NarekMynell/claude-skills"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "core@narek-skills": true,
+    "unity-dev@narek-skills": true,
+    "unity@claude-plugins-official": true,
+    "csharp-lsp@claude-plugins-official": true
+  }
+}

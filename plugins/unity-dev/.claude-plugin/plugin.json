@@ -1,0 +1,26 @@
+{
+  "name": "unity-dev",
+  "version": "0.1.0",
+  "description": "Professional Unity development: architecture and C# standards (VContainer, MessagePipe, UniTask), project setup, performance, UI, audio, VFX and game design quality bars, a reusable code library, and a session-start toolchain check",
+  "author": {
+    "name": "Narek"
+  },
+  "homepage": "https://github.com/NarekMynell/claude-skills",
+  "repository": "https://github.com/NarekMynell/claude-skills",
+  "license": "MIT",
+  "keywords": [
+    "unity",
+    "gamedev",
+    "csharp",
+    "architecture",
+    "vcontainer",
+    "unitask",
+    "messagepipe",
+    "performance"
+  ],
+  "dependencies": [
+    "core",
+    "unity@claude-plugins-official",
+    "csharp-lsp@claude-plugins-official"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+    "name": "Company.Product.Core.Tests",
+    "rootNamespace": "Company.Product.Core.Tests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Company.Product.Core",
+        "Company.Product.Core.Editor",
+        "VContainer",
+        "UniTask",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ]
+}

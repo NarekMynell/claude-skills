@@ -1,0 +1,41 @@
+---
+name: ui-quality
+description: Quality bar for Unity game and app UI. Covers adaptive layout for every aspect ratio, mobile safe area, no text overflow or overlapping elements, alignment and spacing, art direction, interaction states and feedback, UGUI performance, and screenshot verification. Use whenever building, changing or reviewing a screen, menu, HUD or popup, together with the official unity:ui skills for the framework mechanics.
+---
+
+# UI quality
+
+The official `unity:ui`, `unity:ui-ugui` and `unity:ui-uitk` skills cover how each framework works. This skill sets the bar every screen must meet. The project records its framework choice (UGUI or UI Toolkit) in `docs/`.
+
+## Layout
+
+- **Any aspect ratio.** Anchors and a Canvas Scaler set to **Scale With Screen Size** (UGUI), or flex layout with relative units (UI Toolkit). Test at the extremes: 16:9, 20:9, 4:3, tablets, and portrait or landscape as relevant.
+- **Safe area.** On mobile, every interactive or important element stays inside `Screen.safeArea`. A safe-area component (library UI module) on the root container applies it and reapplies it when the resolution or orientation changes. Backgrounds still extend to the full screen.
+- **Nothing overflows or overlaps.**
+  - Every text element has an overflow strategy: wrap, ellipsis, or auto-size within bounds.
+  - Containers are sized for the longest realistic content: the maximum score digits, and localized strings up to 40% longer than English.
+  - No element leaves its container or covers another at any supported aspect ratio.
+- **One alignment system.** A spacing scale and shared margins. Elements on the same edge or row share alignment lines: a score in the top-left and a menu button in the top-right share the top margin and the vertical center.
+
+## Visual quality
+
+Crafted, not generic AI UI.
+
+- The art direction comes first, in `docs/art-direction.md`: palette, typography, shape language, iconography, motion style, references. Every screen follows it.
+- Every interactive element has all its states (normal, pressed, disabled, selected, plus hover on desktop), with animated transitions.
+- Every interaction gives feedback: motion and sound, plus haptics on mobile.
+- Not allowed: default Unity sprites or fonts, gray placeholder panels, emoji as icons, random gradients and glows.
+- Fonts and art carry a license that allows commercial use (such as the SIL Open Font License), recorded in `docs/`.
+- Sprites are made at their displayed resolution. Panels use 9-slicing. Simple shapes (rounded rectangles, gradients) are drawn by a shader when that saves texture memory.
+
+## UGUI performance
+
+- Static and frequently changing elements go on separate canvases: one change rebuilds its whole canvas.
+- Raycast Target off on every non-interactive graphic.
+- No nested layout groups on content that changes often. Long lists are pooled and virtualized.
+- `RectMask2D` instead of `Mask`.
+- Text via TextMeshPro; font setup and atlases: the official `unity:optimize-text-mesh-pro` skill.
+
+## Verification
+
+A screen is done only when screenshots at several resolutions and aspect ratios show no overflow, overlap or misalignment. Capture them from the running Editor through the Unity CLI (`unity command`, see `unity:unity-cli`), and look at every one before reporting.

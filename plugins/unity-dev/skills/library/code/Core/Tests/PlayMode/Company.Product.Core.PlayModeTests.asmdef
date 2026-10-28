@@ -1,0 +1,21 @@
+{
+    "name": "Company.Product.Core.PlayModeTests",
+    "rootNamespace": "Company.Product.Core.PlayModeTests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "Company.Product.Core",
+        "VContainer",
+        "UniTask",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ]
+}
