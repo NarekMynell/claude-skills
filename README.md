@@ -12,6 +12,8 @@ You need one command. `/unity-dev:standards` gives Claude every guide in the plu
 
 Claude reads the guides the task needs, from the new-project setup to game design, code, UI and the Blender models, and decides what applies. It follows the standards strictly; where one doesn't fit your project and a different solution is clearly better, it uses that, tells you why and records it in the project's `CLAUDE.md`.
 
+The guides and the code library can contain mistakes or fall behind new Unity and package versions, and they say so. Claude checks every API, setting and library module it relies on against the official documentation or the package source for your project's exact versions, reviews library code before copying it, and tells you when a guide turns out wrong.
+
 Nothing loads unless you ask for it: Claude doesn't see the plugin's skills until you type a command, so they cost no context in other sessions.
 
 | Command | Does |
@@ -28,7 +30,8 @@ The switch is `UNITY_DEV_STANDARDS` under `env` in the project's `.claude/settin
 
 ## Quality
 
-- The unity-dev code library is covered by 103 automated tests (93 Edit Mode, 10 Play Mode), with allocation tests on its hot paths, and compiles with no warnings on Unity 6000.6. Run them with `dev/run-library-tests.sh`.
+- The unity-dev code library is covered by 124 automated tests (111 Edit Mode, 13 Play Mode), with allocation tests on its hot paths and disposal tests on its disposable types, and compiles with no warnings on Unity 6000.6. Run them with `dev/run-library-tests.sh`.
+- The guides' technical claims were checked against the official documentation and package sources for Unity 6.6, URP, VContainer 1.19, UniTask 2.5, MessagePipe, Addressables 4.1 and Blender 5.2. That lowers the risk of mistakes but doesn't remove it, which is why Claude verifies again in each project.
 - The Blender scripts are tested headless against meshes with known defects.
 - `claude plugin validate` passes for the marketplace and the plugin.
 

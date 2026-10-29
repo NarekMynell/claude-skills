@@ -1,7 +1,9 @@
+using System;
 using Company.Product.Core.Culling;
 using Company.Product.Core.Lifecycle;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
 using Object = UnityEngine.Object;
 
@@ -101,6 +103,25 @@ namespace Company.Product.Core.Tests.Culling
             Assert.That(_pauser.Count, Is.EqualTo(2));
             Assert.That(third.IsPaused, Is.True, "The last target moved into the freed slot 0.");
             Assert.That(second.IsPaused, Is.False);
+        }
+
+        [Test]
+        public void Dispose_Twice_IsSafe_AndRegisteringAfterwardsThrows()
+        {
+            _pauser.Dispose();
+
+            Assert.DoesNotThrow(() => _pauser.Dispose());
+            Assert.Throws<ObjectDisposedException>(() => _pauser.Register(new Target(), Vector3.zero, 1f));
+            Assert.DoesNotThrow(() => _pauser.Unregister(new Target()));
+        }
+
+        [Test]
+        public void UpdatePosition_DoesNotAllocate()
+        {
+            var target = new Target();
+            _pauser.Register(target, Vector3.zero, 1f);
+
+            Assert.That(() => _pauser.UpdatePosition(target, Vector3.one), Is.Not.AllocatingGCMemory());
         }
     }
 }

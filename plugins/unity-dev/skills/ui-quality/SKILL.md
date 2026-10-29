@@ -8,6 +8,8 @@ allowed-tools:
 
 # UI quality
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 The official `unity:ui`, `unity:ui-ugui` and `unity:ui-uitk` skills cover how each framework works. This skill sets the bar every screen must meet. The project records its framework choice (UGUI or UI Toolkit) in `docs/`.
 
 ## Layout
@@ -16,7 +18,7 @@ The official `unity:ui`, `unity:ui-ugui` and `unity:ui-uitk` skills cover how ea
 - **Safe area.** On mobile, every interactive or important element stays inside `Screen.safeArea`. A safe-area component (library UI module) on the root container applies it and reapplies it when the resolution or orientation changes. Backgrounds still extend to the full screen.
 - **Nothing overflows or overlaps.**
   - Every text element has an overflow strategy: wrap, ellipsis, or auto-size within bounds.
-  - Containers are sized for the longest realistic content: the maximum score digits, and localized strings up to 40% longer than English.
+  - Containers are sized for the longest realistic content: the maximum score digits, and localized text. Translations of short labels can be two to three times as long as the English; long sentences grow by about a third.
   - No element leaves its container or covers another at any supported aspect ratio.
 - **One alignment system.** A spacing scale and shared margins. Elements on the same edge or row share alignment lines: a score in the top-left and a menu button in the top-right share the top margin and the vertical center.
 
@@ -30,6 +32,13 @@ Crafted, not generic AI UI.
 - Not allowed: default Unity sprites or fonts, gray placeholder panels, emoji as icons, random gradients and glows.
 - Fonts and art carry a license that allows commercial use (such as the SIL Open Font License), recorded in `docs/`.
 - Sprites are made at their displayed resolution. Panels use 9-slicing. Simple shapes (rounded rectangles, gradients) are drawn by a shader when that saves texture memory.
+- No user-facing text in code: it comes from the localization tables when the game is localized, otherwise from the UI assets or configs.
+
+## Accessibility
+
+- Touch targets at least 44 × 44 pt on iOS and 48 × 48 dp on Android, even when the visible graphic is smaller.
+- Text contrast at least 4.5:1 against its background (WCAG AA), and color is never the only signal: pair it with a shape, an icon or text.
+- Text stays readable at the smallest supported screen and allows a larger text setting where the game has much text.
 
 ## UGUI performance
 

@@ -8,7 +8,11 @@ allowed-tools:
 
 # Code library
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 Ready building blocks written to the [code standards](../code-standards/SKILL.md) and covered by tests. The library is a source to copy from, not a dependency: a project takes only what it needs, and the copied code becomes the project's own code, in its own namespace, free to change.
+
+**The code can still contain bugs or fall behind the project's package versions.** Tests reduce that risk; they don't remove it. Reviewing every file before it enters a project is part of using a module, not an option.
 
 [CATALOG.md](CATALOG.md) lists every module: what it does, where it goes in a project, and what it needs. Read it before writing generic code. When a module covers the need, start from it instead of writing the code again.
 
@@ -24,12 +28,13 @@ Every module folder has a `README.md`: purpose, API with a short example, depend
 ## Using a module
 
 1. Read the module's README. Take its module dependencies too.
-2. Copy its `.cs` files and its tests to the same relative path under the project's `Assets/_Project/Scripts/`, plus the assembly definitions and `AssemblyInfo.cs` the project doesn't have yet. The README stays in the library. Unity generates the `.meta` files.
-3. Replace `Company.Product` with the project's prefix (from `CLAUDE.md`) in namespaces, `using` directives and assembly definitions. If a file goes to a different folder, its namespace follows that folder.
-4. Merge into the project's assemblies: files for `Core` join the project's existing Core assembly, with any missing references added. Never create a second Core assembly.
-5. Adapt the code to the project: keep what it needs, remove what it doesn't, extend it.
-6. Copy the module's tests into the matching test assembly. The project compiles with no errors or warnings, and the tests pass.
-7. List the copied modules in `docs/architecture.md` with the unity-dev version (from [plugin.json](../../.claude-plugin/plugin.json)), so a later library fix can be compared with the project's copy and ported.
+2. **Review the code** as you would a colleague's pull request, before copying it: correctness, resource lifetimes ([rules](../code-standards/references/resource-lifetimes.md)), cancellation, edge cases, allocations. Check every package API it calls against the project's installed version (`Packages/packages-lock.json`; the source is in `Library/PackageCache/`). Fix what you find in the project's copy, and tell the user, so the library gets the fix too.
+3. Copy its `.cs` files and its tests to the same relative path under the project's `Assets/_Project/Scripts/`, plus the assembly definitions and `AssemblyInfo.cs` the project doesn't have yet. The README stays in the library. Unity generates the `.meta` files.
+4. Replace every occurrence of `Company.Product` with the project's prefix (from `CLAUDE.md`), string literals included: namespaces, `using` directives, assembly definitions, `InternalsVisibleTo`, menu paths (`Tools/…`, `CreateAssetMenu`) and settings keys. If a file goes to a different folder, its namespace follows that folder.
+5. Merge into the project's assemblies: files for `Core` join the project's existing Core assembly, with any missing references added. Never create a second Core assembly.
+6. Adapt the code to the project: keep what it needs, remove what it doesn't, extend it.
+7. Copy the module's tests into the matching test assembly. The project compiles with no errors or warnings, and the tests pass there.
+8. List the copied modules in `docs/architecture.md` with the unity-dev version (from [plugin.json](../../.claude-plugin/plugin.json)), so a later library fix can be compared with the project's copy and ported.
 
 ## Growing the library
 

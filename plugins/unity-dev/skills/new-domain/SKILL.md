@@ -9,6 +9,8 @@ allowed-tools:
 
 # New domain
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 ## Decide
 
 1. **Name.** One PascalCase noun for the feature area (`Inventory`, `Combat`). Never `Application`, never `Utils`, `Common` or `Manager`.

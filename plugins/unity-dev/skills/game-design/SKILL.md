@@ -8,6 +8,8 @@ allowed-tools:
 
 # Game design
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 **The bar:** the game feels made by a passionate, talented team. It is alive, emotional and polished, with nothing generic or placeholder left in the final product.
 
 ## Research before design
@@ -39,6 +41,7 @@ Update it when the design changes.
 
 - **Retention is earned** through fun, mastery and progression. No manipulative dark patterns. For a young audience, follow the age-related laws and store policies on privacy, ads and purchases.
 - **Prototype first.** Build the core loop early with simple visuals, and have the user play it before polishing. Fun is proven by playing, not by documents.
+- **Plan production before it starts:** a vertical slice (one level or session at final quality), then the content list it implies: models, materials, sounds, effects and screens, each with its reuse (kits, variants, shared materials), as the [game assets](../game-assets/SKILL.md) guide plans them.
 - **Game feel.** Every player action gets immediate feedback: motion, sound, VFX, haptics, camera. Tune the timing until it feels right.
 - **Self-critique at every milestone.** What would make a player quit here? What would bring them back tomorrow? Fix the answer before moving on.
 

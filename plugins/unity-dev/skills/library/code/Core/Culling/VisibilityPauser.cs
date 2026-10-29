@@ -16,6 +16,7 @@ namespace Company.Product.Core.Culling
         private BoundingSphere[] _spheres;
         private IPausable[] _targets;
         private bool[] _paused;
+        private bool _isDisposed;
 
         public VisibilityPauser(Camera camera, int capacity = 64)
         {
@@ -34,6 +35,7 @@ namespace Company.Product.Core.Culling
 
         public void Register(IPausable target, Vector3 position, float radius)
         {
+            ThrowIfDisposed();
             if (!target.IsAlive()) throw new ArgumentNullException(nameof(target));
             if (_indices.ContainsKey(target)) throw new ArgumentException("The target is already registered.", nameof(target));
 
@@ -47,8 +49,13 @@ namespace Company.Product.Core.Culling
             Apply(index, _group.IsVisible(index));
         }
 
-        public void UpdatePosition(IPausable target, Vector3 position) => _spheres[IndexOf(target)].position = position;
+        public void UpdatePosition(IPausable target, Vector3 position)
+        {
+            ThrowIfDisposed();
+            _spheres[IndexOf(target)].position = position;
+        }
 
+        // Does nothing for a target that isn't registered, including after Dispose.
         public void Unregister(IPausable target)
         {
             if (target == null || !_indices.TryGetValue(target, out var index)) return;
@@ -74,6 +81,9 @@ namespace Company.Product.Core.Culling
 
         public void Dispose()
         {
+            if (_isDisposed) return;
+
+            _isDisposed = true;
             _group.onStateChanged = null;
             for (var i = 0; i < Count; i++)
                 if (_paused[i] && _targets[i].IsAlive()) _targets[i].Resume();
@@ -108,6 +118,11 @@ namespace Company.Product.Core.Culling
                 target.Pause();
             else
                 target.Resume();
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_isDisposed) throw new ObjectDisposedException(nameof(VisibilityPauser));
         }
 
         private int IndexOf(IPausable target) =>

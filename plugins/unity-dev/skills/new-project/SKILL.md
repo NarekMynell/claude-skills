@@ -9,6 +9,8 @@ allowed-tools:
 
 # New Unity project
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 Run the guided flow of the official `unity:new-unity-project` skill (concept → platforms and monetization → Editor install in the background → project and source control → packages → first commit → monetization handoff), with the defaults and additions below. Where they differ, this skill wins. Command syntax lives in `unity:unity-cli` and `unity:unity-package-management`; don't guess it.
 
 ## Defaults
@@ -24,6 +26,8 @@ Fill in every setting the user didn't specify.
 
 **Render pipeline:** URP. **Mode:** 3D. **Template:** Universal 3D, `com.unity.template.urp-blank`; confirm the id with `unity templates list --editor <version> --type core`.
 
+**Source control:** Git with LFS for binary assets (the official flow's `--git-lfs`), unless the user chooses Unity Version Control.
+
 ## Setup after the project is created
 
 Do these between the official flow's package step and its first commit. Work in the running Editor through the Unity CLI wherever possible.
@@ -37,17 +41,17 @@ Do these between the official flow's package step and its first commit. Work in 
      { "name": "OpenUPM", "url": "https://package.openupm.com", "scopes": ["jp.hadashikick", "com.cysharp"] }
    ]
    ```
-5. **Standard packages** through the Client API, each pinned to the newest version in its registry: `jp.hadashikick.vcontainer`, `com.cysharp.unitask`, `com.cysharp.messagepipe`, `com.cysharp.messagepipe.vcontainer`, `com.unity.addressables`, `com.unity.inputsystem`. Add `com.unity.nuget.newtonsoft-json` when the Persistence module is installed.
-6. **DOTween** is in no package registry. Ask the user to add the free DOTween from the Asset Store (Package Manager > My Assets) into `Assets/Plugins/Demigiant/`. Then: DOTween Utility Panel > **Setup DOTween**, then **Create ASMDEF** (asmdef code can't reference `Assembly-CSharp-firstpass`), and add the scripting define `UNITASK_DOTWEEN_SUPPORT` (UniTask detects DOTween only when it is a UPM package).
+5. **Standard packages** through the Client API, each pinned to an exact version: for Unity packages the version the Package Manager recommends for this Editor (`versions.recommended`, else `latestCompatible`), for OpenUPM packages the newest release. `jp.hadashikick.vcontainer`, `com.cysharp.unitask`, `com.cysharp.messagepipe`, `com.cysharp.messagepipe.vcontainer`, `com.unity.addressables`, and `com.unity.inputsystem` unless the template already has it. Add `com.unity.nuget.newtonsoft-json` when the Persistence module is installed.
+6. **DOTween** is in no package registry. Ask the user to add the free DOTween from the Asset Store (Package Manager > My Assets) into `Assets/Plugins/Demigiant/`. Then: DOTween Utility Panel > **Setup DOTween**, then **Create ASMDEF** (asmdef code can't reference `Assembly-CSharp-firstpass`), and add the scripting define `UNITASK_DOTWEEN_SUPPORT` (UniTask detects DOTween only when it is a UPM package). DOTween keeps its settings asset in a `Resources` folder, the one exception to the code standards' rule.
 7. **VContainer source generator**, as in the [DI reference](../code-standards/references/dependency-injection.md#source-generator).
 8. **Code library:** copy the DI and Bootstrap modules, with the modules they depend on, into the project as the [code library](../library/SKILL.md) describes.
-9. **DI root.** Create the root `ModularLifetimeScope` prefab under `Assets/_Project/Prefabs/` and the `VContainerSettings` asset under `Assets/_Project/Settings/`, and assign the prefab as the root.
+9. **DI root.** Create the root `ModularLifetimeScope` prefab under `Assets/_Project/Prefabs/` and the `VContainerSettings` asset under `Assets/_Project/Settings/`, and assign the prefab as the root. An asset created by script must be added to **Preloaded Assets** (`PlayerSettings.SetPreloadedAssets`), or VContainer never finds it; check that it's listed. Register MessagePipe in the root scope as the [DI reference](../code-standards/references/dependency-injection.md#messagepipe-registration) shows.
 10. **Bootstrap scene.** `Assets/_Project/Scenes/Bootstrap.unity`: a camera, a loading screen with tiny assets, and the startup flow from the Bootstrap module. It is build index 0. Turn on the module's Play-from-Bootstrap mode, so Play in the Editor runs the same startup as a build.
 11. **Project settings:**
     - Active Input Handling: Input System Package.
     - Frame rate and quality are set by the Bootstrap module's frame-rate step; configure it for the target platforms ([performance](../performance/SKILL.md)).
-    - Enter Play Mode without domain reload, only after a check: the project's own code holds no static state, and entering Play Mode twice in a row behaves exactly like a run with a full reload. If any package breaks, keep the reload and record why in `docs/architecture.md`.
-12. **Build profiles.** One per target platform, plus development and release variants where their settings differ (development build, defines, logging, stripping). Bootstrap is scene 0 in each. Release builds use IL2CPP and the highest stripping level the project tolerates. Commit the profiles.
+    - **No domain reload on entering Play Mode** (Project Settings > Editor > Enter Play Mode Settings): Unity 6.6's default, and what Unity recommends. The project's own code holds no static state, and any static a package needs reset is handled as the [resource lifetimes](../code-standards/references/resource-lifetimes.md#static-state-and-enter-play-mode) reference describes. Check that entering Play Mode twice in a row behaves exactly like the first run. If a package breaks without the reload, turn it on and record why in `docs/architecture.md`.
+12. **Build profiles.** One per target platform, plus development and release variants where their settings differ (development build, defines, logging, stripping). Bootstrap is scene 0 in each. Release builds use IL2CPP and the highest stripping level the project tolerates, with `link.xml` for the types used through reflection, such as save DTOs; Android release builds target ARM64. VContainer Diagnostics is off in release builds. Commit the profiles.
 13. **Documentation**, in the [documentation layout](../project-docs/SKILL.md). Concise, one topic per file, linked instead of duplicated, no empty placeholders:
     - `README.md`: what the project is, its requirements (Unity version, assets imported by hand such as DOTween), how to open and run it, one line per `docs/` file;
     - `CLAUDE.md` from [templates/CLAUDE.md](templates/CLAUDE.md), filled in from the brief;

@@ -82,6 +82,16 @@ namespace Company.Product.Audio.Tests
         }
 
         [Test]
+        public void Tick_DoesNotAllocate()
+        {
+            _service.Play(_cue);
+            _service.Play(_cue);
+            _service.Tick();
+
+            Assert.That(() => _service.Tick(), Is.Not.AllocatingGCMemory());
+        }
+
+        [Test]
         public void Stop_AndStopAll_EndTheSounds()
         {
             var first = _service.Play(_cue);

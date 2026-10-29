@@ -1,5 +1,7 @@
 # Code organization
 
+This reference can be wrong or out of date: verify what you rely on, as the [standards](../../standards/SKILL.md#verify-before-relying-on-them) require.
+
 ## Project layout
 
 ```
@@ -40,7 +42,7 @@ A large domain splits into subfeature folders (`Interaction/Selection/`), each w
 
 ## Assembly definitions
 
-Reference assemblies by name. Every assembly sets `autoReferenced: false`.
+Reference assemblies by name: readable in reviews, and copied code keeps working without its `.meta` files. Unity also offers GUID references, which survive renames; with names, renaming an assembly means updating its references, and the compiler reports each one. Every assembly sets `autoReferenced: false`.
 
 Runtime:
 
@@ -114,7 +116,7 @@ Edit Mode tests (for Play Mode tests, use an empty `includePlatforms`):
 
 ## Third-party assemblies
 
-- VContainer, UniTask and MessagePipe ship asmdefs: reference them by name (`VContainer`, `UniTask`, `MessagePipe`, `MessagePipe.VContainer`).
+- VContainer, UniTask and MessagePipe ship asmdefs: reference them by name (`VContainer`, `UniTask`, `MessagePipe`, `MessagePipe.VContainer`). UniTask's integrations are separate assemblies: `UniTask.DOTween` for awaiting tweens, `UniTask.Addressables` for awaiting Addressables handles. Addressables code references `Unity.Addressables` and `Unity.ResourceManager`.
 - DOTween is a precompiled DLL plus source modules in `Assets/Plugins/Demigiant/`. Source in a `Plugins` folder compiles into `Assembly-CSharp-firstpass`, which an asmdef can't reference. Create DOTween's asmdef once (DOTween Utility Panel → **Create ASMDEF**) and reference `DOTween.Modules`.
 
 ## Shared contracts

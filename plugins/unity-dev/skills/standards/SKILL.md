@@ -10,7 +10,16 @@ allowed-tools:
 
 # unity-dev standards
 
-Follow the unity-dev standards strictly in all work for the rest of this session. Decisions recorded in the project's `CLAUDE.md` and `.claude/rules/` take precedence over them. Where a standard doesn't fit the project and a different solution is clearly better, use the better one, tell the user why, and record it under **Decisions** in the project's `CLAUDE.md`.
+Follow the unity-dev standards strictly in all work for the rest of this session, and verify them as you use them. Decisions recorded in the project's `CLAUDE.md` and `.claude/rules/` take precedence over them. Where a standard turns out wrong, doesn't fit the project, or a different solution is clearly better, use the better one, tell the user why, and record it under **Decisions** in the project's `CLAUDE.md`.
+
+## Verify before relying on them
+
+These standards, the guides and the code library can contain mistakes, outdated facts, and advice that isn't the best practice for this project. They are strong defaults to check, not facts to trust. Checking is mandatory:
+
+- **APIs, settings and versions.** Before using an API, attribute, setting, menu path, command or package id named in a guide, confirm it for the project's exact versions (`ProjectSettings/ProjectVersion.txt`, `Packages/packages-lock.json`): in the official documentation for that version, in the package source under `Library/PackageCache/`, or by compiling and running it. The guides and your training data both lag behind new releases.
+- **Library code.** Review every file before it enters the project, as you would a colleague's pull request: lifetimes, cancellation, edge cases, allocations. It compiles there with no warnings, and its tests pass there.
+- **Advice.** Before applying a rule, check that it fits the project. When the official documentation, a measurement or the project's needs contradict a guide, follow the evidence, and tell the user that the unity-dev guide needs the same fix.
+- **Honest reports.** Say what you verified and how. Never present something as checked when it wasn't.
 
 Links here are relative to `${CLAUDE_SKILL_DIR}`, and each guide links its own references relative to its folder. The plugin's root folder is two levels above this one.
 
@@ -28,7 +37,7 @@ Read every guide that matches the task before the work it covers, and read it ag
 |---|---|
 | Creating a new Unity project | [new project](../new-project/SKILL.md). When the task goes on after the project exists, such as building the game, continue in the new project's folder in this session |
 | Bringing an existing project under the standards | [adopt standards](../adopt-standards/SKILL.md) |
-| Writing, refactoring or reviewing C# | [code standards](../code-standards/SKILL.md), and the references it links for the topic |
+| Writing, refactoring or reviewing C# | [code standards](../code-standards/SKILL.md), its [resource lifetimes](../code-standards/references/resource-lifetimes.md) rules, and the references it links for the topic |
 | Generic code, or a common system | [code library](../library/SKILL.md): check its [catalog](../library/CATALOG.md) before writing the code |
 | A new feature area | [new domain](../new-domain/SKILL.md) |
 | Screens, menus, HUDs, popups | [UI quality](../ui-quality/SKILL.md) |
@@ -36,7 +45,7 @@ Read every guide that matches the task before the work it covers, and read it ag
 | Sounds and music | [audio design](../audio-design/SKILL.md) |
 | Visual effects | [VFX](../vfx/SKILL.md) |
 | Game concepts, mechanics, features | [game design](../game-design/SKILL.md) |
-| 3D models | [game assets](../game-assets/SKILL.md), through the Blender MCP connector |
+| 3D models, environments, characters | [game assets](../game-assets/SKILL.md), through the Blender MCP connector |
 | README, CLAUDE.md, `docs/`, `.claude/rules/` | [project docs](../project-docs/SKILL.md) |
 | Engine APIs that may have changed in recent Unity versions | the project's `docs/unity-version-notes.md`; to write or update it, [version notes](../version-notes/SKILL.md) |
 | Unity CLI, Editor link, C# language server or Blender connector problems | [toolchain](../toolchain/SKILL.md) |
@@ -52,8 +61,9 @@ Read every guide that matches the task before the work it covers, and read it ag
 2. **Best solution.** Nothing simpler or better; it scales with the expected growth without over-engineering.
 3. **Architecture.** Right domain and assembly, dependency direction, DI instead of statics, interfaces where they belong.
 4. **Performance.** No per-frame allocations or needless work; draw calls and memory within the project's budgets (`docs/performance-budgets.md`).
-5. **Robust.** Destroyed objects, cancellation, disposed subscriptions, errors.
+5. **Robust.** Every resource released by its owner on every path ([resource lifetimes](../code-standards/references/resource-lifetimes.md)): subscriptions, handles, tokens, buffers, created objects. Destroyed objects, cancellation and errors handled.
 6. **Consistent.** Naming and structure rules followed; docs updated.
+7. **Verified.** Every API, setting and library module the work relies on was checked for the project's versions, and the report says how.
 
 If a check fails, fix it before moving on.
 

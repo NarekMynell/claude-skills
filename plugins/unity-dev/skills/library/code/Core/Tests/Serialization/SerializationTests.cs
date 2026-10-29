@@ -78,6 +78,8 @@ namespace Company.Product.Core.Tests.Serialization
         public void SubclassSelector_LeavesOutTypesThatDontExistInBuilds()
         {
             Assert.That(SubclassSelectorDrawer.AssignableTypes(typeof(TestStrategy)), Is.Empty);
+            Assert.That(SubclassSelectorDrawer.PlayerAssemblyNames, Does.Contain("Company.Product.Core"));
+            Assert.That(SubclassSelectorDrawer.PlayerAssemblyNames, Does.Not.Contain("Company.Product.Core.PlayModeTests"));
         }
 
         [Test]

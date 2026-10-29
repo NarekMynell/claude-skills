@@ -8,6 +8,8 @@ allowed-tools:
 
 # Unity C# standards
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 These rules apply to new and changed code. In an existing project that doesn't follow them yet, apply them to the code you write, and refactor existing code only when the user asks. Decisions recorded in the project's `CLAUDE.md` or `.claude/rules/` take precedence.
 
 Generic building blocks named below (`IsAlive()`, Providers, pools, installers, the state machine) come from the code library: copy them into the project's Core from the [code library](../library/SKILL.md) instead of writing them again.
@@ -35,8 +37,8 @@ Full layout, asmdef templates and examples: [references/code-organization.md](re
 - **Assembly names** are `<Company>.<Product>.<Domain>`. `rootNamespace` equals the assembly name, and namespaces mirror the folder path. No code stays in `Assembly-CSharp`.
 - **Dependency direction:** App → domains → Core → third-party. Core never references a domain. A domain references another domain only when the dependency is real and one-way. When two domains need each other, move the shared contracts (interfaces, messages, states) into a lower assembly.
 - **Encapsulation.** Implementations are `internal`. Only contracts other assemblies use are `public`. The installer registers internal implementations under public interfaces.
-- `autoReferenced: false` on every assembly, so references are explicit. Only assemblies that use a third-party package reference it.
-- A logic-heavy domain moves its logic into `<Company>.<Product>.<Domain>.Logic` with `noEngineReferences: true`: the compiler then guarantees it has no Unity dependency, and its tests run in Edit Mode without the engine.
+- `autoReferenced: false` on every assembly, so Unity's predefined assemblies (`Assembly-CSharp`) can't use it and every dependency is a declared reference. Only assemblies that use a third-party package reference it.
+- A logic-heavy domain moves its logic into `<Company>.<Product>.<Domain>.Logic` with `noEngineReferences: true`: the compiler then guarantees it has no Unity dependency, and its tests are plain Edit Mode tests with no scene or Play Mode.
 - Editor code goes in `<Domain>/Editor/` with an Editor-only assembly. Inside a `….Editor` namespace the name `Editor` means that namespace: derive custom inspectors from `UnityEditor.Editor`. Tests go in `<Company>.<Product>.<Domain>.Tests`, Edit Mode unless they need the runtime.
 - One type per file, file name equals type name.
 
@@ -44,16 +46,16 @@ Full layout, asmdef templates and examples: [references/code-organization.md](re
 
 VContainer for all DI. Patterns and code: [references/dependency-injection.md](references/dependency-injection.md).
 
-- Plain C# classes get dependencies through the constructor. MonoBehaviours get them through an `[Inject]` method named `Construct`. No `FindObjectOfType`, no service locator lookups.
+- Plain C# classes get dependencies through the constructor. MonoBehaviours get them through an `[Inject]` method named `Construct`, which only stores them ([resource lifetimes](references/resource-lifetimes.md#where-to-release)). No `FindObjectOfType`, no service locator lookups.
 - **Scopes.** The root scope holds app-wide services (saving, audio, settings, scene loading, analytics). It is a prefab assigned in `VContainerSettings`, so VContainer creates it with the first scene, keeps it across scene loads and parents every scene scope to it. Scene scopes hold scene services.
 - **Domain installers.** A scene has one `ModularLifetimeScope`. Each domain contributes one `ScopeInstaller` that registers only that domain's services and holds its scene and config references. The scope lists its installers in the Inspector and runs them in that order.
-- **Runtime creation** goes through an injected typed factory that instantiates with `IObjectResolver.Instantiate` and returns the component or interface the caller needs. Never `Object.Instantiate` an object that needs injection.
-- **Scene objects** are registered with `RegisterComponent` / `RegisterComponentInHierarchy`, or injected with `builder.RegisterBuildCallback(c => c.Inject(view))`.
+- **Runtime creation** goes through an injected typed factory that instantiates with `IObjectResolver.Instantiate` and returns the component or interface the caller needs. Never `Object.Instantiate` an object that needs injection. The factory lives in the scope that owns what it creates, or gives every instance a parent: the root scope's resolver alone marks new objects `DontDestroyOnLoad`. The caller owns what a factory returns.
+- **Scene objects** are serialized on the installer and registered with `RegisterComponent`. Objects that only receive injection are listed in the scope's **Auto Inject Game Objects**, or injected with `builder.RegisterBuildCallback(c => c.InjectGameObject(view.gameObject))`. No `RegisterComponentInHierarchy`: it searches the scene.
 - **Configs** are registered with `RegisterInstance` and injected into services. ScriptableObjects never receive injection.
 - **Entry points.** `RegisterEntryPoint<T>` with `IStartable`, `ITickable`, `IFixedTickable`, `ILateTickable`, `IAsyncStartable` and `IDisposable` replaces MonoBehaviour lifecycle methods for services.
 - **Typed configuration.** Pass service settings as a typed config object. Never `WithParameter("name", value)`: a rename breaks it silently at runtime.
 - **No reflection.** The VContainer source generator must be installed (see the reference). Without it, VContainer injects through reflection.
-- **Global resolver** only as a last resort for code DI can't reach. One static access point, cleared when its scope is disposed, and a comment at every use explaining why DI couldn't be used. The same applies to `GlobalMessagePipe`.
+- **Global resolver** only as a last resort for code DI can't reach. One static access point, cleared when its scope is disposed, and a comment at every use explaining why DI couldn't be used. `GlobalMessagePipe` is set by the root scope, because the MessagePipe diagnostics window needs it ([DI reference](references/dependency-injection.md#messagepipe-registration)); code uses it under the same rule.
 
 ## Communication between systems
 
@@ -70,15 +72,18 @@ Details and Provider code: [references/messaging-and-state.md](references/messag
 
 - Never `SendMessage`, `BroadcastMessage` or string-named events.
 - **Messages** are `readonly struct`s in the owning domain's `Messages/` folder. Events use the past tense (`LevelCompleted`), requests end in `Request` (`SelectionRequest`).
-- **Every subscription is disposed:** collected in a `DisposableBag` disposed in `Dispose()` / `OnDestroy()`, or bound with `.AddTo(destroyCancellationToken)`.
+- **Every subscription is disposed:** collected in a `DisposableBag` disposed in `Dispose()` / `OnDestroy()`, or bound with `.AddTo(destroyCancellationToken)`. Messages carry values, never ownership of disposables, pooled objects or Unity objects.
 - Buffered publishers only for late subscribers that need the last message. Shared state that others read is a Provider.
 - **Provider state types** are a dedicated `readonly struct` per concept (`SelectionState`) that implements `IEquatable<T>`. Never a primitive or a shared type: there is one Provider per type, so `IProvider<bool>` would be shared by everyone.
 
 ## Async
 
 - **UniTask for all async code.** No coroutines: they can't return values, don't pass exceptions to the caller, can't be cancelled cleanly and allocate. No `Awaitable`: one async type across the codebase.
-- **Cancellation.** Every async method takes a `CancellationToken` as its last parameter and passes it down. MonoBehaviours use `destroyCancellationToken`. Services cancel their own `CancellationTokenSource` in `Dispose()`.
+- **Cancellation.** Every async method takes a `CancellationToken` as its last parameter and passes it down. MonoBehaviours use `destroyCancellationToken`. Services cancel and then dispose their own `CancellationTokenSource` in `Dispose()`; every source, linked ones included, is disposed. Timeouts use `CancelAfterSlim`.
+- **Cancellation isn't an error.** `OperationCanceledException` propagates; it is caught only at the top of a chain, to stop quietly, and never logged as an error.
 - **No `async void`.** Fire-and-forget is `async UniTaskVoid` with `.Forget()`, only at the top of a call chain, with exceptions logged.
+- **A `UniTask` is awaited once.** Use `.Preserve()` to share one.
+- **Threads.** Unity APIs only on the main thread. Work that touches no Unity object can move to the thread pool (`UniTask.RunOnThreadPool`), except on Web, which has no threads.
 - **Waiting for a condition:** await the event that makes it true (`UniTaskCompletionSource`, a message, a Provider value). Don't poll with `while (!ready) await UniTask.Yield()`.
 - Independent operations run in parallel with `UniTask.WhenAll`.
 - Choose delay timing on purpose: UI that keeps working while the game is paused uses unscaled time.
@@ -87,9 +92,9 @@ Details and Provider code: [references/messaging-and-state.md](references/messag
 
 - DOTween for code-driven motion (UI, transforms, materials, camera). Animator for authored skeletal animation. Timeline for hand-animated sequences and cutscenes.
 - DOTween is initialized once at startup with a capacity that matches the project's peak (`DOTween.Init().SetCapacity(...)`), so it never resizes at runtime.
-- Reused animations are built once with `SetAutoKill(false)` and replayed with `Restart()`.
-- Every tween is tied to its owner with `SetLink(gameObject)` or killed in `OnDestroy()` / `Dispose()`.
-- Await tweens with `await tween.ToUniTask(cancellationToken: ct)` (needs the `UNITASK_DOTWEEN_SUPPORT` define). UI tweens that run during pause use `SetUpdate(true)`.
+- Reused animations are built once with `SetAutoKill(false)`, replayed with `Restart()`, and killed by their owner.
+- Every tween is tied to its owner with `SetLink(gameObject)` or killed in `OnDestroy()` / `Dispose()`; on pooled objects, in `OnDespawned`.
+- Await tweens with `await tween.ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, ct)`, and `SetAutoKill(false)` tweens with `AwaitForComplete(TweenCancelBehaviour.CancelAwait, ct)`: the default `Kill` ends the await normally on cancellation, and `ToUniTask` waits for the kill ([details](references/resource-lifetimes.md#tweens)). This needs the `UNITASK_DOTWEEN_SUPPORT` define and a reference to the `UniTask.DOTween` assembly. UI tweens that run during pause use `SetUpdate(true)`.
 - Durations and eases come from configs or named constants and follow one motion language. No tweens created from per-frame code.
 
 ## Serialization and saving
@@ -113,7 +118,7 @@ Formats and the save pipeline: [references/serialization.md](references/serializ
   - a ScriptableObject definition: levels described by data (grids, wave lists, parameters, generated levels);
   - a definition plus a prefab: data plus hand-built geometry, the definition holding an `AssetReference` to the prefab.
 - **No direct references to level content** from a level list: a direct reference loads every level with the list. Use `AssetReference` and load and release one level at a time.
-- **No `Resources/` folder:** everything in it ships in the build and is indexed at startup. Use Addressables or serialized references.
+- **No `Resources/` folder** for the project's content: everything in it ships in the build and is indexed at startup. Use Addressables or serialized references. The exception is a settings asset that a third-party package loads from `Resources/` by design, such as DOTween's.
 
 ## Packages
 
@@ -134,7 +139,27 @@ Budgets, rendering and profiling are in the [performance guide](../performance/S
 - **Data layout.** Order struct fields largest to smallest. Hot data in contiguous arrays, struct-of-arrays in tight loops, large structs passed with `in`. Structs used as keys or compared implement `IEquatable<T>`.
 - **Burst and jobs** for heavy parallel work over thousands of elements: `Unity.Mathematics`, no managed objects, native containers disposed deterministically. Remove only unpredictable branches in hot loops (`math.select`), check the Burst Inspector and measure. Entities (ECS) is an architecture decision made with the user.
 - **Logging** goes through the library's `Log`: `Log.Debug` compiles out of release builds together with its message; warnings, errors and exceptions are always logged.
-- Every Addressables load has a matching release, owned by the loading service.
+
+## Resource lifetimes
+
+Every resource has one owner that releases it on every path, including cancellation, despawn, scene unload and quit. Read [references/resource-lifetimes.md](references/resource-lifetimes.md) before writing or reviewing code that subscribes, loads, allocates, pools or creates objects at runtime. In short:
+
+- Subscriptions (MessagePipe, Providers, C# and static events, Input System callbacks) are disposed or removed by their owner.
+- VContainer disposes only the `Singleton` and `Scoped` instances it created; `RegisterInstance` objects, `Transient` objects and GameObjects are released by their creator.
+- Every Addressables load has exactly one release, owned by the loading service.
+- Unity objects created at runtime (meshes, materials, textures, render textures, sprites) are destroyed by their owner. `renderer.material` and `meshFilter.mesh` create copies the caller owns: use `sharedMaterial` and `sharedMesh`.
+- Native containers, GPU buffers, `CullingGroup`s, `UnityWebRequest`s and streams are disposed deterministically. No finalizers.
+- `Dispose` is idempotent and never throws.
+
+## Tests
+
+- Logic is tested in Edit Mode through its interfaces, with hand-written fakes. Play Mode tests only for what needs the running engine: scenes, physics, frames, rendering.
+- A test is named for the behavior it checks (`CancelledLoad_ReleasesItsHandle`) and checks one behavior.
+- Deterministic: time and randomness are injected (a seeded `System.Random`), and nothing waits on real time.
+- Every test cleans up what it creates: GameObjects, assets, scopes, files, static subscriptions.
+- Hot paths have allocation tests (`Is.Not.AllocatingGCMemory()`). Disposable types have disposal tests: twice, after use, with work in flight.
+- A bug fix starts with a test that reproduces the bug.
+- Async tests return `UniTask.ToCoroutine(async () => ...)` from a `[UnityTest]`.
 
 ## Code style
 
@@ -162,4 +187,5 @@ Budgets, rendering and profiling are in the [performance guide](../performance/S
 
 - The code compiles with no errors or warnings: check the C# language server diagnostics, then let Unity recompile and read its console.
 - Changes visible at runtime were checked in Play Mode.
-- Each rule above holds for the changed code: right domain and assembly, DI instead of statics, disposed subscriptions, cancellation passed down, no per-frame allocations.
+- Each rule above holds for the changed code: right domain and assembly, DI instead of statics, every resource released by its owner, cancellation passed down, no per-frame allocations.
+- The APIs the code relies on were checked for the project's package versions, not recalled from memory.

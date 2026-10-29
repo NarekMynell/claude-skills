@@ -8,6 +8,8 @@ allowed-tools:
 
 # VFX
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 ## Design
 
 - **Purpose first.** Gameplay readability beats spectacle.
@@ -27,7 +29,7 @@ allowed-tools:
 ## Which tool
 
 - **Particle System:** the default. Runs everywhere, including mobile and Web.
-- **VFX Graph:** very large particle counts, only on platforms with compute shader support. That excludes WebGL.
+- **VFX Graph:** very large particle counts, only on platforms with compute shaders and no OpenGL ES, so not on WebGL or OpenGL ES Android devices. Its URP support is still in preview: check the VFX Graph system requirements for the project's version before relying on it for a mobile or Web target.
 - **Shader Graph:** surface effects such as dissolve, glow, hologram, distortion.
 - **Post-processing** (bloom and similar) is used deliberately, with its mobile cost in mind; setup in the official `unity:urp-postprocessing` skill.
 

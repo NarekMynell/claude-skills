@@ -1,11 +1,15 @@
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using VContainer;
 using VContainer.Unity;
 
 namespace Company.Product.Core.DI
 {
     // Instantiates a prefab through the resolver, so the new hierarchy receives its [Inject] dependencies.
+    // Without a parent, the instance joins the active scene, like Object.Instantiate. VContainer alone would put it
+    // in DontDestroyOnLoad when the resolver belongs to the root scope, so it would outlive every scene.
+    // The caller owns what Create returns: the container never destroys it.
     public sealed class ComponentFactory<T> : IFactory<T> where T : Component
     {
         private readonly IObjectResolver _resolver;
@@ -21,6 +25,14 @@ namespace Company.Product.Core.DI
             _parent = parent;
         }
 
-        public T Create() => _parent != null ? _resolver.Instantiate(_prefab, _parent) : _resolver.Instantiate(_prefab);
+        public T Create()
+        {
+            if (_parent != null) return _resolver.Instantiate(_prefab, _parent);
+
+            var instance = _resolver.Instantiate(_prefab);
+            var activeScene = SceneManager.GetActiveScene();
+            if (instance.gameObject.scene != activeScene) SceneManager.MoveGameObjectToScene(instance.gameObject, activeScene);
+            return instance;
+        }
     }
 }

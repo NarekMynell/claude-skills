@@ -26,7 +26,18 @@ $standards"
 
 case "$input" in
   *'"source":"startup"'* | *'"source": "startup"'*)
-    problems="$(bash "$root/skills/toolchain/scripts/check.sh" "${CLAUDE_PROJECT_DIR:-$PWD}" "$CLAUDE_PLUGIN_DATA")"
+    # The check can wait on the network. A watchdog stops it after 15 seconds, well inside the hook's
+    # 30-second timeout, so a slow network costs the toolchain report, never the standards.
+    report_file="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/unity-dev-check.$$")"
+    bash "$root/skills/toolchain/scripts/check.sh" "${CLAUDE_PROJECT_DIR:-$PWD}" "$CLAUDE_PLUGIN_DATA" \
+      > "$report_file" 2>/dev/null < /dev/null &
+    check_pid=$!
+    ( sleep 15; kill "$check_pid" 2>/dev/null ) > /dev/null 2>&1 < /dev/null &
+    watchdog_pid=$!
+    wait "$check_pid" 2>/dev/null
+    { kill "$watchdog_pid"; wait "$watchdog_pid"; } 2>/dev/null
+    problems="$(cat "$report_file" 2>/dev/null)"
+    rm -f "$report_file"
     if [ -n "$problems" ]; then
       context="$context
 
@@ -36,8 +47,9 @@ Tell the user about these problems in a few lines at the start of your first rep
     ;;
 esac
 
-# JSON string escaping, character by character, so it behaves the same in every awk.
-escaped="$(printf '%s' "$context" | awk '
+# JSON string escaping, character by character, so it behaves the same in every awk. Control characters
+# other than tab and newline (such as color codes in a tool's version output) are dropped first.
+escaped="$(printf '%s' "$context" | tr -d '\001-\010\013\014\016-\037' | awk '
   function esc(s,   out, i, c) {
     out = ""
     for (i = 1; i <= length(s); i++) {

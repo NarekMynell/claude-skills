@@ -2,7 +2,6 @@
     "name": "Company.Product.Persistence",
     "rootNamespace": "Company.Product.Persistence",
     "references": [
-        "Company.Product.Core",
         "UniTask",
         "VContainer"
     ],

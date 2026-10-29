@@ -48,16 +48,21 @@ namespace Company.Product.Core.Editor.Bootstrap
 
         private static void Refresh() => EditorSceneManager.playModeStartScene = IsEnabled ? FindBootstrapScene() : null;
 
+        // The first enabled scene of the active Build Profile, which is scene 0 in builds.
         private static SceneAsset FindBootstrapScene()
         {
-            var scenes = EditorBuildSettings.scenes;
-            return scenes.Length > 0 ? AssetDatabase.LoadAssetAtPath<SceneAsset>(scenes[0].path) : null;
+            foreach (var scene in EditorBuildSettings.scenes)
+                if (scene.enabled) return AssetDatabase.LoadAssetAtPath<SceneAsset>(scene.path);
+
+            return null;
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange change)
         {
             if (change != PlayModeStateChange.ExitingEditMode) return;
 
+            // A scene left by an earlier start that didn't reach the startup must not be opened by this one.
+            SessionState.EraseString(EditorPlaySession.ReturnSceneKey);
             var activeScene = SceneManager.GetActiveScene();
             if (IsTestRun(activeScene))
             {

@@ -40,11 +40,11 @@ namespace Company.Product.Core.Editor.Serialization
         }
 
         // Editor and test assemblies are left out: their types don't exist in builds.
-        internal static IEnumerable<Type> AssignableTypes(Type baseType)
-        {
-            _playerAssemblies ??= new HashSet<string>(CompilationPipeline.GetAssemblies(AssembliesType.Player).Select(assembly => assembly.name));
-            return AssignableTypes(baseType, _playerAssemblies);
-        }
+        internal static IEnumerable<Type> AssignableTypes(Type baseType) => AssignableTypes(baseType, PlayerAssemblyNames);
+
+        // Player assemblies include Play Mode test assemblies, which builds leave out.
+        internal static ICollection<string> PlayerAssemblyNames =>
+            _playerAssemblies ??= new HashSet<string>(CompilationPipeline.GetAssemblies(AssembliesType.PlayerWithoutTestAssemblies).Select(assembly => assembly.name));
 
         internal static IEnumerable<Type> AssignableTypes(Type baseType, ICollection<string> allowedAssemblies) =>
             TypeCache.GetTypesDerivedFrom(baseType)

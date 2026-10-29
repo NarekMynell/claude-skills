@@ -26,9 +26,11 @@ The user decides when a plugin acts: no skill Claude can load by itself, and one
 ## Writing a skill
 
 - The folder name matches `name` in the frontmatter: lowercase, hyphens.
+- Every skill and reference opens, right after its title, with the line saying it can be wrong or out of date and must be verified, linked to the rule in `standards` (copy it from an existing skill). The user asked for this on every guide: Claude must never treat these files as unquestionable.
 - Write only what Claude doesn't already know: decisions, conventions, gotchas. Skip textbook explanations.
 - Keep SKILL.md under ~500 lines. Move details into `references/` and link them from SKILL.md.
-- Verify every command, API name and URL before writing it: in the official docs, in the package source, or by running it.
+- Verify every command, API name and URL before writing it: in the official docs, in the package source, or by running it. Name the version a fact depends on when it is new or version-specific.
+- C# rules and library code follow the resource-lifetime rules in `plugins/unity-dev/skills/code-standards/references/resource-lifetimes.md`.
 
 ## Keeping it shareable
 

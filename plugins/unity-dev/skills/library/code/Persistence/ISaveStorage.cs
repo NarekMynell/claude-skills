@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
@@ -14,5 +15,9 @@ namespace Company.Product.Persistence
         UniTask WriteAsync(string key, byte[] data, CancellationToken cancellationToken);
 
         UniTask DeleteAsync(string key, CancellationToken cancellationToken);
+
+        // Blocks until every operation started so far has finished, or the timeout passes; false on a timeout.
+        // For the moment the app pauses or quits, when no later frame would let a pending write finish.
+        bool Flush(TimeSpan timeout);
     }
 }

@@ -3,7 +3,7 @@
 - **Destination:** `Core/Scenes/`
 - **Depends on:** UniTask.
 
-`SceneLoader : ISceneLoader` starts loading the scene in the background, shows an `ISceneTransition`, reports progress, activates the scene, then hides the transition.
+`SceneLoader : ISceneLoader` shows an `ISceneTransition`, loads the scene while reporting progress, then hides the transition.
 
 ```csharp
 builder.Register<ISceneTransition, FadeTransition>(Lifetime.Singleton);   // or NoSceneTransition
@@ -13,8 +13,9 @@ await _sceneLoader.LoadAsync(_levelScene.ScenePath, progress, cancellationToken)
 ```
 
 - Scenes are referenced by path; use `SceneReference` in configs.
-- The transition must survive the load: implement it in the root scope's prefab.
+- The transition and the progress receiver must survive the load: implement them in the root scope's prefab.
 - In the Editor, a scene outside the Build Profile's list still loads, so any scene can be played; in builds it must be in the list.
-- An invalid path throws before the transition shows.
+- An invalid path throws before the transition shows. A second load while one runs throws `InvalidOperationException`.
+- The load starts once the transition covers the screen, and the scene activates as soon as it has loaded. Activation is never held back: a held load stalls every other `AsyncOperation`, including asset loads a transition or loading screen might wait for.
+- **Cancellation** stops the load only before it starts: then `LoadAsync` throws `OperationCanceledException` and nothing loads. Once started, the load finishes and `LoadAsync` returns normally, also when the new scene destroys the caller's scope.
 - The transition is hidden however the load ends.
-- A load can't be aborted. Once activation starts, the load finishes even if the caller's scope is destroyed by the new scene. If the token is cancelled earlier, the scene still activates (a load held back would block every later load), and then the cancellation is thrown.

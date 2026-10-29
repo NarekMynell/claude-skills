@@ -37,17 +37,30 @@ namespace LibraryTests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator CancelledLoad_StillHidesTheTransition_AndLetsTheSceneActivate() => UniTask.ToCoroutine(async () =>
+        public IEnumerator CancellationAfterTheLoadStarted_StillActivatesTheScene_AndHidesTheTransition() => UniTask.ToCoroutine(async () =>
         {
             var transition = new RecordingTransition();
             var cancellation = new CancellationTokenSource();
             var load = new SceneLoader(transition).LoadAsync(ScenePath, null, cancellation.Token);
             cancellation.Cancel();
 
+            await load;
+
+            Assert.That(transition.Log, Is.EqualTo(new[] { "show", "hide" }));
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("SceneLoaderTarget"));
+            cancellation.Dispose();
+        });
+
+        [UnityTest]
+        public IEnumerator CancellationBeforeTheLoad_LoadsNothing_AndHidesTheTransition() => UniTask.ToCoroutine(async () =>
+        {
+            var transition = new RecordingTransition();
+            var sceneBefore = SceneManager.GetActiveScene().name;
+
             var cancelled = false;
             try
             {
-                await load;
+                await new SceneLoader(transition).LoadAsync(ScenePath, null, new CancellationToken(true));
             }
             catch (OperationCanceledException)
             {
@@ -56,8 +69,7 @@ namespace LibraryTests.PlayMode
 
             Assert.That(cancelled, Is.True);
             Assert.That(transition.Log, Is.EqualTo(new[] { "show", "hide" }));
-            for (var frame = 0; frame < 30 && SceneManager.GetActiveScene().name != "SceneLoaderTarget"; frame++) await UniTask.Yield();
-            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("SceneLoaderTarget"));
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(sceneBefore));
         });
 
         [UnityTest]

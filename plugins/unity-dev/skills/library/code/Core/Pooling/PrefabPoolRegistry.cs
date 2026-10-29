@@ -13,15 +13,20 @@ namespace Company.Product.Core.Pooling
         private readonly IObjectResolver _resolver;
         private readonly Transform _container;
         private readonly Dictionary<Component, IDisposable> _pools = new Dictionary<Component, IDisposable>();
+        private bool _isDisposed;
 
+        // The container is an active GameObject that lives as long as the registry: put it in the same scope's prefab or scene.
         public PrefabPoolRegistry(IObjectResolver resolver, Transform container)
         {
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+            if (container == null) throw new ArgumentNullException(nameof(container));
+
             _container = container;
         }
 
         public ComponentPool<T> Register<T>(T prefab, int prewarmCount, int maxSize = 1024) where T : Component
         {
+            ThrowIfDisposed();
             if (prefab == null) throw new ArgumentNullException(nameof(prefab));
             if (_pools.ContainsKey(prefab)) throw new InvalidOperationException($"{prefab.name} already has a pool.");
 
@@ -34,6 +39,7 @@ namespace Company.Product.Core.Pooling
 
         public ComponentPool<T> Get<T>(T prefab) where T : Component
         {
+            ThrowIfDisposed();
             if (prefab == null) throw new ArgumentNullException(nameof(prefab));
 
             return _pools.TryGetValue(prefab, out var pool)
@@ -43,8 +49,16 @@ namespace Company.Product.Core.Pooling
 
         public void Dispose()
         {
+            if (_isDisposed) return;
+
+            _isDisposed = true;
             foreach (var pool in _pools.Values) pool.Dispose();
             _pools.Clear();
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_isDisposed) throw new ObjectDisposedException(nameof(PrefabPoolRegistry));
         }
     }
 }

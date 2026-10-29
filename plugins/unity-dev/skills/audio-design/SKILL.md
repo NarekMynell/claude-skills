@@ -8,6 +8,8 @@ allowed-tools:
 
 # Audio design
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 Claude designs and produces every sound unless the user provides them. The official `unity:optimize-audio` and `unity:audio-setup-mixers` skills cover import settings, memory and mixer routing mechanics.
 
 ## Design

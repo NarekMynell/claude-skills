@@ -8,6 +8,8 @@ allowed-tools:
 
 # Unity version notes
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 Claude's training data lags behind the newest Unity releases: newer versions bring optimizations, APIs and features Claude may not know. This skill closes the gap from official sources once, and saves the result so later sessions read it instead of repeating the research.
 
 ## Steps

@@ -12,7 +12,7 @@ namespace Company.Product.Audio
 {
     // Plays AudioCues on pooled AudioSources. Register it in the root scope: its voices live under a
     // DontDestroyOnLoad object, and its Tick returns finished voices to the pool.
-    public sealed class AudioService : IAudioService, ITickable, IDisposable
+    internal sealed class AudioService : IAudioService, ITickable, IDisposable
     {
         private readonly GameObject _root;
         private readonly ComponentPool<AudioSource> _pool;

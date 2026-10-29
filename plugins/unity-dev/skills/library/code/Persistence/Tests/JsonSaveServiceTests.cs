@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
@@ -30,6 +31,8 @@ namespace Company.Product.Persistence.Tests
                 Files.Remove(key);
                 return UniTask.CompletedTask;
             }
+
+            public bool Flush(TimeSpan timeout) => true;
         }
 
         private sealed class Progress
@@ -117,6 +120,27 @@ namespace Company.Product.Persistence.Tests
             var loaded = service.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             Assert.That(loaded.LastLogin, Is.EqualTo("2026-10-29T10:00:00.0000000Z"));
+        }
+
+        [Test]
+        public void GlobalJsonSettings_DontChangeTheSaveFormat()
+        {
+            var previous = JsonConvert.DefaultSettings;
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented };
+            try
+            {
+                var service = new JsonSaveService<Progress>(_storage, new SaveSchema<Progress>("progress", 1));
+                service.SaveAsync(new Progress { Level = 1 }, CancellationToken.None).GetAwaiter().GetResult();
+            }
+            finally
+            {
+                JsonConvert.DefaultSettings = previous;
+            }
+
+            var json = Encoding.UTF8.GetString(_storage.Files["progress"]);
+            Assert.That(json, Does.Not.Contain("$type"));
+            Assert.That(json, Does.Not.Contain("\n"));
+            Assert.That(json, Does.StartWith("{\"version\":1,\"data\":{"));
         }
 
         [Test]

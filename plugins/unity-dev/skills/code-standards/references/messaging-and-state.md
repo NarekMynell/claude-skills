@@ -1,5 +1,7 @@
 # Messaging and shared state
 
+This reference can be wrong or out of date: verify what you rely on, as the [standards](../../standards/SKILL.md#verify-before-relying-on-them) require.
+
 ## MessagePipe
 
 Message types:
@@ -41,12 +43,14 @@ internal sealed class ProgressService : IStartable, IDisposable
 }
 ```
 
-In a MonoBehaviour, bind the subscription to the object's lifetime with UniTask's extension: `_subscriber.Subscribe(OnSelected).AddTo(destroyCancellationToken);`.
+In a MonoBehaviour, subscribe in `Start` or `OnEnable`, never in `Construct`, and bind the subscription to the object's lifetime with UniTask's extension: `_subscriber.Subscribe(OnSelected).AddTo(destroyCancellationToken);`. A pooled object disposes its subscriptions in `OnDespawned` instead.
 
-- Inject `IPublisher<T>` / `ISubscriber<T>`. Async handlers use `IAsyncPublisher<T>` / `IAsyncSubscriber<T>`.
+- Inject `IPublisher<T>` / `ISubscriber<T>`. Async handlers use `IAsyncPublisher<T>` / `IAsyncSubscriber<T>`; `PublishAsync` runs them in parallel by default (`AsyncPublishStrategy`).
 - Keyed channels (`IPublisher<TKey, T>`) only when receivers filter by a key such as a player id.
-- Request/response between domains uses `IRequestHandler<TRequest, TResponse>` only when a direct interface call isn't possible.
-- During development, check **Window > MessagePipe Diagnostics** for subscriptions that were never disposed. Stack traces appear only with `options.EnableCaptureStackTrace = true`; keep it off in release builds.
+- Request/response between domains uses `IRequestHandler<TRequest, TResponse>` only when a direct interface call isn't possible. Request handlers are registered explicitly ([DI reference](dependency-injection.md#messagepipe-registration)).
+- **Messages carry values, not ownership:** no disposables, pooled objects, native containers or Unity objects that can die before a handler runs.
+- **A handler that throws** stops the handlers after it, and the exception reaches the publisher. Each handler deals with its own expected failures.
+- **Leaks:** during development, check **Window > MessagePipe Diagnostics** for subscriptions that were never disposed. It needs `GlobalMessagePipe.SetProvider` in the root scope ([DI reference](dependency-injection.md#messagepipe-registration)). Stack traces of each subscription appear with `options.EnableCaptureStackTrace = true`, which slows subscribing: turn it on while hunting a leak, never in release builds.
 
 ## Providers
 

@@ -3,7 +3,7 @@
 `VisibilityPauser` pauses `IPausable` targets while their bounding sphere is outside the camera's view, with one `CullingGroup` for all of them.
 
 - **Destination:** `Core/Culling/`
-- **Depends on:** Lifecycle.
+- **Depends on:** Lifecycle, Extensions.
 
 ```csharp
 _pauser = new VisibilityPauser(camera);
@@ -16,3 +16,4 @@ _pauser.Dispose();
 - Use Unity's built-in culling first (Animator and particle culling modes); this is for custom per-frame behaviour.
 - A newly registered target starts paused until the first culling pass reports it visible.
 - `Unregister` and `Dispose` resume a paused target, so nothing stays paused for good. Destroyed targets are skipped.
+- The pauser owns a `CullingGroup`, a native object: its owner disposes it. A second `Dispose` does nothing; `Register` and `UpdatePosition` afterwards throw `ObjectDisposedException`, and `Unregister` does nothing.

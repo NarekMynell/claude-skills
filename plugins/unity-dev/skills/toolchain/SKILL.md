@@ -9,6 +9,8 @@ allowed-tools:
 
 # Unity toolchain
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 Every tool must be **installed**, **reachable** and **up to date**. When an update is available, apply it without asking, unless the user has said otherwise. If a fix fails, stop and report the problem with the command and its output.
 
 ## Check

@@ -89,7 +89,8 @@ if [ -z "$csharp_ls" ]; then
   report "The C# language server (csharp-ls) is not installed."
 else
   ls_current="$("$csharp_ls" --version 2>/dev/null | sed -n 's/^csharp-ls, \([0-9][0-9.]*\).*/\1/p')"
-  ls_latest="$(tr ',' '\n' < "$cache_dir/csharp-ls-versions.json" 2>/dev/null | tr -d '[]{}" \r\t' | sed -e '/-/d' -e '/^[0-9]/!d' | tail -n 1)"
+  # The index lists versions without promising an order: take the highest release, prereleases left out.
+  ls_latest="$(tr ',' '\n' < "$cache_dir/csharp-ls-versions.json" 2>/dev/null | tr -d '[]{}" \r\t' | sed -e 's/^versions://' -e '/-/d' -e '/^[0-9]/!d' | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)"
   if is_version "$ls_current" && is_version "$ls_latest" && [ "$ls_current" != "$ls_latest" ]; then
     report "csharp-ls $ls_current: $ls_latest is available."
   fi

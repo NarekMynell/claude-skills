@@ -54,5 +54,45 @@ namespace LibraryTests.PlayMode
             Assert.That(transition.Log, Is.EqualTo(new[] { "show", "hide" }));
             Assert.That(progress.Values[progress.Values.Count - 1], Is.EqualTo(1f));
         });
+
+        // A scene load held before activation stalls every AsyncOperation queued after it, so a transition that
+        // waits for one would never finish.
+        [UnityTest]
+        public IEnumerator TransitionThatAwaitsAnAsyncOperation_DoesNotStallTheLoad() => UniTask.ToCoroutine(async () =>
+        {
+            var load = new SceneLoader(new UnloadingTransition()).LoadAsync(ScenePath, null, CancellationToken.None);
+
+            var finished = await UniTask.WhenAny(load, UniTask.Delay(TimeSpan.FromSeconds(20), DelayType.Realtime));
+
+            Assert.That(finished, Is.EqualTo(0), "The load didn't finish within 20 seconds.");
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("SceneLoaderTarget"));
+        });
+
+        [UnityTest]
+        public IEnumerator SecondLoad_WhileOneIsRunning_IsRefused() => UniTask.ToCoroutine(async () =>
+        {
+            var loader = new SceneLoader(new RecordingTransition());
+            var first = loader.LoadAsync(ScenePath, null, CancellationToken.None);
+
+            Exception refused = null;
+            try
+            {
+                await loader.LoadAsync(ScenePath, null, CancellationToken.None);
+            }
+            catch (InvalidOperationException exception)
+            {
+                refused = exception;
+            }
+
+            await first;
+            Assert.That(refused, Is.Not.Null);
+        });
+
+        private sealed class UnloadingTransition : ISceneTransition
+        {
+            public async UniTask ShowAsync(CancellationToken cancellationToken) => await Resources.UnloadUnusedAssets().ToUniTask(cancellationToken: cancellationToken);
+
+            public async UniTask HideAsync(CancellationToken cancellationToken) => await Resources.UnloadUnusedAssets().ToUniTask(cancellationToken: cancellationToken);
+        }
     }
 }

@@ -76,5 +76,26 @@ namespace Company.Product.Core.Tests.Bootstrap
         {
             Assert.That(FrameRateStep.Resolve(platform, isMobile, mobileFrameRate, matchDisplay, refreshRate), Is.EqualTo((vSync, target)));
         }
+
+        private sealed class WaitingStep : IBootstrapStep
+        {
+            public async UniTask RunAsync(IProgress<float> progress, CancellationToken cancellationToken) =>
+                await UniTask.Never(cancellationToken);
+        }
+
+        [Test]
+        public void ShutdownDuringStartup_EndsQuietly()
+        {
+            var progress = new Provider<BootstrapProgress>();
+            var shutdown = new CancellationTokenSource();
+            var startup = new BootstrapFlow(new IBootstrapStep[] { new WaitingStep() }, progress).StartAsync(shutdown.Token);
+
+            shutdown.Cancel();
+
+            Assert.DoesNotThrow(() => startup.GetAwaiter().GetResult());
+            Assert.That(progress.Value.Status, Is.EqualTo(BootstrapStatus.Running));
+            LogAssert.NoUnexpectedReceived();
+            shutdown.Dispose();
+        }
     }
 }

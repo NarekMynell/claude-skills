@@ -9,3 +9,5 @@
 | `AsyncStateMachine<TState>` with `IAsyncState` | App flow with loading in `EnterAsync`/`ExitAsync`. One transition at a time: starting another while one runs throws, so await each change. |
 
 Both raise `Changed(previous, next)` after a transition and ignore a change to the current state. If `Exit` or `Enter` fails, `Current` becomes `null`: a retry enters again, and no state is exited twice.
+
+States are plain C# classes, like all logic: the machines check them with C# null checks, which don't see a destroyed `MonoBehaviour`. A state that drives a view holds the view and checks it with `IsAlive()`.

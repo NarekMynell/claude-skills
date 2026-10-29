@@ -32,9 +32,11 @@ namespace Company.Product.Core.Bootstrap
                 {
                     await _steps[i].RunAsync(new StepProgress(_progress, i, count), cancellation);
                 }
+                // The scope's own shutdown, such as quitting during startup, ends it quietly: VContainer would
+                // log a rethrown cancellation as an error.
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
                 {
-                    throw;
+                    return;
                 }
                 // Includes a step that cancelled itself, such as a timeout: that's a failure, not a shutdown.
                 catch (Exception exception)

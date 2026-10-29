@@ -8,6 +8,8 @@ allowed-tools:
 
 # Project documentation layout
 
+This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
+
 ## Principle
 
 Files are split by **content**, not by reader:
