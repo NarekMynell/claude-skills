@@ -1,8 +1,8 @@
 ---
 name: standards
-description: Loads all unity-dev standards for the rest of the session - C# architecture and code rules, the tested code library, the UI, performance, audio, VFX and game design quality bars, and the done checklist. Write a task after the command to start it right away.
+description: Loads all unity-dev standards - C# architecture and code rules, the tested code library, the UI, performance, audio, VFX and game design quality bars, the done checklist - and turns them on for every session in this project. Add a task to start it right away; `off` and `on` switch every-session loading.
 disable-model-invocation: true
-argument-hint: "[task]"
+argument-hint: "[task | on | off]"
 allowed-tools:
   - Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh *)
   - Read(~/.claude/plugins/cache/*/unity-dev/**)
@@ -10,16 +10,17 @@ allowed-tools:
 
 # unity-dev standards
 
-The user loaded the unity-dev standards: follow them in all work for the rest of this session. Decisions recorded in the project's `CLAUDE.md` and `.claude/rules/` take precedence over them.
+Follow the unity-dev standards in all work for the rest of this session. Decisions recorded in the project's `CLAUDE.md` and `.claude/rules/` take precedence over them.
+
+Links here are relative to `${CLAUDE_SKILL_DIR}`, and each guide links its own references relative to its folder.
 
 ## Start
 
-1. Run the toolchain check, exactly as written, with nothing added (it always exits 0): `bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh "${CLAUDE_PROJECT_DIR}" "${CLAUDE_PLUGIN_DATA}"`. It prints nothing when the toolchain is fine. If it reports problems, list them for the user in a few lines with the command that fixes them, `/unity-dev:toolchain` (or `/unity-dev:version-notes` for the version notes), then go on.
-2. Read the [code standards](../code-standards/SKILL.md) and the [library catalog](../library/CATALOG.md).
+Before the first task, read the [code standards](../code-standards/SKILL.md) and the [library catalog](../library/CATALOG.md).
 
 ## Guides
 
-The guides are this plugin's other skills. They load only on the user's command, so the Skill tool refuses them: read their files with the Read tool instead. That is how this skill is meant to work. Links are relative to this skill's folder, `${CLAUDE_SKILL_DIR}`, and each guide links its own references relative to its folder.
+The guides are this plugin's other skills. They load only on the user's command, so the Skill tool refuses them: read their files with the Read tool instead. That is how these standards are meant to work.
 
 Read the matching guide before the work it covers, and read it again after the conversation is compacted.
 
@@ -52,8 +53,21 @@ Read the matching guide before the work it covers, and read it again after the c
 
 If a check fails, fix it before moving on.
 
-## Task
+## When the user types the command
 
-$ARGUMENTS
+Arguments: `$ARGUMENTS`
 
-If no task follows the heading above, tell the user in one line that the standards are loaded, and wait.
+Every-session loading is the `UNITY_DEV_STANDARDS` variable under `env` in the project's `.claude/settings.json`, which the team shares, or in `.claude/settings.local.json`, which is personal and wins over it. `on` loads these standards at the start of every session in the project, `off` doesn't. Check both files with the Read tool (a missing file sets nothing) and change them with Edit or Write, not through the shell; Claude Code asks the user to approve changes to them. Turning it on also needs this read rule, because outside the command nothing pre-approves reading the guides:
+
+```json
+{
+  "env": { "UNITY_DEV_STANDARDS": "on" },
+  "permissions": { "allow": ["Read(~/.claude/plugins/cache/*/unity-dev/**)"] }
+}
+```
+
+1. **`on` or `off`.** If the arguments are exactly `on` or `off`, set the variable to that value in the file that sets it now, or in `.claude/settings.json` when neither does, and for `on` make sure the read rule is there. Confirm in one line and stop.
+2. **Toolchain.** Run the toolchain check, exactly as written, with nothing added (it always exits 0): `bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh "${CLAUDE_PROJECT_DIR}" "${CLAUDE_PLUGIN_DATA}"`. It prints nothing when the toolchain is fine. If it reports problems, list them for the user in a few lines with the command that fixes them, `/unity-dev:toolchain` (or `/unity-dev:version-notes` for the version notes), then go on.
+3. **Every session.** If neither file sets the variable, merge the JSON above into `.claude/settings.json`, creating the file if needed. Tell the user in one line that the standards now load at the start of every session in this project, and that `/unity-dev:standards off` turns that off.
+4. **Start**, as above.
+5. **Task.** The arguments are the task: start it. Without arguments, tell the user in one line that the standards are loaded, and wait.

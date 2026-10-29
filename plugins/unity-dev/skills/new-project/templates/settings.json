@@ -1,4 +1,12 @@
 {
+  "env": {
+    "UNITY_DEV_STANDARDS": "on"
+  },
+  "permissions": {
+    "allow": [
+      "Read(~/.claude/plugins/cache/*/unity-dev/**)"
+    ]
+  },
   "extraKnownMarketplaces": {
     "narek-skills": {
       "source": {

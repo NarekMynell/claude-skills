@@ -3,7 +3,7 @@
 <What the game or app is, in one or two sentences.> Unity <version>, URP, targets <platforms>.
 
 - Assembly prefix: `<Company>.<Product>`.
-- Code standards: unity-dev, which the user loads with `/unity-dev:standards`. The decisions below take precedence over them.
+- Code standards: unity-dev. The unity-dev plugin loads them at the start of every session (`UNITY_DEV_STANDARDS` in `.claude/settings.json`). The decisions below take precedence over them.
 
 ## Decisions
 

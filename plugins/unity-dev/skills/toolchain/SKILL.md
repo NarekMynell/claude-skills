@@ -13,7 +13,7 @@ Every tool must be **installed**, **reachable** and **up to date**. When an upda
 
 ## Check
 
-Run this command exactly as written, with nothing added (it always exits 0): `bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh "${CLAUDE_PROJECT_DIR}" "${CLAUDE_PLUGIN_DATA}"`. In a Unity project it checks the tools below and prints only the problems; `/unity-dev:standards` runs the same check. Fix what it reports, plus any problem the user describes that it doesn't cover, such as the live Editor connection or the Blender connector.
+Run this command exactly as written, with nothing added (it always exits 0): `bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh "${CLAUDE_PROJECT_DIR}" "${CLAUDE_PLUGIN_DATA}"`. In a Unity project it checks the tools below and prints only the problems; `/unity-dev:standards` runs the same check, and so does the start of every session in a project that has the standards on. Fix what it reports, plus any problem the user describes that it doesn't cover, such as the live Editor connection or the Blender connector.
 
 ## Tools
 

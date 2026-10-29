@@ -54,11 +54,11 @@ Do these between the official flow's package step and its first commit. Work in 
     - `docs/architecture.md`: domains, scopes, startup steps;
     - `docs/unity-version-notes.md`, as the [version notes guide](../version-notes/SKILL.md) describes;
     - `docs/performance-budgets.md` when the target devices are known.
-14. **Team setup.** Copy [templates/settings.json](templates/settings.json) to `.claude/settings.json`: it registers this marketplace with auto-update and lists the plugins the project expects. Committing it installs nothing; tell the user that each teammate runs `claude plugin install unity-dev@narek-skills --scope project` once, after trusting the folder (dependencies come with it). Add `.claude/settings.local.json` to `.gitignore`.
+14. **Team setup.** Copy [templates/settings.json](templates/settings.json) to `.claude/settings.json`: it registers this marketplace with auto-update, lists the plugins the project expects, and turns on loading the standards at the start of every session (`UNITY_DEV_STANDARDS`, with the rule that lets those sessions read the plugin's guides). Committing it installs nothing; tell the user that each teammate runs `claude plugin install unity-dev@narek-skills --scope project` once, after trusting the folder (dependencies come with it). Add `.claude/settings.local.json` to `.gitignore`.
 15. **Verify.** No errors or warnings in the console. Play from Bootstrap reaches the first scene. `unity status` is `ready`.
 
 Then make the official flow's first commit.
 
 ## Report
 
-Project path, Editor version, template, installed packages with versions, library modules copied, what the user still has to do (for example importing DOTween), and the next step. Tell the user that the standards apply in a session only after `/unity-dev:standards`.
+Project path, Editor version, template, installed packages with versions, library modules copied, what the user still has to do (for example importing DOTween), and the next step. Tell the user that the standards load by themselves in every session started in the project folder, and that `/unity-dev:standards off` turns that off.

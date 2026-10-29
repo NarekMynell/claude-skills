@@ -12,15 +12,16 @@ This repo is a Claude Code plugin marketplace: it lists several plugins, and eac
 
 Put a new skill in the plugin whose `description` in `marketplace.json` fits. If none fits, add a new plugin.
 
-## Nothing loads on its own
+## Nothing loads unless the user asks
 
-The user decides when a plugin acts: no hooks, and no skill Claude can load by itself.
+The user decides when a plugin acts: no skill Claude can load by itself, and one hook that does nothing until the user turns it on for a project.
 
 - Every skill sets `disable-model-invocation: true`, so it loads only when the user types its command. Claude never sees the descriptions: `description` is for people browsing the `/` menu, one sentence on what the skill does.
 - Every skill pre-approves reading its own plugin's files with `allowed-tools: Read(~/.claude/plugins/cache/*/<plugin>/**)`. Plugin files sit outside the project, so without the rule each read asks for permission.
 - Skills link each other with relative paths (`../library/SKILL.md`), never by skill name: Claude can't invoke them, so it reads the linked file. A plugin can't link another plugin's files, because each plugin is copied on its own; point the user to that plugin's command instead.
 - `${CLAUDE_PLUGIN_ROOT}` and the other variables are substituted only in the skill the user invoked, not in files Claude reads from it. Use them only in skills no other skill reads (`standards`, `toolchain`), and relative paths everywhere else.
-- Templates copied into projects hold project knowledge only: what the project is, its decisions, its docs index. A project's `CLAUDE.md` loads in every session, so it never tells Claude to load or follow these skills.
+- Every-session loading is a per-project switch: `UNITY_DEV_STANDARDS` set to `on` under `env` in the project's `.claude/settings.json` (or `.claude/settings.local.json`), next to the plugin's read rule, because outside a command nothing pre-approves those reads. `/unity-dev:standards` writes both on its first run in a project; `new-project` and `adopt-standards` write them through the team settings template. With the switch on, unity-dev's SessionStart hook (`hooks/standards.sh`) adds `skills/standards/SKILL.md` up to its `## When the user types the command` heading to the context on startup, `/clear` and compaction. That part must work without the command, use no variable but `${CLAUDE_SKILL_DIR}`, which the hook resolves, and stay well under the 10,000-character cap on hook output.
+- Templates copied into projects hold project knowledge only: what the project is, its decisions, its docs index. A project's `CLAUDE.md` loads in every session, so it never tells Claude to load or follow these skills; the switch does that.
 
 ## Writing a skill
 
@@ -42,7 +43,8 @@ The user decides when a plugin acts: no hooks, and no skill Claude can load by i
 
 - `claude plugin validate .` and `claude plugin validate plugins/<plugin>` before pushing.
 - `claude --plugin-dir plugins/<plugin> plugin details <plugin>` shows the per-skill token cost. Its always-on figure counts descriptions that `disable-model-invocation` keeps out of context.
-- End-to-end: run `claude -p --plugin-dir <repo>/plugins --add-dir <repo>/plugins "<prompt>"` from a test project outside this repo (this file would leak into one inside it). Check both directions: a plain prompt loads nothing from these plugins, and a command loads what it should. `--add-dir` stands in for the read rule, which matches only the installed cache.
+- End-to-end: run `claude -p --plugin-dir <repo>/plugins --add-dir <repo>/plugins "<prompt>"` from a test project outside this repo (this file would leak into one inside it). Check both directions: a plain prompt loads nothing from these plugins, and a command loads what it should. With the switch in the test project's `.claude/settings.json`, a plain prompt gets the standards. `--add-dir` stands in for the read rule, which matches only the installed cache.
+- The session-start hook alone: pipe `{"source":"startup"}` into `plugins/unity-dev/hooks/standards.sh` with `UNITY_DEV_STANDARDS=on` and `CLAUDE_PLUGIN_ROOT` set. The output must be valid JSON whose `additionalContext` holds the standards, with every variable resolved and no `$ARGUMENTS`.
 - Blender scripts: run them headless (`Blender -b --factory-startup --python <test>`) against meshes with known defects.
 - Library modules: see the authoring rules.
 
