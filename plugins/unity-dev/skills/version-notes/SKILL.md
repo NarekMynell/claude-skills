@@ -1,6 +1,9 @@
 ---
 name: version-notes
-description: Researches what changed in Unity between the versions Claude knows well and the project's Unity version, and records what matters for this project in docs/unity-version-notes.md. Use when a project is created, when its Unity version changes, when the session-start check reports missing or outdated notes, or before relying on an API that may have changed in recent Unity releases.
+description: Researches what changed in Unity between the versions Claude knows well and the project's version, and records what matters for the project in docs/unity-version-notes.md.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # Unity version notes
@@ -17,7 +20,7 @@ Claude's training data lags behind the newest Unity releases: newer versions bri
    - release notes of the exact version: `https://unity.com/releases/editor/whats-new/<version>`, for known issues and fixes;
    - changelogs of the project's key packages (render pipeline, Input System, Addressables) for the versions in `Packages/manifest.json`.
 4. Keep only what is relevant to this project: its render pipeline, platforms and packages. Look for optimizations, new features and APIs, deprecations, breaking changes and known issues.
-5. Write `docs/unity-version-notes.md` in the format below. The first line is read by the session-start check and must stay exact.
+5. Write `docs/unity-version-notes.md` in the format below. The first line is read by the toolchain check and must stay exact.
 6. List the file in the indexes of `README.md` and `CLAUDE.md`. The notes themselves stay out of `CLAUDE.md`.
 
 ## Format

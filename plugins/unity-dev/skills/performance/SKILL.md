@@ -1,11 +1,14 @@
 ---
 name: performance
-description: Unity performance standards and optimization workflow. Covers budgets, frame rate setup per platform (mobile 30 fps default, Web vSync), CPU, GPU, memory and build size, draw calls and SetPass calls, batching, sprite atlases, textures, LODs, profiling on device. Use when setting up a project's performance targets, optimizing, profiling, or when fps, memory, load time or build size is a concern.
+description: Unity performance standards and optimization - budgets, frame rate per platform, CPU, GPU, memory and build size, draw and SetPass calls, batching, sprite atlases, textures, LODs, profiling on device.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # Unity performance
 
-**Principle.** Design for performance from the start: architecture, data layout, pooling, no allocations in per-frame code (those code rules are in `unity-dev:code-standards`). Micro-optimize only from profiler data captured on the target device, and measure every optimization before and after.
+**Principle.** Design for performance from the start: architecture, data layout, pooling, no allocations in per-frame code (those code rules are in the [code standards](../code-standards/SKILL.md)). Micro-optimize only from profiler data captured on the target device, and measure every optimization before and after.
 
 ## Budgets
 

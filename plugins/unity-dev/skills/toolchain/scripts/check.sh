@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# unity-dev session-start check for Unity projects.
-# Prints the problems it finds as context for Claude, and nothing when the toolchain is healthy.
-# Network lookups are cached for a day so most sessions start without any.
+# unity-dev toolchain check, run by the standards and toolchain skills:
+#   check.sh <project dir> <plugin data dir>
+# Prints the problems it finds, and nothing when the toolchain is healthy or the folder isn't a Unity project.
+# Network lookups are cached for a day in the data dir, next to the user's decisions.
 
-project="${CLAUDE_PROJECT_DIR:-$PWD}"
+project="${1:-${CLAUDE_PROJECT_DIR:-$PWD}}"
 version_file="$project/ProjectSettings/ProjectVersion.txt"
 [ -f "$version_file" ] || exit 0
 
-cache_dir="${CLAUDE_PLUGIN_DATA:-${XDG_CACHE_HOME:-$HOME/.cache}/unity-dev}"
+cache_dir="${2:-${CLAUDE_PLUGIN_DATA:-${XDG_CACHE_HOME:-$HOME/.cache}/unity-dev}}"
 mkdir -p "$cache_dir" 2>/dev/null || exit 0
 decisions="$cache_dir/decisions"
 problems=""
@@ -106,4 +107,4 @@ elif ! head -n 3 "$notes" | grep -qF "Covers Unity $editor_version."; then
 fi
 
 [ -z "$problems" ] && exit 0
-printf 'unity-dev toolchain check, Unity %s project:\n%sLoad the unity-dev:toolchain skill and fix these before other work, unless the user asks otherwise.\n' "$editor_version" "$problems"
+printf 'unity-dev toolchain check, Unity %s project:\n%s' "$editor_version" "$problems"

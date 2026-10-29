@@ -1,17 +1,20 @@
 ---
 name: library
-description: The unity-dev code library - ready, tested C# building blocks for Unity projects (DI scopes and installers, Providers, pooling, state machines, startup flow, saving, audio service, safe area, extensions, collections, algorithms and more), copied into a project under the project's own namespace. Use before writing generic code in a Unity project, and whenever a ready implementation of a common system would help.
+description: The tested unity-dev code library - DI scopes and installers, Providers, pooling, state machines, startup flow, saving, audio, safe area, extensions, collections, algorithms - copied into a project under its own namespace.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # Code library
 
-Ready building blocks written to `unity-dev:code-standards` and covered by tests. The library is a source to copy from, not a dependency: a project takes only what it needs, and the copied code becomes the project's own code, in its own namespace, free to change.
+Ready building blocks written to the [code standards](../code-standards/SKILL.md) and covered by tests. The library is a source to copy from, not a dependency: a project takes only what it needs, and the copied code becomes the project's own code, in its own namespace, free to change.
 
 [CATALOG.md](CATALOG.md) lists every module: what it does, where it goes in a project, and what it needs. Read it before writing generic code. When a module covers the need, start from it instead of writing the code again.
 
 ## Layout
 
-`${CLAUDE_PLUGIN_ROOT}/skills/library/code/` mirrors a project's `Assets/_Project/Scripts/` folder, written with the placeholder prefix `Company.Product`:
+[code/](code/), next to this file, mirrors a project's `Assets/_Project/Scripts/` folder, written with the placeholder prefix `Company.Product`:
 
 - `code/Core/<Module>/`: generic building blocks, in the `Company.Product.Core` assembly;
 - `code/<Domain>/`: ready domains, such as Audio or Persistence, each with its own assembly.
@@ -26,7 +29,7 @@ Every module folder has a `README.md`: purpose, API with a short example, depend
 4. Merge into the project's assemblies: files for `Core` join the project's existing Core assembly, with any missing references added. Never create a second Core assembly.
 5. Adapt the code to the project: keep what it needs, remove what it doesn't, extend it.
 6. Copy the module's tests into the matching test assembly. The project compiles with no errors or warnings, and the tests pass.
-7. List the copied modules in `docs/architecture.md` with the unity-dev version (from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`), so a later library fix can be compared with the project's copy and ported.
+7. List the copied modules in `docs/architecture.md` with the unity-dev version (from [plugin.json](../../.claude-plugin/plugin.json)), so a later library fix can be compared with the project's copy and ported.
 
 ## Growing the library
 

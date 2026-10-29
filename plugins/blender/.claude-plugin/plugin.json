@@ -1,6 +1,6 @@
 {
   "name": "blender",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Game-ready 3D assets in Blender through the Blender MCP connector: clean geometry, automated mesh validation, multi-angle visual checks, UVs, export to Unity",
   "author": {
     "name": "Narek"

@@ -1,6 +1,9 @@
 ---
 name: audio-design
-description: Sound design and audio production for Unity games. Covers the sound list per event, emotional intent, sources (generation tools, procedural synthesis, licensed libraries), escalating reward sounds, variation against fatigue, AudioMixer groups and snapshots, ducking, and the audio service. Use when a game or feature needs sounds or music, or when audio feels flat, repetitive or unbalanced.
+description: Sound design and audio production for Unity games - the sound list per event, sources, escalating reward sounds, variation, AudioMixer groups and snapshots, ducking, and the audio service.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # Audio design

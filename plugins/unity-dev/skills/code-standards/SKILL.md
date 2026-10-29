@@ -1,13 +1,16 @@
 ---
 name: code-standards
-description: C# architecture and code standards for Unity projects. Covers dependency injection with VContainer, domains and assembly definitions, MessagePipe messaging, Providers, UniTask async, DOTween, serialization and saving, ScriptableObject configs, pooling, per-frame performance, naming and style. Load before writing, refactoring or reviewing C# in a Unity project.
+description: C# architecture and code standards for Unity - VContainer DI, domains and assemblies, MessagePipe, Providers, UniTask, DOTween, serialization and saving, configs, pooling, per-frame performance, naming and style.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # Unity C# standards
 
 These rules apply to new and changed code. In an existing project that doesn't follow them yet, apply them to the code you write, and refactor existing code only when the user asks. Decisions recorded in the project's `CLAUDE.md` or `.claude/rules/` take precedence.
 
-Generic building blocks named below (`IsAlive()`, Providers, pools, installers, the state machine) come from the code library: copy them into the project's Core with the `unity-dev:library` skill instead of writing them again.
+Generic building blocks named below (`IsAlive()`, Providers, pools, installers, the state machine) come from the code library: copy them into the project's Core from the [code library](../library/SKILL.md) instead of writing them again.
 
 ## Architecture
 
@@ -119,7 +122,7 @@ Formats and the save pipeline: [references/serialization.md](references/serializ
 
 ## Per-frame code and memory
 
-Budgets, rendering and profiling are in the `unity-dev:performance` skill.
+Budgets, rendering and profiling are in the [performance guide](../performance/SKILL.md).
 
 - **No allocations in per-frame code:** no LINQ, no capturing lambdas, no boxing, no string building (use TMP `SetText(format, value)`), no new collections (reuse, or rent from `ListPool<T>` / `ArrayPool<T>`).
 - **No `Update`, `FixedUpdate` or `LateUpdate` in our MonoBehaviours.** Per-frame work runs in `ITickable` systems that iterate over their objects. Non-critical work runs every N frames; heavy work is spread across frames.

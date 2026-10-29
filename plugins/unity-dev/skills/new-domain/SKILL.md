@@ -1,6 +1,10 @@
 ---
 name: new-domain
-description: Adds a new domain (feature area) to a Unity project that follows the unity-dev standards - folder, assembly definition, installer registered in the scene scope, optional Logic and test assemblies, and the architecture doc entry. Use when the user wants a new feature area, system, module or domain such as inventory, combat, shop, quests or audio.
+description: Adds a feature area such as inventory, combat or shop to a unity-dev project - folder, assembly definition, installer in the scene scope, optional Logic and test assemblies, and the architecture doc entry.
+disable-model-invocation: true
+argument-hint: "[domain]"
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # New domain
@@ -8,7 +12,7 @@ description: Adds a new domain (feature area) to a Unity project that follows th
 ## Decide
 
 1. **Name.** One PascalCase noun for the feature area (`Inventory`, `Combat`). Never `Application`, never `Utils`, `Common` or `Manager`.
-2. **Does it belong in the library instead?** If it knows nothing about this project and is generic, it is a library module, not a domain (`unity-dev:library`).
+2. **Does it belong in the library instead?** If it knows nothing about this project and is generic, it is a library module, not a domain (see the [code library](../library/SKILL.md)).
 3. **Dependencies.** List the domains it needs. Each dependency must be one-way. If two domains would need each other, plan the shared contracts assembly first.
 4. **Assembly prefix.** Read `<Company>.<Product>` from `CLAUDE.md`, or from an existing project assembly.
 

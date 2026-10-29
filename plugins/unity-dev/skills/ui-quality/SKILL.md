@@ -1,6 +1,9 @@
 ---
 name: ui-quality
-description: Quality bar for Unity game and app UI. Covers adaptive layout for every aspect ratio, mobile safe area, no text overflow or overlapping elements, alignment and spacing, art direction, interaction states and feedback, UGUI performance, and screenshot verification. Use whenever building, changing or reviewing a screen, menu, HUD or popup, together with the official unity:ui skills for the framework mechanics.
+description: Quality bar for Unity game and app UI - layout for every aspect ratio, safe area, no text overflow or overlaps, alignment and spacing, art direction, interaction states, UGUI performance, screenshot checks.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # UI quality

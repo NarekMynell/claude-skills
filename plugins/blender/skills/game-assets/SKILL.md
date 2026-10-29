@@ -1,6 +1,10 @@
 ---
 name: game-assets
-description: Creates game-ready 3D models in Blender through the Blender MCP connector and exports them to Unity or another engine. Covers art style and polygon budget, clean geometry (no duplicate or overlapping faces, no non-manifold edges, consistent normals), automated mesh validation, multi-angle visual checks, scale and origin, UVs and texel density, materials, LODs, colliders, FBX/glTF export and Unity import settings. Use whenever a 3D model, prop, character or environment piece is needed for a game.
+description: Creates game-ready 3D models in Blender through the Blender MCP connector - style and polygon budget, clean geometry, automated mesh validation, multi-angle checks, UVs, materials, LODs, colliders, and export to Unity.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/blender/**)
+argument-hint: "[model]"
 ---
 
 # Game-ready 3D assets

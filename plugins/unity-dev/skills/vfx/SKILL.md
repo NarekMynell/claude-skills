@@ -1,6 +1,9 @@
 ---
 name: vfx
-description: Visual effects for Unity games. Covers effect design (purpose, anticipation-impact-dissipation timing, layers, palette), no hard edges or visible masking, choosing Particle System vs VFX Graph vs Shader Graph vs post-processing per platform, overdraw and pooling, and verification at gameplay speed. Use when creating or improving particles, hit effects, explosions, trails, magic, dissolves, glows or any other visual effect.
+description: Visual effects for Unity games - effect design and timing, no hard edges or visible masking, Particle System vs VFX Graph vs Shader Graph vs post-processing, overdraw, pooling, checks at gameplay speed.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # VFX

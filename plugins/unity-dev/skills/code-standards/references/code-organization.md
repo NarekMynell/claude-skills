@@ -19,7 +19,7 @@ Assets/
 └── ...                     Folders that packages and imported assets create stay where they install
 ```
 
-Core is one assembly, `<Company>.<Product>.Core`, with `Core.Editor` and `Core.Tests` beside it. Something enters Core only if it knows nothing about game features and either two domains need it or it is clearly generic. Much of it is copied from the code library (`unity-dev:library`) and then belongs to the project.
+Core is one assembly, `<Company>.<Product>.Core`, with `Core.Editor` and `Core.Tests` beside it. Something enters Core only if it knows nothing about game features and either two domains need it or it is clearly generic. Much of it is copied from the [code library](../../library/SKILL.md) and then belongs to the project.
 
 ## Inside a domain
 

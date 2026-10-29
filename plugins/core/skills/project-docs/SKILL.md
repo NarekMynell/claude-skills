@@ -1,6 +1,9 @@
 ---
 name: project-docs
-description: Sets up and maintains a project's documentation layout so people and Claude share one source of truth - README.md and CLAUDE.md as indexes, project knowledge in docs/, Claude instructions in CLAUDE.md and .claude/rules/. Use when creating a project, adding or reorganizing documentation, writing a CLAUDE.md or a rule file, or when docs are scattered, duplicated or out of date.
+description: Sets up or tidies a project's documentation so people and Claude share one source of truth - README.md and CLAUDE.md as indexes, knowledge in docs/, Claude instructions in CLAUDE.md and .claude/rules/.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/core/**)
 ---
 
 # Project documentation layout

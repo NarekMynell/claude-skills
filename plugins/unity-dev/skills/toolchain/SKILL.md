@@ -1,11 +1,19 @@
 ---
 name: toolchain
-description: Checks, repairs and updates the Unity toolchain for Claude Code - Unity CLI, the project's Unity Pipeline package (live Editor control), the official Unity plugin, the C# language server (csharp-ls and the csharp-lsp plugin), and the Blender connector when 3D work is needed. Use when the session-start check reports a problem, when the user asks to check or update Unity tools, or when Editor control, C# diagnostics or the Blender connector stop working.
+description: Checks, repairs and updates the Unity toolchain for Claude Code - Unity CLI, the Unity Pipeline package for live Editor control, the official Unity plugin, the C# language server, and the Blender connector.
+disable-model-invocation: true
+allowed-tools:
+  - Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh *)
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # Unity toolchain
 
-The unity-dev session-start hook checks the toolchain in every Unity project and reports only problems. This skill fixes them. Every tool must be **installed**, **reachable** and **up to date**. When an update is available, apply it without asking, unless the user has said otherwise. If a fix fails, stop and report the problem with the command and its output.
+Every tool must be **installed**, **reachable** and **up to date**. When an update is available, apply it without asking, unless the user has said otherwise. If a fix fails, stop and report the problem with the command and its output.
+
+## Check
+
+Run this command exactly as written, with nothing added (it always exits 0): `bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh "${CLAUDE_PROJECT_DIR}" "${CLAUDE_PLUGIN_DATA}"`. In a Unity project it checks the tools below and prints only the problems; `/unity-dev:standards` runs the same check. Fix what it reports, plus any problem the user describes that it doesn't cover, such as the live Editor connection or the Blender connector.
 
 ## Tools
 
@@ -24,12 +32,12 @@ Plugin updates and installs apply after Claude Code restarts: tell the user. Thi
 
 - Drive the open Editor with `unity command ... --caller plugin --skill <skill>` and the other connected-Editor commands documented in the `unity:unity-cli` skill. Each call takes 200–600 ms with no recompile.
 - `unity mcp` exposes the same Editor commands as MCP tools. Register it with `unity mcp configure claude-code` only if the user wants tool-style access.
-- The older relay server from the AI Assistant package (`~/.unity/relay/...`, often registered as `unity-mcp`) is **deprecated**: its own documentation says to use the Unity CLI instead. When it is configured, tell the user and offer to switch. If they decline, add the line `relay-kept` to `${CLAUDE_PLUGIN_DATA}/decisions` so the hook stops reporting it. If the user doesn't want the Pipeline package in a project, add `pipeline-skip:<absolute project path>` to the same file.
+- The older relay server from the AI Assistant package (`~/.unity/relay/...`, often registered as `unity-mcp`) is **deprecated**: its own documentation says to use the Unity CLI instead. When it is configured, tell the user and offer to switch. If they decline, add the line `relay-kept` to `${CLAUDE_PLUGIN_DATA}/decisions` so the check stops reporting it. If the user doesn't want the Pipeline package in a project, add `pipeline-skip:<absolute project path>` to the same file.
 
 ## Unity version notes
 
-When the hook reports that `docs/unity-version-notes.md` is missing or covers a different Unity version than `ProjectSettings/ProjectVersion.txt`, run the `unity-dev:version-notes` skill.
+When the check reports that `docs/unity-version-notes.md` is missing or covers a different Unity version than `ProjectSettings/ProjectVersion.txt`, write the notes as the [version notes guide](../version-notes/SKILL.md) describes.
 
 ## After fixing
 
-Run the failing check again and confirm it passes. Report what was installed or updated, from which version to which.
+Run the check again and confirm it prints nothing. Report what was installed or updated, from which version to which.

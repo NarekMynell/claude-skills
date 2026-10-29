@@ -11,7 +11,7 @@
 
 ## Rules
 
-- The library is the reference codebase: it follows `unity-dev:code-standards` exactly, because projects copy its style along with its code.
+- The library is the reference codebase: it follows the [code standards](../../code-standards/SKILL.md) exactly, because projects copy its style along with its code.
 - **One purpose per module.** No grab bags such as `Utils` or `Common`.
 - **Dependencies** between modules are few, explicit in the README, and acyclic. Third-party dependencies are kept to a minimum.
 - **Builds on what exists.** Never re-implement Unity, its packages or the standard stack; add only what they lack. The Pooling module builds on `UnityEngine.Pool`.

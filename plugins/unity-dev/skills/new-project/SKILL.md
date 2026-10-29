@@ -1,6 +1,10 @@
 ---
 name: new-project
-description: Creates a new Unity game or app with the unity-dev standards - newest stable Editor, URP 3D defaults, project folder and assembly layout, the standard packages (VContainer, MessagePipe, UniTask, DOTween, Addressables, Input System), DI root scope, Bootstrap scene, build profiles, documentation and CLAUDE.md. Use instead of unity:new-unity-project whenever the user wants to create, start, bootstrap or scaffold a new Unity project; it runs that skill's guided flow with these defaults and additions.
+description: Creates a new Unity game or app with the unity-dev standards - newest stable Editor, URP 3D, folder and assembly layout, the standard packages, DI root scope, Bootstrap scene, build profiles, docs and CLAUDE.md.
+disable-model-invocation: true
+argument-hint: "[game idea]"
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # New Unity project
@@ -25,7 +29,7 @@ Fill in every setting the user didn't specify.
 Do these between the official flow's package step and its first commit. Work in the running Editor through the Unity CLI wherever possible.
 
 1. **Editor link.** `unity pipeline install --project-path <project>`, open the project, and wait for `unity status` to report `ready`.
-2. **Folders.** Create the `Assets/_Project/` layout from `unity-dev:code-standards` ([code organization](../code-standards/references/code-organization.md)). Only folders that receive content now.
+2. **Folders.** Create the `Assets/_Project/` layout from the [code organization](../code-standards/references/code-organization.md) rules. Only folders that receive content now.
 3. **Trim the template.** Remove packages the brief doesn't need (Visual Scripting, Multiplayer Center, Collab, and similar) through the Client API.
 4. **OpenUPM registry.** Add it to `Packages/manifest.json`; the Client API has no call for registries:
    ```json
@@ -36,19 +40,19 @@ Do these between the official flow's package step and its first commit. Work in 
 5. **Standard packages** through the Client API, each pinned to the newest version in its registry: `jp.hadashikick.vcontainer`, `com.cysharp.unitask`, `com.cysharp.messagepipe`, `com.cysharp.messagepipe.vcontainer`, `com.unity.addressables`, `com.unity.inputsystem`. Add `com.unity.nuget.newtonsoft-json` when the Persistence module is installed.
 6. **DOTween** is in no package registry. Ask the user to add the free DOTween from the Asset Store (Package Manager > My Assets) into `Assets/Plugins/Demigiant/`. Then: DOTween Utility Panel > **Setup DOTween**, then **Create ASMDEF** (asmdef code can't reference `Assembly-CSharp-firstpass`), and add the scripting define `UNITASK_DOTWEEN_SUPPORT` (UniTask detects DOTween only when it is a UPM package).
 7. **VContainer source generator**, as in the [DI reference](../code-standards/references/dependency-injection.md#source-generator).
-8. **Code library:** copy the DI and Bootstrap modules, with the modules they depend on, into the project with `unity-dev:library`.
+8. **Code library:** copy the DI and Bootstrap modules, with the modules they depend on, into the project as the [code library](../library/SKILL.md) describes.
 9. **DI root.** Create the root `ModularLifetimeScope` prefab under `Assets/_Project/Prefabs/` and the `VContainerSettings` asset under `Assets/_Project/Settings/`, and assign the prefab as the root.
 10. **Bootstrap scene.** `Assets/_Project/Scenes/Bootstrap.unity`: a camera, a loading screen with tiny assets, and the startup flow from the Bootstrap module. It is build index 0. Turn on the module's Play-from-Bootstrap mode, so Play in the Editor runs the same startup as a build.
 11. **Project settings:**
     - Active Input Handling: Input System Package.
-    - Frame rate and quality are set by the Bootstrap module's frame-rate step; configure it for the target platforms (`unity-dev:performance`).
+    - Frame rate and quality are set by the Bootstrap module's frame-rate step; configure it for the target platforms ([performance](../performance/SKILL.md)).
     - Enter Play Mode without domain reload, only after a check: the project's own code holds no static state, and entering Play Mode twice in a row behaves exactly like a run with a full reload. If any package breaks, keep the reload and record why in `docs/architecture.md`.
 12. **Build profiles.** One per target platform, plus development and release variants where their settings differ (development build, defines, logging, stripping). Bootstrap is scene 0 in each. Release builds use IL2CPP and the highest stripping level the project tolerates. Commit the profiles.
-13. **Documentation** with `core:project-docs`:
-    - `README.md`;
+13. **Documentation.** Concise, one topic per file, linked instead of duplicated, no empty placeholders:
+    - `README.md`: what the project is, its requirements (Unity version, assets imported by hand such as DOTween), how to open and run it, one line per `docs/` file;
     - `CLAUDE.md` from [templates/CLAUDE.md](templates/CLAUDE.md), filled in from the brief;
     - `docs/architecture.md`: domains, scopes, startup steps;
-    - `docs/unity-version-notes.md` with `unity-dev:version-notes`;
+    - `docs/unity-version-notes.md`, as the [version notes guide](../version-notes/SKILL.md) describes;
     - `docs/performance-budgets.md` when the target devices are known.
 14. **Team setup.** Copy [templates/settings.json](templates/settings.json) to `.claude/settings.json`: it registers this marketplace with auto-update and lists the plugins the project expects. Committing it installs nothing; tell the user that each teammate runs `claude plugin install unity-dev@narek-skills --scope project` once, after trusting the folder (dependencies come with it). Add `.claude/settings.local.json` to `.gitignore`.
 15. **Verify.** No errors or warnings in the console. Play from Bootstrap reaches the first scene. `unity status` is `ready`.
@@ -57,4 +61,4 @@ Then make the official flow's first commit.
 
 ## Report
 
-Project path, Editor version, template, installed packages with versions, library modules copied, what the user still has to do (for example importing DOTween), and the next step.
+Project path, Editor version, template, installed packages with versions, library modules copied, what the user still has to do (for example importing DOTween), and the next step. Tell the user that the standards apply in a session only after `/unity-dev:standards`.

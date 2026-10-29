@@ -1,6 +1,9 @@
 ---
 name: game-design
-description: Game design process and quality bar for new games and features. Covers market and competitor research, distinct concepts with a unique hook, the game design document, core and meta loops, retention without dark patterns, prototyping the core loop first, game feel, and self-critique at milestones. Use when the user wants a new game idea, a concept, a GDD, a new mechanic or feature, or asks how to make a game more fun or engaging.
+description: Game design process and quality bar for new games and features - market research, distinct concepts with a hook, the GDD, core and meta loops, retention without dark patterns, core loop prototype first, game feel.
+disable-model-invocation: true
+allowed-tools:
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # Game design
@@ -39,4 +42,4 @@ Update it when the design changes.
 - **Game feel.** Every player action gets immediate feedback: motion, sound, VFX, haptics, camera. Tune the timing until it feels right.
 - **Self-critique at every milestone.** What would make a player quit here? What would bring them back tomorrow? Fix the answer before moving on.
 
-Related: `unity-dev:audio-design`, `unity-dev:vfx`, `unity-dev:ui-quality`.
+Related: [audio design](../audio-design/SKILL.md), [VFX](../vfx/SKILL.md), [UI quality](../ui-quality/SKILL.md).
