@@ -3,7 +3,7 @@ name: game-assets
 description: Creates game-ready 3D models in Blender through the Blender MCP connector - style and polygon budget, clean geometry, automated mesh validation, multi-angle checks, UVs, materials, LODs, colliders, and export to Unity.
 disable-model-invocation: true
 allowed-tools:
-  - Read(~/.claude/plugins/cache/*/blender/**)
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 argument-hint: "[model]"
 ---
 

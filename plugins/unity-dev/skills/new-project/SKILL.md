@@ -48,7 +48,7 @@ Do these between the official flow's package step and its first commit. Work in 
     - Frame rate and quality are set by the Bootstrap module's frame-rate step; configure it for the target platforms ([performance](../performance/SKILL.md)).
     - Enter Play Mode without domain reload, only after a check: the project's own code holds no static state, and entering Play Mode twice in a row behaves exactly like a run with a full reload. If any package breaks, keep the reload and record why in `docs/architecture.md`.
 12. **Build profiles.** One per target platform, plus development and release variants where their settings differ (development build, defines, logging, stripping). Bootstrap is scene 0 in each. Release builds use IL2CPP and the highest stripping level the project tolerates. Commit the profiles.
-13. **Documentation.** Concise, one topic per file, linked instead of duplicated, no empty placeholders:
+13. **Documentation**, in the [documentation layout](../project-docs/SKILL.md). Concise, one topic per file, linked instead of duplicated, no empty placeholders:
     - `README.md`: what the project is, its requirements (Unity version, assets imported by hand such as DOTween), how to open and run it, one line per `docs/` file;
     - `CLAUDE.md` from [templates/CLAUDE.md](templates/CLAUDE.md), filled in from the brief;
     - `docs/architecture.md`: domains, scopes, startup steps;

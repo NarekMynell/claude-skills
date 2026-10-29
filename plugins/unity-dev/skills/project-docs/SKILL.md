@@ -3,7 +3,7 @@ name: project-docs
 description: Sets up or tidies a project's documentation so people and Claude share one source of truth - README.md and CLAUDE.md as indexes, knowledge in docs/, Claude instructions in CLAUDE.md and .claude/rules/.
 disable-model-invocation: true
 allowed-tools:
-  - Read(~/.claude/plugins/cache/*/core/**)
+  - Read(~/.claude/plugins/cache/*/unity-dev/**)
 ---
 
 # Project documentation layout

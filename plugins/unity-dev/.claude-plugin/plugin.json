@@ -1,7 +1,7 @@
 {
   "name": "unity-dev",
-  "version": "0.3.0",
-  "description": "Professional Unity development: architecture and C# standards (VContainer, MessagePipe, UniTask), project setup, performance, UI, audio, VFX and game design quality bars, a tested code library and a toolchain check",
+  "version": "0.4.0",
+  "description": "Professional Unity development: architecture and C# standards (VContainer, MessagePipe, UniTask), project setup, game design, UI, performance, audio, VFX, Blender 3D models, docs, a tested code library and a toolchain check",
   "author": {
     "name": "Narek"
   },
@@ -16,7 +16,10 @@
     "vcontainer",
     "unitask",
     "messagepipe",
-    "performance"
+    "performance",
+    "blender",
+    "3d",
+    "documentation"
   ],
   "dependencies": [
     "unity@claude-plugins-official",

@@ -1,16 +1,16 @@
 # Skills marketplace
 
-This repo is a Claude Code plugin marketplace: it lists several plugins, and each plugin is a themed pack of skills. People install it from GitHub, so everything here has to work on any machine, for anyone.
+This repo is a Claude Code plugin marketplace with one plugin, `unity-dev`: a pack of skills for Unity game development, including Blender 3D assets and project documentation. People install it from GitHub, so everything here has to work on any machine, for anyone.
 
 ## Layout
 
 - `.claude-plugin/marketplace.json` lists the plugins. A new plugin needs an entry here.
 - `plugins/<plugin>/.claude-plugin/plugin.json` is the plugin's manifest. Bump its `version` (semver) with every change users should receive.
 - `plugins/<plugin>/skills/<skill>/SKILL.md` is one skill. Its supporting files (`references/`, `scripts/`, `templates/`) sit next to it. When a skill runs, Claude receives its base directory, so link supporting files with paths relative to the skill folder.
-- `plugins/unity-dev/skills/standards/` is the command that loads the unity-dev standards for a session. It reads the other unity-dev skills as guides: a new guide gets a row in its table.
+- `plugins/unity-dev/skills/standards/` is the one command users need: it loads the standards and routes Claude to every other skill, which it reads as a guide. A new skill gets a row in its table.
 - `plugins/unity-dev/skills/library/` holds the Unity code library: `CATALOG.md`, and `code/`, which mirrors a project's `Assets/_Project/Scripts/` with the placeholder prefix `Company.Product`. Projects copy from it under their own namespace. Authoring rules: `plugins/unity-dev/skills/library/references/authoring.md`.
 
-Put a new skill in the plugin whose `description` in `marketplace.json` fits. If none fits, add a new plugin.
+Put every new skill in `unity-dev`, so one command reaches it. A skill in another plugin couldn't be read from `standards`: each plugin is copied to its own folder.
 
 ## Nothing loads unless the user asks
 
@@ -19,7 +19,7 @@ The user decides when a plugin acts: no skill Claude can load by itself, and one
 - Every skill sets `disable-model-invocation: true`, so it loads only when the user types its command. Claude never sees the descriptions: `description` is for people browsing the `/` menu, one sentence on what the skill does.
 - Every skill pre-approves reading its own plugin's files with `allowed-tools: Read(~/.claude/plugins/cache/*/<plugin>/**)`. Plugin files sit outside the project, so without the rule each read asks for permission.
 - Skills link each other with relative paths (`../library/SKILL.md`), never by skill name: Claude can't invoke them, so it reads the linked file. A plugin can't link another plugin's files, because each plugin is copied on its own; point the user to that plugin's command instead.
-- `${CLAUDE_PLUGIN_ROOT}` and the other variables are substituted only in the skill the user invoked, not in files Claude reads from it. Use them only in skills no other skill reads (`standards`, `toolchain`), and relative paths everywhere else.
+- `${CLAUDE_PLUGIN_ROOT}` and the other variables are substituted only in the skill the user invoked, not in files Claude reads from it. Use them only in `standards` and `toolchain`, and relative paths everywhere else.
 - Every-session loading is a per-project switch: `UNITY_DEV_STANDARDS` set to `on` under `env` in the project's `.claude/settings.json` (or `.claude/settings.local.json`), next to the plugin's read rule, because outside a command nothing pre-approves those reads. `/unity-dev:standards` writes both on its first run in a project; `new-project` and `adopt-standards` write them through the team settings template. With the switch on, unity-dev's SessionStart hook (`hooks/standards.sh`) adds `skills/standards/SKILL.md` up to its `## When the user types the command` heading to the context on startup, `/clear` and compaction. That part must work without the command, use no variable but `${CLAUDE_SKILL_DIR}`, which the hook resolves, and stay well under the 10,000-character cap on hook output.
 - Templates copied into projects hold project knowledge only: what the project is, its decisions, its docs index. A project's `CLAUDE.md` loads in every session, so it never tells Claude to load or follow these skills; the switch does that.
 
@@ -36,7 +36,6 @@ The user decides when a plugin acts: no skill Claude can load by itself, and one
 - No personal preferences (reply language, tone, names). Those belong in each user's own `~/.claude/CLAUDE.md`.
 - No absolute paths, usernames or secrets.
 - Scripts are bash 3.2 compatible (macOS default), use only POSIX tools, always exit 0, and print nothing when there is nothing to report.
-- unity-dev restates the essentials of core's `project-docs` in `new-project`, `adopt-standards` and `standards`, so it works without core. Change them together.
 - Don't duplicate what the official `unity` plugin already covers: link to its skills.
 
 ## Testing

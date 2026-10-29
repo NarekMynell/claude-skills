@@ -19,7 +19,7 @@ Read `ProjectSettings/ProjectVersion.txt`, `Packages/manifest.json`, the folder 
 These add files and don't touch code:
 
 - `CLAUDE.md` from the [new-project template](../new-project/templates/CLAUDE.md), merged with what the existing file says. Record existing conventions that differ from the standards and must stay, such as the project's namespace scheme, under **Decisions**: they take precedence over the standards.
-- The documentation layout, merged with the existing docs: `README.md` and `CLAUDE.md` as indexes, project knowledge in `docs/`, one topic per file. Move content instead of copying it, so each fact lives in one place.
+- The [documentation layout](../project-docs/SKILL.md), merged with the existing docs: `README.md` and `CLAUDE.md` as indexes, project knowledge in `docs/`, one topic per file. Move content instead of copying it, so each fact lives in one place.
 - `docs/unity-version-notes.md`, as the [version notes guide](../version-notes/SKILL.md) describes.
 - `.claude/settings.json` from the [team template](../new-project/templates/settings.json), merged with existing settings. It turns on loading the standards at the start of every session.
 - The Editor link: `unity pipeline install --project-path <project>`, after asking, because it adds a package to the manifest.
