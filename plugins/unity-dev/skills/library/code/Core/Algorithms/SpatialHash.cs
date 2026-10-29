@@ -60,10 +60,21 @@ namespace Company.Product.Core.Algorithms
         public void Query(Vector3 center, float radius, List<T> results)
         {
             if (results == null) throw new ArgumentNullException(nameof(results));
-            if (radius < 0f) throw new ArgumentOutOfRangeException(nameof(radius));
+            if (!(radius >= 0f)) throw new ArgumentOutOfRangeException(nameof(radius), "The radius must be zero or more, and a number.");
 
             results.Clear();
             var squaredRadius = radius * radius;
+
+            // When the sphere spans more cells than there are items (or more than an int can index), scan the items.
+            var span = 2.0 * radius * _inverseCellSize + 1.0;
+            if (span * span * span >= _positions.Count)
+            {
+                foreach (var pair in _positions)
+                    if ((pair.Value - center).sqrMagnitude <= squaredRadius) results.Add(pair.Key);
+
+                return;
+            }
+
             var extent = new Vector3(radius, radius, radius);
             var min = CellOf(center - extent);
             var max = CellOf(center + extent);

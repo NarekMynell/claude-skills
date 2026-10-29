@@ -1,0 +1,19 @@
+{
+    "name": "Company.Product.Persistence.PlayModeTests",
+    "rootNamespace": "Company.Product.Persistence.PlayModeTests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "Company.Product.Persistence",
+        "VContainer",
+        "UniTask"
+    ],
+    "includePlatforms": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ]
+}

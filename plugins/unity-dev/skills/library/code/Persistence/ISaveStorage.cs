@@ -12,6 +12,7 @@ namespace Company.Product.Persistence
         // Null when there is no data for the key.
         UniTask<byte[]> ReadAsync(string key, CancellationToken cancellationToken);
 
+        // Keeps data until the write has finished: don't change or reuse the array before the task completes.
         UniTask WriteAsync(string key, byte[] data, CancellationToken cancellationToken);
 
         UniTask DeleteAsync(string key, CancellationToken cancellationToken);

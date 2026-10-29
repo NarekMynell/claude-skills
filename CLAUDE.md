@@ -46,8 +46,9 @@ The user decides when a plugin acts: no skill Claude can load by itself, and one
 - `claude --plugin-dir plugins/<plugin> plugin details <plugin>` shows the per-skill token cost. Its always-on figure counts descriptions that `disable-model-invocation` keeps out of context.
 - End-to-end: run `claude -p --plugin-dir <repo>/plugins --add-dir <repo>/plugins "<prompt>"` from a test project outside this repo (this file would leak into one inside it). Check both directions: a plain prompt loads nothing from these plugins, and a command loads what it should. With the switch in the test project's `.claude/settings.json`, a plain prompt gets the standards. `--add-dir` stands in for the read rule, which matches only the installed cache.
 - The session-start hook alone: pipe `{"source":"startup"}` into `plugins/unity-dev/hooks/standards.sh` with `UNITY_DEV_STANDARDS=on` and `CLAUDE_PLUGIN_ROOT` set. The output must be valid JSON whose `additionalContext` holds the standards, with every variable resolved and no `$ARGUMENTS`.
-- Blender scripts: run them headless (`Blender -b --factory-startup --python <test>`) against meshes with known defects.
-- Library modules: see the authoring rules.
+- Blender scripts: `dev/run-blender-tests.sh` runs them headless against scenes with known results (`dev/blender/`). A new check or script gets a case there.
+- Library modules: see the authoring rules, including the player runs (`dev/run-library-tests.sh player`).
+- A C# snippet added to or changed in a guide or README is mirrored in `dev/library-tests/Assets/LibraryTests/SnippetCheck/SnippetCheck.cs`; a claim about how VContainer, MessagePipe, UniTask or Unity behaves gets a test in `LibraryTests/GuideClaims/`.
 
 ## Releasing
 

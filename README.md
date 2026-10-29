@@ -30,9 +30,10 @@ The switch is `UNITY_DEV_STANDARDS` under `env` in the project's `.claude/settin
 
 ## Quality
 
-- The unity-dev code library is covered by 124 automated tests (111 Edit Mode, 13 Play Mode), with allocation tests on its hot paths and disposal tests on its disposable types, and compiles with no warnings on Unity 6000.6. Run them with `dev/run-library-tests.sh`.
-- The guides' technical claims were checked against the official documentation and package sources for Unity 6.6, URP, VContainer 1.19, UniTask 2.5, MessagePipe, Addressables 4.1 and Blender 5.2. That lowers the risk of mistakes but doesn't remove it, which is why Claude verifies again in each project.
-- The Blender scripts are tested headless against meshes with known defects.
+- The unity-dev code library is covered by 172 automated tests: 143 Edit Mode and 29 Play Mode, 12 of which check what the guides claim about VContainer, MessagePipe, UniTask and Unity. They include allocation tests on hot paths and disposal tests on disposable types. The library compiles with no warnings on Unity 6000.6, and the Play Mode tests also pass in macOS and WebGL (IL2CPP) player builds. Run them with `dev/run-library-tests.sh`, `dev/run-library-tests.sh player` and `dev/run-library-tests.sh player WebGL`.
+- Every C# example in the guides and module READMEs compiles against the real packages (`dev/library-tests/Assets/LibraryTests/SnippetCheck`).
+- The guides' technical claims were checked against the official documentation and package sources for Unity 6.6, URP, VContainer 1.19, UniTask 2.5, MessagePipe 1.8, Addressables 4.1 and Blender 5.2, and the ones that can run were run: FBX exports from Blender into Unity, player builds, package behavior. Where a run contradicted the documentation, the guides follow the run. That lowers the risk of mistakes but doesn't remove it, which is why Claude verifies again in each project.
+- The Blender scripts are tested headless against scenes with known results: `dev/run-blender-tests.sh`.
 - `claude plugin validate` passes for the marketplace and the plugin.
 
 ## Requirements

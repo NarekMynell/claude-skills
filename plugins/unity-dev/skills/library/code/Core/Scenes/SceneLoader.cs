@@ -43,8 +43,14 @@ namespace Company.Product.Core.Scenes
             }
             finally
             {
-                _isLoading = false;
-                await _transition.HideAsync(CancellationToken.None);
+                try
+                {
+                    await _transition.HideAsync(CancellationToken.None);
+                }
+                finally
+                {
+                    _isLoading = false;
+                }
             }
         }
 

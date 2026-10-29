@@ -116,7 +116,7 @@ Edit Mode tests (for Play Mode tests, use an empty `includePlatforms`):
 
 ## Third-party assemblies
 
-- VContainer, UniTask and MessagePipe ship asmdefs: reference them by name (`VContainer`, `UniTask`, `MessagePipe`, `MessagePipe.VContainer`). UniTask's integrations are separate assemblies: `UniTask.DOTween` for awaiting tweens, `UniTask.Addressables` for awaiting Addressables handles. Addressables code references `Unity.Addressables` and `Unity.ResourceManager`.
+- VContainer, UniTask and MessagePipe ship asmdefs: reference them by name (`VContainer`, `UniTask`, `MessagePipe`, `MessagePipe.VContainer`). UniTask's integrations are separate assemblies: `UniTask.DOTween` for awaiting tweens, `UniTask.Addressables` for awaiting Addressables handles (with a cancellation token, mind the [pooling issue](resource-lifetimes.md#addressables)). Addressables code references `Unity.Addressables` and `Unity.ResourceManager`.
 - DOTween is a precompiled DLL plus source modules in `Assets/Plugins/Demigiant/`. Source in a `Plugins` folder compiles into `Assembly-CSharp-firstpass`, which an asmdef can't reference. Create DOTween's asmdef once (DOTween Utility Panel → **Create ASMDEF**) and reference `DOTween.Modules`.
 
 ## Shared contracts

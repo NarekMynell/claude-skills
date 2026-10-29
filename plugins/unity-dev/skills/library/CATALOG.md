@@ -2,7 +2,7 @@
 
 Every module, where it goes in a project's `Assets/_Project/Scripts/`, and what it needs. Details and examples: each module's `README.md` under `code/`. Tested, but not guaranteed free of bugs: review each file before copying it, as the [library guide](SKILL.md) describes.
 
-Core modules share one assembly, `Company.Product.Core`, which references VContainer, UniTask, `UniTask.Addressables`, Addressables (`Unity.Addressables`, `Unity.ResourceManager`). A project that copies only some modules drops the references it doesn't need.
+Core modules share one assembly, `Company.Product.Core`, which references VContainer, UniTask and Addressables (`Unity.Addressables`, `Unity.ResourceManager`). A project that copies only some modules drops the references it doesn't need.
 
 | Module | Destination | Provides | Depends on |
 |---|---|---|---|
@@ -19,9 +19,9 @@ Core modules share one assembly, `Company.Product.Core`, which references VConta
 | Scenes | `Core/Scenes/` | `ISceneLoader`, `SceneLoader`, `ISceneTransition`, `NoSceneTransition` | UniTask |
 | Bootstrap | `Core/Bootstrap/`, `Core/Editor/Bootstrap/` | `IBootstrapStep`, `BootstrapFlow`, `BootstrapProgress`, `FrameRateStep`, `LoadFirstSceneStep`, Play from Bootstrap | Providers, Scenes, Serialization, Logging; VContainer, UniTask |
 | ContentLoading | `Core/ContentLoading/` | `IContentLoader`, `AddressablesContentLoader` | Addressables, UniTask; VContainer |
-| Culling | `Core/Culling/` | `VisibilityPauser` (CullingGroup driver) | Lifecycle, Extensions |
+| Culling | `Core/Culling/` | `VisibilityPauser` (CullingGroup driver) | Lifecycle, Extensions, Logging |
 | UI | `Core/UI/` | `SafeArea` | — |
 | Persistence | `Persistence/` | `ISaveService<T>`, `ISaveStorage`, `SaveSchema<T>`, `ISaveMigration`; `RegisterJsonSave<T>()` and `RegisterFileSaveStorage()` for versioned JSON saves in crash-safe files | Newtonsoft JSON, UniTask; VContainer |
 | Audio | `Audio/` | `AudioCue`, `IAudioService` with `RegisterAudio()`, `AudioVolume` | Pooling, DI, Extensions, Logging; VContainer |
 
-Tests: `Core/Tests/` (Edit Mode), `Core/Tests/PlayMode/`, `Persistence/Tests/`, `Audio/Tests/`. Copy the tests of every module you take.
+Tests: `Core/Tests/` (Edit Mode), `Core/Tests/PlayMode/`, `Persistence/Tests/`, `Persistence/Tests/PlayMode/`, `Audio/Tests/`. Copy the tests of every module you take. Play Mode tests also run in players: run them in a development build of every target platform, because file systems, threading (none on Web) and IL2CPP differ from the Editor.

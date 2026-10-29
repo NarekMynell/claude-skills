@@ -14,7 +14,7 @@ namespace Company.Product.Core.Algorithms
         private static readonly Vector2Int[] StraightSteps = { new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1) };
         private static readonly Vector2Int[] DiagonalSteps = { new Vector2Int(1, 1), new Vector2Int(1, -1), new Vector2Int(-1, 1), new Vector2Int(-1, -1) };
 
-        private readonly MinHeap<int, float> _open = new MinHeap<int, float>(64);
+        private MinHeap<int, float> _open = new MinHeap<int, float>(64);
         private float[] _costs = Array.Empty<float>();
         private int[] _parents = Array.Empty<int>();
         private int[] _visited = Array.Empty<int>();
@@ -115,6 +115,8 @@ namespace Company.Product.Core.Algorithms
                 _parents = new int[cellCount];
                 _visited = new int[cellCount];
                 _closed = new int[cellCount];
+                // Sized with the grid, so a later, longer search on it doesn't grow the queue.
+                _open = new MinHeap<int, float>(cellCount);
                 _stamp = 0;
             }
 

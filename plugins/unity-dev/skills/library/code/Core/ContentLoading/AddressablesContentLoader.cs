@@ -75,17 +75,16 @@ namespace Company.Product.Core.ContentLoading
             entry.References++;
             try
             {
-                await entry.Handle.ToUniTask(cancellationToken: cancellationToken);
+                // Polled, not awaited through the handle: UniTask 2.5.11's ToUniTask returns a source cancelled from
+                // the player loop to its pool while the source's Completed callback is still on the handle, and the
+                // handle's late completion then ends whichever load reuses that source. Polling also keeps every
+                // release on the main thread, whichever thread cancels the token.
+                while (!entry.Handle.IsDone) await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
             }
             catch (OperationCanceledException)
             {
                 Drop(key, entry);
                 throw;
-            }
-            catch (Exception exception)
-            {
-                Drop(key, entry);
-                throw new InvalidOperationException($"Loading '{key}' failed.", exception);
             }
 
             if (_isDisposed)

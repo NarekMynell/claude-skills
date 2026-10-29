@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Company.Product.Core.Extensions;
 using Company.Product.Core.Lifecycle;
+using Company.Product.Core.Logging;
 using UnityEngine;
 
 namespace Company.Product.Core.Culling
@@ -60,7 +61,7 @@ namespace Company.Product.Core.Culling
         {
             if (target == null || !_indices.TryGetValue(target, out var index)) return;
 
-            if (_paused[index] && target.IsAlive()) target.Resume();
+            if (_paused[index] && target.IsAlive()) Notify(target, pause: false);
 
             var last = Count - 1;
             if (index != last)
@@ -86,7 +87,7 @@ namespace Company.Product.Core.Culling
             _isDisposed = true;
             _group.onStateChanged = null;
             for (var i = 0; i < Count; i++)
-                if (_paused[i] && _targets[i].IsAlive()) _targets[i].Resume();
+                if (_paused[i] && _targets[i].IsAlive()) Notify(_targets[i], pause: false);
 
             _indices.Clear();
             Array.Clear(_targets, 0, _targets.Length);
@@ -114,10 +115,24 @@ namespace Company.Product.Core.Culling
             var target = _targets[index];
             if (!target.IsAlive()) return;
 
-            if (shouldPause)
-                target.Pause();
-            else
-                target.Resume();
+            Notify(target, shouldPause);
+        }
+
+        // A throwing target must not abort Dispose, an Unregister, or the rest of a culling pass's events:
+        // CullingGroup.SendEvents loops over them without a try/catch.
+        private static void Notify(IPausable target, bool pause)
+        {
+            try
+            {
+                if (pause)
+                    target.Pause();
+                else
+                    target.Resume();
+            }
+            catch (Exception exception)
+            {
+                Log.Exception(exception);
+            }
         }
 
         private void ThrowIfDisposed()

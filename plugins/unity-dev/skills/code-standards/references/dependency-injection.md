@@ -84,7 +84,7 @@ internal sealed class EnemyFactory : IEnemyFactory
 
 ## MessagePipe registration
 
-MessagePipe is registered once, in the root scope's installer:
+MessagePipe 1.8.2 or newer (1.8.1 doesn't compile on Unity 6000.6) is registered once, in the root scope's installer:
 
 ```csharp
 var options = builder.RegisterMessagePipe();

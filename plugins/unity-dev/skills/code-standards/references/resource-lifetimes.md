@@ -51,6 +51,7 @@ Every resource has one owner, and the owner releases it on every path: success, 
 ## Addressables
 
 - **Mirror every load with one release.** `LoadAssetAsync` → `Addressables.Release` with the handle or the loaded asset, never with an instance made from it. `AssetReference.LoadAssetAsync` → `ReleaseAsset()`. `Addressables.LoadSceneAsync` → `Addressables.UnloadSceneAsync`. The library's ContentLoading module owns handles and counts loads.
+- **Awaiting a handle with a cancellation token.** UniTask 2.5.11's `ToUniTask(cancellationToken: …)` returns a source cancelled from the player loop to its pool while that source is still subscribed to the handle. When the handle completes later, it ends whichever unrelated await reused the source (reproduced in a test). Load through the ContentLoading module, which polls `IsDone`, or pass `cancelImmediately: true`, which runs the cancellation on whichever thread cancels.
 - **No `Addressables.InstantiateAsync`:** instances need injection. Load the prefab through the content loader, instantiate it through the resolver with a parent or a factory, destroy the instances, then release the prefab.
 - **Released isn't unloaded.** An AssetBundle unloads only when none of its assets is in use, so group content that loads and unloads together. Releasing and immediately reloading the same content (churn) reloads its bundles.
 

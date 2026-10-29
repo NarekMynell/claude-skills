@@ -19,6 +19,7 @@ namespace Company.Product.Core.Pooling
         private readonly Transform _container;
         private readonly ObjectPool<T> _pool;
         private readonly Dictionary<T, Instance> _instances = new Dictionary<T, Instance>();
+        private readonly int _maxSize;
         private bool _isDisposed;
 
         // The container is an active GameObject that the pool's owner keeps for the pool's lifetime: inactive
@@ -29,6 +30,7 @@ namespace Company.Product.Core.Pooling
             if (container == null) throw new ArgumentNullException(nameof(container));
 
             _container = container;
+            _maxSize = maxSize;
             // No collection check: it scans the whole pool on every release, and Despawn already refuses a second despawn.
             _pool = new ObjectPool<T>(CreateItem, null, OnRelease, DestroyItem, false, defaultCapacity, maxSize);
             SceneManager.sceneUnloaded += OnSceneUnloaded;
@@ -42,16 +44,17 @@ namespace Company.Product.Core.Pooling
         public void Prewarm(int count)
         {
             ThrowIfDisposed();
-            if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
+            if (count < 0 || count > _maxSize) throw new ArgumentOutOfRangeException(nameof(count), $"Prewarm takes 0 to the pool's maxSize ({_maxSize}).");
 
             var taken = ListPool<T>.Get();
             try
             {
                 for (var i = 0; i < count; i++) taken.Add(TakeAlive());
-                for (var i = 0; i < taken.Count; i++) _pool.Release(taken[i]);
             }
             finally
             {
+                // Also when a create fails partway: what was created waits in the pool, so Dispose destroys it.
+                for (var i = 0; i < taken.Count; i++) _pool.Release(taken[i]);
                 ListPool<T>.Release(taken);
             }
         }
@@ -97,16 +100,22 @@ namespace Company.Product.Core.Pooling
             }
 
             var poolables = instance.Poolables;
-            for (var i = 0; i < poolables.Length; i++) poolables[i].OnDespawned();
-
-            if (_isDisposed)
+            try
             {
-                _instances.Remove(item);
-                item.gameObject.SafeDestroy();
-                return;
+                for (var i = 0; i < poolables.Length; i++) poolables[i].OnDespawned();
             }
-
-            _pool.Release(item);
+            finally
+            {
+                if (_isDisposed)
+                {
+                    _instances.Remove(item);
+                    item.gameObject.SafeDestroy();
+                }
+                else
+                {
+                    _pool.Release(item);
+                }
+            }
         }
 
         // Destroys the inactive instances. Active ones stay with their users.
@@ -121,9 +130,13 @@ namespace Company.Product.Core.Pooling
 
         private static string NameOf(T item) => item != null ? item.name : "A destroyed object";
 
-        private static void Place(T item, Transform parent)
+        // A reused instance starts from the local pose it was created with, as a fresh one does.
+        private void Place(T item, Transform parent)
         {
+            var instance = _instances[item];
             item.transform.SetParent(parent, false);
+            item.transform.SetLocalPositionAndRotation(instance.LocalPosition, instance.LocalRotation);
+            item.transform.localScale = instance.LocalScale;
             if (parent != null) return;
 
             var activeScene = SceneManager.GetActiveScene();
@@ -150,7 +163,8 @@ namespace Company.Product.Core.Pooling
             CountActive++;
             item.gameObject.SetActive(true);
             var poolables = instance.Poolables;
-            for (var i = 0; i < poolables.Length; i++) poolables[i].OnSpawned();
+            // A callback that despawns the instance ends the spawn: the rest get no OnSpawned.
+            for (var i = 0; i < poolables.Length && instance.IsSpawned; i++) poolables[i].OnSpawned();
         }
 
         private T CreateItem()
@@ -160,7 +174,8 @@ namespace Company.Product.Core.Pooling
             var item = _factory.Create();
             item.gameObject.SetActive(false);
             item.transform.SetParent(_container, false);
-            _instances.Add(item, new Instance(item.GetComponentsInChildren<IPoolable>(true)));
+            var transform = item.transform;
+            _instances.Add(item, new Instance(item.GetComponentsInChildren<IPoolable>(true), transform.localPosition, transform.localRotation, transform.localScale));
             return item;
         }
 
@@ -201,9 +216,21 @@ namespace Company.Product.Core.Pooling
 
         private sealed class Instance
         {
-            public Instance(IPoolable[] poolables) => Poolables = poolables;
+            public Instance(IPoolable[] poolables, Vector3 localPosition, Quaternion localRotation, Vector3 localScale)
+            {
+                Poolables = poolables;
+                LocalPosition = localPosition;
+                LocalRotation = localRotation;
+                LocalScale = localScale;
+            }
 
             public IPoolable[] Poolables { get; }
+
+            public Vector3 LocalPosition { get; }
+
+            public Quaternion LocalRotation { get; }
+
+            public Vector3 LocalScale { get; }
 
             public bool IsSpawned { get; set; }
         }

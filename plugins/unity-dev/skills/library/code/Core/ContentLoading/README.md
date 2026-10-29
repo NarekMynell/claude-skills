@@ -3,7 +3,7 @@
 `AddressablesContentLoader : IContentLoader` loads Addressables assets and owns their handles.
 
 - **Destination:** `Core/ContentLoading/`
-- **Depends on:** Addressables, UniTask (with `UniTask.Addressables`); VContainer.
+- **Depends on:** Addressables, UniTask; VContainer.
 
 ```csharp
 builder.Register<IContentLoader, AddressablesContentLoader>(Lifetime.Singleton);
@@ -19,6 +19,6 @@ _content.Release(_levelPrefab);
 - Don't use `Addressables.InstantiateAsync`: its instances get no injection.
 
 - Every load needs a matching `Release`, after the load completes. Loading the same key twice shares one handle and needs two releases. Releasing more than was loaded throws.
-- A failed or cancelled load releases its own reference and throws.
+- A failed or cancelled load releases its own reference and throws. Cancellation is checked once per frame, on the main thread, and a load sees its handle complete on the next frame at the latest.
 - A key is loaded as one type; loading it as another type throws.
 - `Dispose` (called by the container) releases everything loaded. Loads still running then end with `ObjectDisposedException` and release their handle themselves; `Release` after `Dispose` does nothing.

@@ -1,0 +1,19 @@
+{
+    "name": "LibraryTests.SnippetCheck",
+    "rootNamespace": "LibraryTests.SnippetCheck",
+    "references": [
+        "VContainer",
+        "MessagePipe",
+        "MessagePipe.VContainer",
+        "UniTask",
+        "Unity.Addressables",
+        "Unity.ResourceManager",
+        "Company.Product.Core",
+        "Company.Product.Audio",
+        "Company.Product.Persistence"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ]
+}

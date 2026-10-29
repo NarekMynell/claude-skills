@@ -28,7 +28,8 @@ namespace Company.Product.Persistence
 
             // Create, not CreateDefault: global JsonConvert.DefaultSettings, which any plugin can set,
             // must not change the save format or let a save name the types it loads.
-            _serializer = JsonSerializer.Create();
+            // MaxDepth null: the writer has no depth limit, so the reader may not have one either (Json.NET 13 reads 64 levels).
+            _serializer = JsonSerializer.Create(new JsonSerializerSettings { MaxDepth = null });
         }
 
         public bool HasSave => _storage.Exists(_schema.Key);
@@ -40,7 +41,9 @@ namespace Company.Product.Persistence
 
             var root = Parse(bytes);
             var version = root.Value<int?>(VersionField) ?? throw new FormatException($"Save '{_schema.Key}' has no version.");
-            var data = root[DataField] as JObject ?? throw new FormatException($"Save '{_schema.Key}' has no data.");
+            var data = root[DataField];
+            if (data == null || data.Type == JTokenType.Null) throw new FormatException($"Save '{_schema.Key}' has no data.");
+
             Migrate(data, version);
             return data.ToObject<TData>(_serializer);
         }
@@ -78,16 +81,19 @@ namespace Company.Product.Persistence
         private static JObject Parse(byte[] bytes)
         {
             using (var text = new StreamReader(new MemoryStream(bytes), Utf8))
-            using (var reader = new JsonTextReader(text) { DateParseHandling = DateParseHandling.None })
+            using (var reader = new JsonTextReader(text) { DateParseHandling = DateParseHandling.None, MaxDepth = null })
                 return JObject.Load(reader);
         }
 
-        private void Migrate(JObject data, int version)
+        // Any JSON value loads at the current version; migrations edit objects.
+        private void Migrate(JToken data, int version)
         {
             if (version > _schema.CurrentVersion)
                 throw new InvalidOperationException($"Save '{_schema.Key}' has version {version}, newer than this build's {_schema.CurrentVersion}.");
+            if (version == _schema.CurrentVersion) return;
 
-            for (; version < _schema.CurrentVersion; version++) FindMigration(version).Migrate(data);
+            var dataObject = data as JObject ?? throw new FormatException($"Save '{_schema.Key}' must be a JSON object to migrate.");
+            for (; version < _schema.CurrentVersion; version++) FindMigration(version).Migrate(dataObject);
         }
 
         private ISaveMigration FindMigration(int fromVersion)

@@ -45,7 +45,10 @@ def _show_base_colors(objects):
     for obj in objects:
         for slot in getattr(obj, "material_slots", ()):
             material = slot.material
-            if material is None or material.name in saved or not material.use_nodes or material.node_tree is None:
+            if material is None or material.name in saved or material.node_tree is None:
+                continue
+            # Blender 5 deprecates use_nodes, to be removed in 6.0: read it only where it still applies.
+            if bpy.app.version < (5, 0, 0) and not material.use_nodes:
                 continue
             bsdf = next((n for n in material.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
             if bsdf is None or bsdf.inputs["Base Color"].is_linked:

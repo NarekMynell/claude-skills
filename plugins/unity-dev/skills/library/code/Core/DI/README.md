@@ -25,7 +25,7 @@ internal sealed class CombatInstaller : ScopeInstaller
 }
 ```
 
-- **Where instances go.** `ComponentFactory<T>` without a parent puts the instance in the active scene, like `Object.Instantiate`. `IObjectResolver.Instantiate` alone doesn't: with the root scope's resolver it marks the instance `DontDestroyOnLoad`, so it outlives every scene, and with a scene scope's resolver it uses that scope's scene.
+- **Where instances go.** `ComponentFactory<T>` without a parent puts the instance in the active scene, like `Object.Instantiate`; one given a parent throws once that parent is destroyed, instead of putting instances elsewhere. `IObjectResolver.Instantiate` alone doesn't: with the root scope's resolver it marks the instance `DontDestroyOnLoad`, so it outlives every scene, and with a scene scope's resolver it uses that scope's scene.
 - The container disposes the `IDisposable` instances it created as `Singleton` or `Scoped`, never GameObjects, `Transient` objects or `RegisterInstance` objects: their creator destroys or disposes them.
 
 Setup: the root scope is a prefab assigned in `VContainerSettings`; see the code standards' DI reference.

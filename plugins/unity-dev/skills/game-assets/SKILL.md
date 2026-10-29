@@ -72,7 +72,8 @@ Run [scripts/render_views.py](scripts/render_views.py) the same way with `OUTPUT
 
 - No overlaps unless intentional (mirrored or tiling parts).
 - Uniform texel density: each face's UV area is proportional to its surface area, and assets of the same kind share one density, recorded in pixels per meter. A high `texel_density_spread` points to stretched or uneven islands.
-- Padding between islands in pixels, enough to survive the mipmaps the asset is seen at: a common baseline is 4 px at 1024² and 8 px at 2048². Blender's `uv.pack_islands` margin isn't in pixels by default: use `margin_method="FRACTION"` with `margin` = pixels ÷ texture size.
+- **Padding between islands** in pixels, sized for the smallest mip the asset is seen at. Each mip level halves the gap, so a gap of p px lasts about log2(p) levels: 4 px at 1024² and 8 px at 2048² both last until the 256² mip, the same on-screen size. An asset seen smaller needs a wider gap. Blender's `uv.pack_islands` margin isn't in pixels by default: use `margin_method="FRACTION"` with `margin` = pixels ÷ texture size.
+- **Bake with a margin** at least as wide as the padding (`scene.render.bake.margin`, in pixels, default 16). It extends each island's edge colors into the gap, so a lower mip blends an island with its own colors, not with its neighbor's.
 - Seams where they are least visible.
 - Lightmap UVs for static meshes in baked lighting: a second UV set, inside 0–1, no overlaps, wide margins, low distortion, or Unity's **Generate Lightmap UVs**.
 
@@ -87,12 +88,12 @@ Run [scripts/render_views.py](scripts/render_views.py) the same way with `OUTPUT
 ## LODs and colliders
 
 - **LODs** for objects seen at a distance. Authored levels use `_LOD0`, `_LOD1`, … suffixes (up to 8), which Unity's importer groups into a LOD Group; use them when the levels differ in materials or renderer settings. For geometry-only reduction, Unity's Mesh LOD generation on import (recent Unity 6 versions) uses less memory; it isn't for models that already have `_LODn` meshes.
-- **Colliders:** primitive colliders (box, sphere, capsule, or a compound of them) first. A Mesh Collider only for static geometry, or convex (at most 255 triangles) on a moving object. A detailed render mesh gets a simplified collision mesh; a static piece whose render mesh is already simple may collide with it. A mesh used by a Mesh Collider needs **Read/Write** on, which is set per model file, so a separate collision mesh goes in its own file.
+- **Colliders:** primitive colliders (box, sphere, capsule, or a compound of them) first. A Mesh Collider only for static geometry, or convex (at most 255 triangles) on a moving object. A detailed render mesh gets a simplified collision mesh; a static piece whose render mesh is already simple may collide with it. A mesh used by a Mesh Collider needs **Read/Write** and pre-baked collision on ([export reference](references/export.md#unity-import-settings)). Both are set per model file, so a separate collision mesh goes in its own file.
 
 ## Characters and animation
 
 - One Skinned Mesh Renderer per character, at most 4 bone influences per vertex, and only the bones the animation needs: every bone costs animation time.
-- Rigs import with **Optimize Game Objects**, so Unity doesn't create a GameObject per bone.
+- Rigs import with an avatar created from the model and **Optimize Game Objects** on, so Unity doesn't create a GameObject per bone. Without the avatar, the option does nothing.
 - Bake IK and constraints into the keyframes on export.
 - Shape keys (blend shapes) export only without **Apply Modifiers**; keep smoothing exported (`mesh_smooth_type="FACE"`).
 - The export settings differ from static meshes: see [references/export.md](references/export.md#rigged-and-animated-assets).
@@ -102,4 +103,4 @@ Run [scripts/render_views.py](scripts/render_views.py) the same way with `OUTPUT
 Exact exporter settings and the Unity import checklist: [references/export.md](references/export.md).
 
 - FBX for authored assets; glTF (glTFast in Unity) for models loaded at runtime.
-- After import, check the asset in Unity: rotation 0, scale 1, facing +Z, correct size next to a 1 m reference. Capture it from several angles through the Unity CLI and inspect the images.
+- After import, check the asset in Unity: rotation 0 and scale 1 on the model root, facing +Z, correct size next to a 1 m reference. Capture it from several angles through the Unity CLI and inspect the images.

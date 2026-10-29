@@ -43,7 +43,8 @@ namespace Company.Product.Core.Serialization
             for (var i = 0; i < _entries.Count; i++)
             {
                 var entry = _entries[i];
-                if (entry.Key == null || !_dictionary.TryAdd(entry.Key, entry.Value)) InvalidEntryCount++;
+                // Unity deserializes a string as "", never null, so an empty string key counts as missing too.
+                if (entry.Key == null || entry.Key is string { Length: 0 } || !_dictionary.TryAdd(entry.Key, entry.Value)) InvalidEntryCount++;
             }
         }
 

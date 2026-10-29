@@ -26,6 +26,15 @@ namespace Company.Product.Persistence
 
         private static readonly byte[] Magic = { (byte)'S', (byte)'A', (byte)'V', 1 };
 
+        // Reserved by Windows even with an extension ("Naming Files, Paths, and Namespaces" in Microsoft's documentation).
+        // Its superscript variants, such as COM¹, already fail the letters-and-digits rule.
+        private static readonly string[] WindowsDeviceNames =
+        {
+            "CON", "PRN", "AUX", "NUL",
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+        };
+
         private readonly string _directory;
         private readonly object _queueLock = new object();
         private Task _tail = Task.CompletedTask;
@@ -135,8 +144,16 @@ namespace Company.Product.Persistence
 
             var backup = path + BackupSuffix;
             data = ReadPayload(backup);
-            if (data != null) File.Copy(backup, path, true);
-            return data;
+            if (data != null)
+            {
+                File.Copy(backup, path, true);
+                return data;
+            }
+
+            // A save exists but no copy is intact: that isn't "no save", which callers answer with a new game.
+            if (File.Exists(path) || File.Exists(backup)) throw new InvalidDataException($"'{Path.GetFileName(path)}' and its backup are damaged.");
+
+            return null;
         }
 
         // Null when the file is missing, empty or damaged. A file without the header was written before
@@ -146,7 +163,7 @@ namespace Company.Product.Persistence
             if (!File.Exists(path)) return null;
 
             var file = File.ReadAllBytes(path);
-            if (!HasMagic(file)) return file.Length > 0 ? file : null;
+            if (!HasMagic(file)) return IsLegacyJson(file) ? file : null;
             if (file.Length < HeaderSize) return null;
 
             var length = ReadInt(file, 4);
@@ -165,6 +182,14 @@ namespace Company.Product.Persistence
             WriteInt(header, 4, data.Length);
             WriteInt(header, 8, (int)Crc32.Compute(data, 0, data.Length));
             return header;
+        }
+
+        // Files from before the header are JSON documents; anything else without the header is damaged.
+        private static bool IsLegacyJson(byte[] file)
+        {
+            var i = file.Length >= 3 && file[0] == 0xEF && file[1] == 0xBB && file[2] == 0xBF ? 3 : 0;
+            while (i < file.Length && (file[i] == ' ' || file[i] == '\t' || file[i] == '\r' || file[i] == '\n')) i++;
+            return i < file.Length && file[i] == '{';
         }
 
         private static bool HasMagic(byte[] file)
@@ -199,6 +224,11 @@ namespace Company.Product.Persistence
                     throw new ArgumentException($"Key '{key}' may contain only letters, digits, '-' and '_'.", nameof(key));
             }
 
+            // Refused on every platform, so a key that works on one platform works on all of them.
+            for (var i = 0; i < WindowsDeviceNames.Length; i++)
+                if (string.Equals(key, WindowsDeviceNames[i], StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException($"Key '{key}' is a device name on Windows, where '{key}{Extension}' can't be a file.", nameof(key));
+
             return Path.Combine(_directory, key + Extension);
         }
 
@@ -224,7 +254,11 @@ namespace Company.Product.Persistence
             {
                 if (_isDisposed) return UniTask.FromException<T>(new ObjectDisposedException(nameof(FileSaveStorage)));
 
-                next = _tail.ContinueWith(_ => work(), CancellationToken.None, TaskContinuationOptions.DenyChildAttach, TaskScheduler.Default);
+                next = _tail.ContinueWith(_ =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return work();
+                }, CancellationToken.None, TaskContinuationOptions.DenyChildAttach, TaskScheduler.Default);
                 _tail = next;
             }
 

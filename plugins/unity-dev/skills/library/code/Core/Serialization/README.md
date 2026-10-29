@@ -9,7 +9,7 @@ Inspector serialization that Unity lacks.
 |---|---|
 | `SerializedInterface<T>` | A field for a MonoBehaviour or ScriptableObject that implements `T`. Dropping a GameObject picks its matching component. `Value` is `null` for destroyed objects. |
 | `[SubclassSelector]` | Adds a type dropdown to a `[SerializeReference]` field, listing concrete `[Serializable]` classes with a parameterless constructor from assemblies that exist in builds |
-| `SerializableDictionary<TKey, TValue>` | Inspector-edited, read-only at runtime. Repeated or null keys are skipped and counted in `InvalidEntryCount` |
+| `SerializableDictionary<TKey, TValue>` | Inspector-edited, read-only at runtime. Repeated, null and empty-string keys are skipped and counted in `InvalidEntryCount` |
 | `SceneReference` | A scene picked as an asset, stored as its path; the path follows renames when the owner is saved |
 
 ```csharp

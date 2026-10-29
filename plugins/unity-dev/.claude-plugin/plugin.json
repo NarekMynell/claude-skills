@@ -1,6 +1,6 @@
 {
   "name": "unity-dev",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Professional Unity development: architecture and C# standards (VContainer, MessagePipe, UniTask), project setup, game design, UI, performance, audio, VFX, Blender 3D models, docs, a tested code library and a toolchain check",
   "author": {
     "name": "Narek"

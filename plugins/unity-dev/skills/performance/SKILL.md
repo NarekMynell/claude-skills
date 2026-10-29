@@ -62,7 +62,7 @@ Objects that share a mesh and differ in position, rotation, scale or color, such
 ## Memory
 
 - **Textures:** size and compression set per platform (ASTC on mobile), mipmaps on 3D textures, none on UI. Data textures (normal, mask, metallic, smoothness) have sRGB off; normal maps use the Normal Map texture type.
-- **Meshes:** **Read/Write** off unless the CPU reads the mesh: code, a Mesh Collider, a Particle System Shape module or a Terrain detail. Unity 6.6 no longer enables it at build time, and the build fails without it.
+- **Meshes:** **Read/Write** off unless the CPU reads the mesh: code, a Mesh Collider, a Particle System's Shape module (or its Renderer without GPU instancing) or a Terrain detail. Turn it on for those yourself. Unity 6000.6.2f1 still handles them during the build, with a warning that future versions won't (verified with a build); its documentation already says the build fails. Treat that warning as an error. Mesh Collider meshes also get pre-baked collision: [export reference](../game-assets/references/export.md#unity-import-settings).
 - **Mesh Compression** only shrinks the files on disk. It costs load time, can create artifacts, and turns off vertex compression for that mesh. Runtime mesh memory is set by **Vertex Compression** in Player Settings, whose defaults suit most projects.
 - Audio import settings: the official `unity:optimize-audio` skill.
 - Every Addressables load has a matching release. Check for leaks with Memory Profiler snapshots taken before and after a level, as the [resource lifetimes](../code-standards/references/resource-lifetimes.md#finding-leaks) rules describe.

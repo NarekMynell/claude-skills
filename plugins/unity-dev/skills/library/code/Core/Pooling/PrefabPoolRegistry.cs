@@ -29,10 +29,20 @@ namespace Company.Product.Core.Pooling
             ThrowIfDisposed();
             if (prefab == null) throw new ArgumentNullException(nameof(prefab));
             if (_pools.ContainsKey(prefab)) throw new InvalidOperationException($"{prefab.name} already has a pool.");
+            if (prewarmCount < 0) throw new ArgumentOutOfRangeException(nameof(prewarmCount));
 
             var factory = new ComponentFactory<T>(_resolver, prefab, _container);
             var pool = new ComponentPool<T>(factory, _container, Mathf.Max(prewarmCount, 1), maxSize);
-            pool.Prewarm(prewarmCount);
+            try
+            {
+                pool.Prewarm(prewarmCount);
+            }
+            catch
+            {
+                pool.Dispose();
+                throw;
+            }
+
             _pools.Add(prefab, pool);
             return pool;
         }

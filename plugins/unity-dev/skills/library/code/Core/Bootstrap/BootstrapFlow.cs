@@ -28,6 +28,9 @@ namespace Company.Product.Core.Bootstrap
             _progress.Set(new BootstrapProgress(BootstrapStatus.Running, 0f));
             for (var i = 0; i < count; i++)
             {
+                // A step that ignores the token finishes normally after a shutdown; the next one must not start.
+                if (cancellation.IsCancellationRequested) return;
+
                 try
                 {
                     await _steps[i].RunAsync(new StepProgress(_progress, i, count), cancellation);

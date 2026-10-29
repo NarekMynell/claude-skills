@@ -1,0 +1,20 @@
+{
+    "name": "LibraryTests.GuideClaims",
+    "rootNamespace": "LibraryTests.GuideClaims",
+    "references": [
+        "UnityEngine.TestRunner",
+        "VContainer",
+        "MessagePipe",
+        "MessagePipe.VContainer",
+        "UniTask"
+    ],
+    "includePlatforms": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ]
+}
