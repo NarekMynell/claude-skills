@@ -1,6 +1,6 @@
 ---
 name: characters
-description: Creates game-ready characters for Unity through Blender - a professional base instead of anatomy modeled from scratch, customization, single-layer clothes and hair, Humanoid rigging and skinning, and automated anatomy, penetration, weight and deformation checks with multi-angle reviews.
+description: Creates the project's own game-ready characters for Unity through Blender - transformed professional bases or skeleton-first bodies built from scratch, never anatomy from primitives, single-layer clothes and hair, Humanoid rigging and skinning, and automated anatomy, penetration, weight and deformation checks with multi-angle reviews.
 disable-model-invocation: true
 allowed-tools:
   - Read(~/.claude/plugins/cache/*/unity-dev/**)
@@ -13,13 +13,24 @@ This guide can be wrong or out of date: verify what you rely on, as the [standar
 
 Read [game assets](../game-assets/SKILL.md) first: its way of working, scripts, review loop and export apply here. Motion: [animation](../animation/SKILL.md).
 
-## The rule that matters most
+## How to decide
 
-Never build a human or animal body from primitives, metaballs or vertex moves in code, and never sculpt one through screenshots. Code can't describe anatomy: such bodies come out with fused legs, bloated waists, crooked hands and wrong faces, and tweaking doesn't fix them. Start from a professionally made base, whose topology, proportions and rig are already right, and change it only through its own controls. Build from scratch only what is simple by design: blocky or toy-like figures, robots, and creatures made of hard parts.
+This guide gives the quality bar, the methods known to work and the failures already seen. The method for each character is Claude's choice, from this guide or outside it: whatever gives the best result for the project's style, budget and schedule. Tell the user the choice and why, without handing it back, and record project-wide choices under **Decisions** in the project's `CLAUDE.md`.
+
+- **The quality bar doesn't move.** Every character passes `validate_mesh.py` and `inspect_character.py`, its contact-sheet review finds nothing left to fix, and it deforms cleanly in the test poses and in its animations. A method that can't reach the bar is the wrong method.
+- **The characters are the project's own.** A third-party character never ships as it came, unless the user asks for that model: a base is a starting point, changed until it is this project's design.
+- **What has failed:** bodies built from primitives, metaballs or vertex moves in code, and sculpting through screenshots. They came out with fused legs, bloated waists, crooked hands and wrong faces, and tweaking didn't fix them. Use a method like that only with a concrete reason it will work this time, proven by the checks on an early blockout.
+
+Methods known to work:
+
+1. **Transform a professional base:** a body whose topology, proportions and rig are already right, changed through its own controls into the project's character ([section 3](#3-make-it-the-projects-own)).
+2. **Build from scratch, skeleton first:** a joint skeleton with a thickness at each joint becomes the surface ([build_body.py](../game-assets/scripts/build_body.py)), so limbs stay apart and the sides mirror; the design is added as parts modeled like props. Method and limits: [references/from-scratch.md](references/from-scratch.md).
+
+Other routes are open: another add-on or generator, a model the user bought, a tool the user owns, a retopologized scan. The same bar applies.
 
 ## 1. Brief
 
-Settle these with the user and record them in `docs/art-direction.md` before choosing a base:
+Settle these with the user and record them in `docs/art-direction.md` before choosing the method:
 
 - **Style and proportions**, in head heights: realistic 7.5, idealized 8, heroic 8.5, stylized about 4–6, chibi 2–3. One style per project.
 - **Triangle budget** for the target platform, and the LOD count. As a reference, VRChat's performance ranking rates mobile avatars Excellent up to 7,500 triangles with one skinned mesh and one material, and Poor at 20,000; PC avatars Excellent up to 32,000 and Good up to 70,000. Any budget: one skinned mesh, as few materials as possible.
@@ -27,31 +38,34 @@ Settle these with the user and record them in `docs/art-direction.md` before cho
 - **What it does:** the clips from the animation plan, the props it holds, whether the face animates. These decide finger bones, face bones and shape keys.
 - **References:** the user's images, or a written front and side description; real anatomy for realistic characters.
 
-## 2. Choose the base
+## 2. Choose the method
 
-| Character | Start from | Why |
+Starting points, not a closed list; the brief decides.
+
+| Character | Usually best | Notes |
 |---|---|---|
-| Realistic or semi-realistic human | MPFB, MakeHuman for Blender: body from sliders, clothes, hair, a rig Unity maps | Correct anatomy and topology; its clothes hide the body under them; scriptable; CC0 assets |
-| Stylized human | Quaternius Universal Base Characters, Kenney Animated Characters, or the project's own base | Clean bodies with a humanoid skeleton, free for commercial games |
-| Anime | VRoid Studio, run by the user, exported as VRM | Made for the style |
-| A character the user owns or bought | That model | After the same checks |
-| Blocky, toy-like, robot, hard-surface creature | Code: parts modeled like props, rigid or simply skinned | Simple by design |
-| Organic creature with no base | The user decides: a bought or commissioned model, or a generated one retopologized and checked like any base | |
+| Realistic or semi-realistic human | Transform an MPFB body | Correct anatomy, faces and hands; clothes that hide the body under them; low-poly proxies for budgets |
+| Stylized human with a detailed face, low or mid poly | Transform a stylized base (Quaternius, Kenney), or an MPFB body with stylized proportions | Faces and hands are where scratch-built characters fail |
+| Cartoon or abstract humanoid with a simple face or none | From scratch, skeleton first | Proportions free: big heads, short legs, mitten hands |
+| Robot, blocky, toy-like, hard-surface creature | From scratch, parts modeled like props | Rigid parts weighted to one bone each |
+| Animal or creature | Skeleton first when its forms are simple; otherwise a professional base | |
+| Anime | VRoid Studio, run by the user, exported as VRM, then transformed | |
+| A character the user owns, bought or asks for by name | That model, as the user wants it | |
 
-Details, licenses, downloads and the MPFB scripting recipe: [references/sources.md](references/sources.md). Tell the user which base you chose and why, and record every third-party asset in `docs/third-party-assets.md`.
+When no listed source fits, look for one: a license that allows changes and commercial use (CC0, or CC-BY with credit), a clean humanoid skeleton, a budget near the target. Details, licenses, downloads and the MPFB recipe: [references/sources.md](references/sources.md). Downloads that need a browser, an account or a payment are the user's to do. Record every third-party asset in `docs/third-party-assets.md`.
 
 AI 3D generators (Meshy, Tripo, Rodin, Hunyuan3D, TRELLIS) are no base for main animated characters: they guess the hidden side, bake lighting into the textures, leave messy UVs, rig hands and faces unreliably, and their licenses depend on the plan or the region. They suit concepts, props and distant background figures, after the same checks.
 
-## 3. Customize without breaking it
+## 3. Make it the project's own
 
-- **Proportions through the base's controls:** MPFB's sliders and targets, shape keys, or bone lengths before binding. Never by moving vertices in code.
-- **Swap parts, don't reshape them:** another fitted hairstyle, outfit, head or hands rather than one bent into another.
-- **New parts** (armor, hat, belt, pouch) are modeled like props, then fitted: they follow the surface 2–5 mm above it, never cut into it, and take the body's weights ([rigging](references/rigging.md#clothes-and-attachments)).
+- **Silhouette and proportions** through the base's controls: MPFB's sliders and targets, shape keys, bone lengths before binding, or the joints and thicknesses of a skeleton-first body. Never by moving vertices one by one in code.
+- **Face:** the base's face targets and shape keys, or, for a cartoon face, eyes, brows, nose and mouth modeled as parts and fitted to the head.
+- **Hair, clothes and accessories** designed for this character, modeled like props, then fitted: 2–5 mm above the surface, never cutting into it, taking the body's weights ([rigging](references/rigging.md#clothes-and-attachments)). Swap a base's part for another rather than bending one into another.
+- **Colors and textures** from the project's palette and art direction, made on purpose by the game-assets rules.
 - **One layer:** delete the body faces each garment covers, keeping a ring under its edges so no gap opens when it moves. `inspect_character.py` lists the covered faces; MPFB's delete groups remove them for its own clothes.
 - **Hair:** a solid hair mesh sits 2–5 mm above the scalp, never inside it, and the scalp it covers completely is deleted. Hair cards, transparent strips, need a hair-colored scalp under them; list them in `SEE_THROUGH`. Hair is weighted to the head, and to the neck and spine for long hair.
-- **Hands and feet** are where customization breaks bases: keep the base's own, changed only with its controls.
-- **Budget:** a lower-poly topology of the base, such as an MPFB proxy, instead of decimating. Decimation destroys the edge loops joints need to bend. LODs: decimate a copy with symmetry on and UV seams kept, then check its deformation again.
-- **Materials and textures:** as few as possible; the base's own, or made on purpose by the game-assets rules.
+- **Hands and feet** are where changes break bodies: keep a base's own, changed only with its controls.
+- **Budget:** a lower-poly topology of the base, such as an MPFB proxy, or fewer subdivisions of a skeleton-first body, instead of decimating. Decimation destroys the edge loops joints need to bend. LODs: decimate a copy with symmetry on and UV seams kept, then check its deformation again.
 
 ## 4. Rig and skin
 

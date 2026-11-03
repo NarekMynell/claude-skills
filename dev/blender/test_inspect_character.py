@@ -101,8 +101,10 @@ case("legs are one surface", ["fused_legs", "hidden_inside", "self_intersections
      lambda: mannequin.build(variant="one_leg", rigged=False) and None)
 case("swollen waist", ["waist_bulge"], lambda: mannequin.build(variant="waist") and None)
 case("swollen waist on purpose", [], lambda: mannequin.build(variant="waist") and None, WAIST_BULGE=True)
-case("thumbs behind the fingers", ["left_finger_order", "left_thumb_side", "right_finger_order", "right_thumb_side"],
+case("thumbs next to the little fingers", ["left_finger_order", "right_finger_order"],
      lambda: mannequin.build(variant="thumb_back") and None)
+case("hands mirrored: each is the other side's", ["left_hand_mirrored", "right_hand_mirrored"],
+     lambda: mannequin.build(variant="mirrored_hand") and None)
 def _swap():
     body, rig = mannequin.build()
     lefts = [b.name for b in rig.data.bones if b.name.endswith(".L")]
@@ -112,7 +114,8 @@ def _swap():
     rename_bones(rig, {n[:-2] + ".tmp": n[:-2] + ".R" for n in lefts})
 
 
-case("left and right bone names swapped", ["left_right_swapped", "opposite_side_weights"], _swap)
+# The bones named for the left hand sit in the right hand, which is the left hand's mirror image.
+case("left and right bone names swapped", ["left_hand_mirrored", "left_right_swapped", "opposite_side_weights", "right_hand_mirrored"], _swap)
 
 
 def facing_back():
@@ -127,7 +130,7 @@ def facing_back():
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
 
 
-case("model faces +Y", ["left_right_swapped", "left_thumb_side", "not_facing_minus_y", "opposite_side_weights", "right_thumb_side"], facing_back)
+case("model faces +Y", ["left_right_swapped", "not_facing_minus_y", "opposite_side_weights"], facing_back)
 
 
 def hair_in_head():

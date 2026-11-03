@@ -14,28 +14,30 @@ This reference can be wrong or out of date: verify what you rely on, as the [sta
 
 MPFB, MakeHuman for Blender, makes human bodies from sliders (gender, age, weight, muscle, proportions), with eyes, eyebrows, hair, clothes, proxies and rigs.
 
-- **Version:** 2.0.18 (2026-10-10), an approved extension on extensions.blender.org for Blender 4.2 and newer; 2.0.14 fixed Blender 5.1 problems and 2.0.18 the hair editor on 5.2. Open on 5.2: normal-map baking fails (issue #453).
+- **Version:** 2.0.18 (2026-10-10) is the latest, an approved extension on extensions.blender.org for Blender 4.2 and newer; 2.0.14 fixed Blender 5.1 problems and 2.0.18 the hair editor on 5.2. Open on 5.2: normal-map baking fails (issue #453).
 - **Install** (ask the user first): Blender's Get Extensions panel, or `blender --command extension install -s -e mpfb` (`-s` syncs the repository list, `-e` enables it). Blender may need online access allowed in its preferences.
 - **Assets:** MPFB needs the system assets pack: [makehuman_system_assets_cc0.zip](https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip), 267 MB, CC0. Load packs with `bpy.ops.mpfb.load_pack(filepath=...)`. Most other packs on the [asset packs page](https://static.makehumancommunity.org/assets/assetpacks/index.html) are CC0 and some are CC-BY: check each.
 - **License:** the code is GPL, the assets CC0, and characters made with them can go into closed-source games ([FAQ](https://static.makehumancommunity.org/mpfb/faq/use_in_closed_source.html)).
 - **Rig: `game_engine`.** 53 bones with Unreal-mannequin names (`pelvis`, `spine_01`, `thigh_l`) and three-bone fingers; MPFB documents it as fully compatible with Unity's Mecanim. It has no eye or jaw bones. `mixamo_unity` (64 bones) adds face and breast bones.
 - **Topology:** the full body is about 13,400 quads (about 27,000 triangles). Proxies give lower-poly topologies of the same body: `proxy741` about 1,500 triangles, `male1591` and `female1605` about 3,200. Choose the one that fits the budget instead of decimating.
 - **Clothes** hide the body under them with delete groups, a vertex group and a Mask modifier; the faces go only when the masks are baked: `ExportService.bake_modifiers_remove_helpers(basemesh, bake_masks=True, remove_helpers=True, also_proxy=True)`.
-- **Scripting.** Each service is documented in the [MPFB docs](https://github.com/makehumancommunity/mpfb2/blob/master/docs/index.md), and `script_samples/` holds examples, including `10_complete_character_export_fbx.py`:
-  - `HumanService.create_human(...)` makes the base mesh, with macro values such as gender and age;
-  - `HumanService.add_builtin_rig(basemesh, "game_engine")` adds the rig;
-  - `HumanService.add_mhclo_asset(path, basemesh, asset_type="Clothes", subdiv_levels=0, material_type="GAMEENGINE")` adds clothes, and `asset_type="Proxymeshes"` a proxy;
-  - `HumanService.set_character_skin(..., skin_type="GAMEENGINE")` sets the skin.
+- **Scripting,** run with Blender 5.2.1 and MPFB 2.0.17 (2026-11-03). Each service is documented in the [MPFB docs](https://github.com/makehumancommunity/mpfb2/blob/master/docs/index.md), with examples in `script_samples/`. The module is `bl_ext.<repository>.mpfb`: `blender_org` from the official repository, `user_default` when installed from a file; find it by the `.mpfb` suffix in `sys.modules`. The order matters:
+  1. `HumanService.create_human(macro_detail_dict=...)`: a 1.675 m human by default, feet on the ground, facing −Y, in an A-pose with the arms about 48° below horizontal and the palms facing back.
+  2. `HumanService.add_builtin_rig(basemesh, "game_engine")`, before any proxy or clothes, or they get no rig.
+  3. `HumanService.add_mhclo_asset(path, basemesh, asset_type="Proxymeshes", subdiv_levels=0, material_type="GAMEENGINE")` with a `.proxy` file, for a lower-poly body.
+  4. The same call with `asset_type="Clothes"` or `"Hair"` and an `.mhclo` file per garment, shoes and hair.
+  5. `ExportService.bake_modifiers_remove_helpers(basemesh, bake_masks=True, remove_helpers=True, also_proxy=True)`: deletes the faces the clothes cover.
+  6. Export the proxy, clothes and hair; leave out the basemesh, which stays as MPFB's own reference.
 
-  The extension's module is `bl_ext.blender_org.mpfb`; the samples import it by its name suffix.
-- **Known export issues:**
-  - only the GameEngine material survives FBX export;
-  - textures can go missing in FBX: copy them next to the file, or set them up in Unity;
-  - shape keys disappear when modifiers are applied on export;
-  - `subdiv_levels` defaults to 1, which subdivides clothes: pass 0 for game meshes.
+  Asset paths sit under `LocationService.get_user_data()`: `proxymeshes/male1591/male1591.proxy`, `clothes/<name>/<name>.mhclo`, `hair/<name>/<name>.mhclo`. `bpy.ops.mpfb.load_pack(filepath=...)` installs a pack zip.
+- **What the checks found on that result**, MPFB's defaults unchanged, and what to do about each:
+  - the proxy body pokes through the clothes and the hair (about 100 face pairs each), because the clothes fit the high-poly basemesh: delete the proxy faces the clothes cover, with a ring under the edges, or move the clothes out, then check again;
+  - shoes sit inside the trouser legs and the hair cards within 2 mm of the scalp: delete what's covered, and list hair cards in `SEE_THROUGH`;
+  - clothes weights had more than 4 influences: limit to 4 and normalize;
+  - the clothes stretch in the extreme test poses: look at the pose sheet and fix the weights where it shows. Transfer weights only from a complete body: from a body whose covered faces were already deleted, the transfer made the stretching three times worse;
+  - one garment can outweigh the body: the casual suit is 8,336 faces against the proxy's 1,030, so choose clothes by the triangle budget too.
+- **Known export issues** from MPFB's documentation: only the GameEngine material survives FBX export; textures can go missing in FBX, so copy them next to the file or set them up in Unity; shape keys disappear when modifiers are applied on export.
 - MakeHuman's forum went offline on 2026-10-21; the static site, the asset packs and GitHub remain.
-
-The recipe above comes from MPFB's documentation and source; it hasn't been run with this guide. Before relying on it, check each call against the installed version (the services' source sits in the extension's folder), run it once, and record what works in `docs/art-direction.md`.
 
 ## Quaternius: stylized humans and animation
 

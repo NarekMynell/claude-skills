@@ -13,9 +13,13 @@ This guide can be wrong or out of date: verify what you rely on, as the [standar
 
 The character comes from the [characters](../characters/SKILL.md) guide; the scripts and the review loop from [game assets](../game-assets/SKILL.md). Unity setup and code: [references/unity-setup.md](references/unity-setup.md).
 
-## The rule that matters most
+## How to decide
 
-Never hand-key human motion: walking, running, climbing, jumping, grabbing. Keyed in code it comes out robotic, with sliding or floating feet and hands cutting through the body. Human motion comes from motion capture or professional animation libraries, and Unity's Humanoid system retargets it onto the character. Key by hand only what is simple or mechanical: doors, machines, props, simple creatures, a grip pose, or a small edit to a library clip.
+This guide gives the quality bar, the methods known to work and the failures already seen. The solution for each motion is Claude's choice, from this guide or outside it, whatever gives the best result for the project; tell the user the choice and why, and record project-wide choices under **Decisions** in the project's `CLAUDE.md`.
+
+- **The quality bar doesn't move:** planted feet stay still and on the ground, the character moves at the speed its feet do, hands stay out of the body and out of props, `inspect_animation.py` passes, and the filmstrip and Play Mode reviews find nothing left to fix.
+- **What has failed:** human motion keyed by hand in code (walking, running, climbing, jumping, grabbing). It came out robotic, with sliding or floating feet and hands cutting through the body.
+- **What works:** motion capture or professional animation libraries, retargeted onto the character through Unity's Humanoid system; root motion or measured speeds against sliding; foot IK for the ground; sockets and grip poses for props. Hand keying suits what is simple or mechanical: doors, machines, props, simple creatures, a grip pose, small edits to a library clip.
 
 ## 1. Plan the clips
 

@@ -49,7 +49,7 @@ This reference can be wrong or out of date: verify what you rely on, as the [sta
 
 ## Test poses
 
-`inspect_character.py` bends the rig into arms down, arms up, arms forward, squat, stride, twist and fists, then reports parts that poke through each other (`poke_through_in_poses`) and edges stretched past twice or shrunk below a third of their rest length (`stretched_in_poses`, usually wrong weights). Render the same poses as a sheet and look at:
+`inspect_character.py` bends the rig into arms down, arms up, arms forward, squat, stride, twist and fists, then reports parts that poke through each other (`poke_through_in_poses`) and edges stretched past twice or shrunk below a fifth of their rest length (`stretched_in_poses`, usually wrong weights). Render the same poses as a sheet and look at:
 
 - elbows and knees keeping their volume, with no collapse or candy wrapper;
 - shoulders with the arms up: no tearing or caving;

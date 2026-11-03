@@ -15,8 +15,10 @@ Characters follow the [characters](../characters/SKILL.md) guide, and their moti
 
 ## How to work
 
+This guide gives the quality bar, the methods known to work and the failures already seen. The solution for each asset is Claude's choice, from this guide or outside it, whatever gives the best result for the project; tell the user the choice and why. Quality is the one thing not traded: every asset passes its checks and a clean review.
+
 - **Build with code, judge with checks and renders.** Create and edit geometry with `bpy` and `bmesh` through `execute_blender_code`: exact, repeatable, cheap to redo. Never model by clicking through the UI from screenshots: vision judges the result, it doesn't build it.
-- **Code builds what code describes well:** hard-surface props, architecture, modular kits, stylized low-poly shapes. It doesn't sculpt organic forms: a body, face, hand or animal made of primitives or moved vertices looks wrong however long it's tweaked. Those start from a professional base, as the characters guide describes.
+- **Code builds what code describes well:** hard-surface props, architecture, modular kits, stylized low-poly shapes. It doesn't sculpt organic forms: a body, face, hand or animal made of primitives or moved vertices looks wrong however long it's tweaked. Those start from a professional base or a skeleton-first body, as the characters guide describes.
 - **Small steps, each verified:** blockout, form, detail, UVs, materials, export. Check after each step and fix before the next; a defect found late costs a rebuild.
 - **The review loop**, after every significant change:
   1. **Checks.** [validate_mesh.py](scripts/validate_mesh.py), plus the character or animation checks for those assets. Numbers catch what eyes miss: stacked faces, bad weights, penetration. Fix until `passed` is true.
@@ -45,6 +47,7 @@ result = ns["result"]
 |---|---|---|
 | validate_mesh.py | Duplicate, overlapping and z-fighting faces, also between objects; non-manifold edges, loose geometry, normals, UVs, transforms, triangle budget, triangles wasted on flat areas. `examples` give each problem's position | After every geometry change, and before export |
 | render_views.py | One contact sheet: all sides, 3/4 views, close-ups, wireframe, proportion grid, floor, animation frames | Every review round |
+| build_body.py | A character body from a joint skeleton: surface, armature, cleaned weights | [Characters](../characters/SKILL.md) |
 | inspect_character.py | Anatomy, covered and intersecting surfaces, rig, weights, deformation in test poses | [Characters](../characters/SKILL.md) |
 | inspect_animation.py | Foot contact and sliding, in-place speed, arm swing, loops, pops, limbs through the body or props | [Animation](../animation/SKILL.md) |
 | export_fbx.py | Runs the checks, refuses a failing asset, exports with the Unity settings | Export |

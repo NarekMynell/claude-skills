@@ -32,15 +32,17 @@ def _left_joints(variant):
     # Knuckles in a row across the palm, each finger starting from its own knuckle, so that the finger tubes don't
     # cut into each other where they branch.
     across = {"middle": (-0.008, "palm"), "index": (-0.024, "middle0"), "ring": (0.008, "middle0"), "little": (0.024, "ring0")}
+    flip = -1.0 if variant == "mirrored_hand" else 1.0
+    palm_side = Vector((-math.sin(A), 0.0, -math.cos(A)))  # palms down: perpendicular to the arm, downward
     for finger, (y, knuckle_parent) in across.items():
         parent = knuckle_parent
-        start = palm + ARM * 0.035 + Vector((0.0, y, 0.0))
+        start = palm + ARM * 0.035 + Vector((0.0, y * flip, 0.0))
         for k, length in enumerate((0.0, 0.03, 0.022, 0.018)):
-            start = start + ARM * length
+            start = start + ARM * length + palm_side * (0.004 * k)  # fingers gently curled toward the palm
             joints[f"{finger}{k}"] = (start.copy(), None, parent)
             parent = f"{finger}{k}"
     thumb_dir = Vector((0.45, -0.75, -0.45)).normalized()
-    side = 1.0 if variant == "thumb_back" else -1.0
+    side = 1.0 if variant in ("thumb_back", "mirrored_hand") else -1.0
     start = wrist + ARM * 0.025 + Vector((0.0, 0.028 * side, -0.01))
     thumb_dir.y *= -side
     parent = "wrist"

@@ -205,7 +205,7 @@ def _legs(parts, bottom, height, roles, armature, joined_ok):
 
 
 def _torso(body, parts, armature, roles, bulge_ok):
-    """Width and depth of the torso between the hip joints and the armpits: the body's own surface, or the parts
+    """Width and depth of the torso between the hip joints and the lower chest: the body's own surface, or the parts
     covering it where the body has none (faces deleted under clothes)."""
     issues, examples, info = {}, {}, {}
     hips = [rig.head(armature, roles[r]).z for r in ("LeftUpperLeg", "RightUpperLeg") if r in roles]
@@ -213,11 +213,18 @@ def _torso(body, parts, armature, roles, bulge_ok):
     if not hips or not shoulders:
         return issues, examples, info
     low, high = sum(hips) / len(hips), sum(shoulders) / len(shoulders)
-    top = low + 0.85 * (high - low)
+    # Up to the lower chest: higher, an A-pose armpit or a sleeve joins the arms to the torso's slice.
+    top = low + 0.6 * (high - low)
     samples = []
     for k in range(11):
         z = low + (top - low) * k / 10
-        center = [c for c in _clusters([body], z, 0.002) if c["box"][0] <= 0.0 <= c["box"][1]]
+        # The body's own island around the center line: not merged with an arm that passes close to it.
+        center = []
+        for points in _islands(body, z):
+            xs, ys = [p.x for p in points], [p.y for p in points]
+            if min(xs) <= 0.0 <= max(xs):
+                center.append({"box": [min(xs), max(xs), min(ys), max(ys)], "points": points})
+        center.sort(key=lambda c: len(c["points"]), reverse=True)
         if not center:
             center = [c for c in _clusters(parts, z, 0.002) if c["box"][0] <= 0.0 <= c["box"][1]]
         if not center:
@@ -394,15 +401,40 @@ def _rig_report(armature, roles, height, fingers):
             issues[f"{side.lower()}_finger_bones"] = f"{len(found)} finger chains, the design has {fingers}"
         roots = {f: rig.head(armature, roles[f"{side}{f}Proximal"]) for f in found}
         if "Thumb" in roots and "Index" in roots:
-            others = [roots[f] for f in found if f != "Thumb"]
-            if roots["Thumb"].y > sum(p.y for p in others) / len(others):
-                issues[f"{side.lower()}_thumb_side"] = "the thumb isn't in front of the fingers: the hand is mirrored, or the palm doesn't face down in the rest pose"
             distances = [(roots["Thumb"] - roots[f]).length for f in ("Index", "Middle", "Ring", "Little") if f in roots]
             if distances != sorted(distances):
                 issues[f"{side.lower()}_finger_order"] = "finger bones aren't ordered index, middle, ring, little from the thumb"
+        mirrored = _hand_mirrored(armature, roles, side)
+        if mirrored is None:
+            info[f"{side.lower()}_hand_chirality"] = "not checked: the fingers are straight in the rest pose"
+        elif mirrored:
+            issues[f"{side.lower()}_hand_mirrored"] = "the hand is the other side's, mirrored: its fingers curl toward the back of the hand"
     info["deform_bones"] = sum(1 for b in armature.data.bones if b.use_deform)
     info["roles_mapped"] = len(roles)
     return issues, examples, info
+
+
+def _hand_mirrored(armature, roles, side):
+    """Whether a hand is the other side's mirror image, whatever way the palm faces: the fingers curl toward the
+    palm, and on a left hand (along x across) points to the palm when 'across' runs from the little finger to the
+    index. None when the fingers are too straight to tell the palm side."""
+    hand, index, little = roles.get(f"{side}Hand"), roles.get(f"{side}IndexProximal"), roles.get(f"{side}LittleProximal") or roles.get(f"{side}RingProximal")
+    middle = roles.get(f"{side}MiddleProximal") or index
+    if not (hand and index and little):
+        return None
+    along = (rig.head(armature, middle) - rig.head(armature, hand)).normalized()
+    across = rig.head(armature, index) - rig.head(armature, little)
+    curl, length = Vector(), 0.0
+    for finger in ("Index", "Middle", "Ring", "Little"):
+        base, tip = roles.get(f"{side}{finger}Proximal"), roles.get(f"{side}{finger}Distal")
+        if base and tip:
+            reach = rig.tail(armature, tip) - rig.head(armature, base)
+            curl += reach - along * reach.dot(along)
+            length += reach.length
+    if length == 0.0 or curl.length < 0.03 * length:
+        return None
+    toward_palm = along.cross(across).dot(curl)
+    return toward_palm < 0 if side == "Left" else toward_palm > 0
 
 
 def _bone_side(bone, height):
@@ -479,14 +511,15 @@ def _poses_report(objects, armature, roles, rest_lengths, rest_between):
                     for edge, rest in zip(part.bm.edges, lengths):
                         if rest > 1e-6:
                             ratio = edge.calc_length() / rest
-                            if ratio > 2.0 or ratio < 0.3:
-                                bad.append((abs(math.log(ratio)), edge))
+                            # Creases fold hard in deep poses; below a fifth the surface collapses.
+                            if ratio > 2.0 or ratio < 0.2:
+                                bad.append((abs(math.log(ratio)), edge, ratio))
                     if bad:
                         stretched_total[f"{name}: {part.name}"] = len(bad)
-                        worst = max(bad, key=lambda b: b[0])[1]
+                        _, worst, ratio = max(bad, key=lambda b: b[0])
                         if len(examples.get("stretched_in_poses", [])) < MAX_EXAMPLES:
                             examples.setdefault("stretched_in_poses", []).append(
-                                {"pose": name, "object": part.name, "edge": worst.index,
+                                {"pose": name, "object": part.name, "edge": worst.index, "length_ratio": round(ratio, 2),
                                  "at": _round((worst.verts[0].co + worst.verts[1].co) / 2)})
             finally:
                 _free(parts)
