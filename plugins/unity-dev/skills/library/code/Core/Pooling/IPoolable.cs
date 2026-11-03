@@ -1,4 +1,4 @@
-namespace Company.Product.Core.Pooling
+namespace ProjectName.Core.Pooling
 {
     // Implemented by components of pooled objects: reset all state in OnDespawned.
     public interface IPoolable

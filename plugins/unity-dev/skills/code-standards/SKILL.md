@@ -34,12 +34,12 @@ Full layout, asmdef templates and examples: [references/code-organization.md](re
 
 - Project code lives in `Assets/_Project/Scripts/`: `App/` is the composition root, `Core/` holds generic building blocks with no knowledge of game features (many of them copied from the code library), and `<Domain>/` holds one feature area each.
 - **A domain is one feature area with its own asmdef:** `Combat`, `Inventory`, `UI`, `Audio`, `Persistence`. App composes domains and contains no game logic. Name it `App`, never `Application`: a namespace segment named `Application` hides `UnityEngine.Application`.
-- **Assembly names** are `<Company>.<Product>.<Domain>`. `rootNamespace` equals the assembly name, and namespaces mirror the folder path. No code stays in `Assembly-CSharp`.
+- **Assembly names** are `<Root>.<Domain>`. `<Root>` is the project's root namespace, the product's name and never a person's or company's ([how to choose it](references/code-organization.md#root-namespace)), recorded in `CLAUDE.md`. `rootNamespace` equals the assembly name, and namespaces mirror the folder path. No code stays in `Assembly-CSharp`.
 - **Dependency direction:** App → domains → Core → third-party. Core never references a domain. A domain references another domain only when the dependency is real and one-way. When two domains need each other, move the shared contracts (interfaces, messages, states) into a lower assembly.
 - **Encapsulation.** Implementations are `internal`. Only contracts other assemblies use are `public`. The installer registers internal implementations under public interfaces.
 - `autoReferenced: false` on every assembly, so Unity's predefined assemblies (`Assembly-CSharp`) can't use it and every dependency is a declared reference. Only assemblies that use a third-party package reference it.
-- A logic-heavy domain moves its logic into `<Company>.<Product>.<Domain>.Logic` with `noEngineReferences: true`: the compiler then guarantees it has no Unity dependency, and its tests are plain Edit Mode tests with no scene or Play Mode.
-- Editor code goes in `<Domain>/Editor/` with an Editor-only assembly. Inside a `….Editor` namespace the name `Editor` means that namespace: derive custom inspectors from `UnityEditor.Editor`. Tests go in `<Company>.<Product>.<Domain>.Tests`, Edit Mode unless they need the runtime.
+- A logic-heavy domain moves its logic into `<Root>.<Domain>.Logic` with `noEngineReferences: true`: the compiler then guarantees it has no Unity dependency, and its tests are plain Edit Mode tests with no scene or Play Mode.
+- Editor code goes in `<Domain>/Editor/` with an Editor-only assembly. Inside a `….Editor` namespace the name `Editor` means that namespace: derive custom inspectors from `UnityEditor.Editor`. Tests go in `<Root>.<Domain>.Tests`, Edit Mode unless they need the runtime.
 - One type per file, file name equals type name.
 
 ## Dependency injection

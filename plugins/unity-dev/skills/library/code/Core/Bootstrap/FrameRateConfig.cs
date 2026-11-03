@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
-    [CreateAssetMenu(menuName = "Company.Product/Core/Frame Rate Config", fileName = "FrameRateConfig")]
+    [CreateAssetMenu(menuName = "ProjectName/Core/Frame Rate Config", fileName = "FrameRateConfig")]
     public sealed class FrameRateConfig : ScriptableObject
     {
         [Tooltip("Target on Android and iOS. Unity's default there is a fixed 30 fps.")]

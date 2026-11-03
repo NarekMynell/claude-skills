@@ -28,6 +28,8 @@ Fill in every setting the user didn't specify.
 
 **Source control:** Git with LFS for binary assets (the official flow's `--git-lfs`), unless the user chooses Unity Version Control.
 
+**Root namespace:** derived from the project's name as the [code organization](../code-standards/references/code-organization.md#root-namespace) rules describe, never from the user's, the git author's or a company's name. Tell the user the name you chose and why, with the other defaults.
+
 ## Setup after the project is created
 
 Do these between the official flow's package step and its first commit. Work in the running Editor through the Unity CLI wherever possible.

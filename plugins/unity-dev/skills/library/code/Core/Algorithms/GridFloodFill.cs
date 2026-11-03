@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Company.Product.Core.Algorithms
+namespace ProjectName.Core.Algorithms
 {
     // Collects the walkable cells connected to a start cell through its four straight neighbours.
     public sealed class GridFloodFill

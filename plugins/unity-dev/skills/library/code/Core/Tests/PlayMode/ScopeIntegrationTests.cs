@@ -2,10 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
-using Company.Product.Core.Bootstrap;
-using Company.Product.Core.DI;
-using Company.Product.Core.Pooling;
-using Company.Product.Core.Providers;
+using ProjectName.Core.Bootstrap;
+using ProjectName.Core.DI;
+using ProjectName.Core.Pooling;
+using ProjectName.Core.Providers;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -14,7 +14,7 @@ using VContainer;
 using VContainer.Unity;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.PlayModeTests
+namespace ProjectName.Core.PlayModeTests
 {
     // Runs the DI building blocks inside real VContainer scopes, the way a project uses them.
     public sealed class ScopeIntegrationTests

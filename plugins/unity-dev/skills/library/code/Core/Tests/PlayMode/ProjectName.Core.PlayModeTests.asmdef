@@ -1,9 +1,9 @@
 {
-    "name": "Company.Product.Core.PlayModeTests",
-    "rootNamespace": "Company.Product.Core.PlayModeTests",
+    "name": "ProjectName.Core.PlayModeTests",
+    "rootNamespace": "ProjectName.Core.PlayModeTests",
     "references": [
         "UnityEngine.TestRunner",
-        "Company.Product.Core",
+        "ProjectName.Core",
         "VContainer",
         "UniTask",
         "Unity.Addressables",

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.Collections;
+using ProjectName.Core.Collections;
 using UnityEngine;
 
-namespace Company.Product.Core.Algorithms
+namespace ProjectName.Core.Algorithms
 {
     // A* on a grid. Reuses its buffers, so repeated searches on the same grid size don't allocate.
     public sealed class GridPathfinder

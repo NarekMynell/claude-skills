@@ -4,7 +4,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.ContentLoading
+namespace ProjectName.Core.ContentLoading
 {
     // Loads Addressables content and owns the handles. Every load needs a matching Release;
     // loading the same key twice shares one handle and needs two releases.

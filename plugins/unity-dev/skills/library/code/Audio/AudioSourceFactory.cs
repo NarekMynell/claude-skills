@@ -1,7 +1,7 @@
-using Company.Product.Core.DI;
+using ProjectName.Core.DI;
 using UnityEngine;
 
-namespace Company.Product.Audio
+namespace ProjectName.Audio
 {
     internal sealed class AudioSourceFactory : IFactory<AudioSource>
     {

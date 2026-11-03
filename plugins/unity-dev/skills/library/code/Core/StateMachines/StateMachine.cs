@@ -1,6 +1,6 @@
 using System;
 
-namespace Company.Product.Core.StateMachines
+namespace ProjectName.Core.StateMachines
 {
     // A change requested from Enter or Exit runs right after the current transition finishes.
     // If Exit or Enter throws, Current becomes null, so a retry enters again and no state is exited twice.

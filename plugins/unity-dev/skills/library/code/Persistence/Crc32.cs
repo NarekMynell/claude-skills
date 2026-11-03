@@ -1,4 +1,4 @@
-namespace Company.Product.Persistence
+namespace ProjectName.Persistence
 {
     // CRC-32 (IEEE 802.3, the zlib and PNG checksum), used to tell an intact save from a damaged one.
     internal static class Crc32

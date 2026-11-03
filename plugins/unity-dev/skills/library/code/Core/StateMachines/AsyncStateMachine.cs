@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
-namespace Company.Product.Core.StateMachines
+namespace ProjectName.Core.StateMachines
 {
     // One transition at a time: starting a second one while the first runs throws, so callers await each change.
     // If Exit or Enter fails or is cancelled, Current becomes null, so a retry enters again and no state is exited twice.

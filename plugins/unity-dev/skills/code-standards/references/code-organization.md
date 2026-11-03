@@ -21,13 +21,22 @@ Assets/
 └── ...                     Folders that packages and imported assets create stay where they install
 ```
 
-Core is one assembly, `<Company>.<Product>.Core`, with `Core.Editor` and `Core.Tests` beside it. Something enters Core only if it knows nothing about game features and either two domains need it or it is clearly generic. Much of it is copied from the [code library](../../library/SKILL.md) and then belongs to the project.
+Core is one assembly, `<Root>.Core`, with `Core.Editor` and `Core.Tests` beside it. Something enters Core only if it knows nothing about game features and either two domains need it or it is clearly generic. Much of it is copied from the [code library](../../library/SKILL.md) and then belongs to the project.
+
+## Root namespace
+
+Every assembly and namespace starts with one root, the product's name as a single PascalCase identifier: `StarHarbor` for "Star Harbor". Assemblies are `<Root>.<Domain>`, such as `StarHarbor.Combat`.
+
+- **The product's name only.** Never a person's, studio's or company's name, such as the user's, the git author's or a plugin author's: the namespace names the product.
+- **Short and deliberate.** One or two words, about 16 characters at most. Shorten a long name the way a studio would: keep its distinctive words, drop articles, prepositions, subtitles and generic words (`Game`, `Simulator`, `Online`, `3D`). "Legends of the Crystal Kingdom" becomes `CrystalKingdom`, "Galactic Cargo Hauler Simulator 2" becomes `CargoHauler`. Use an acronym only when the product is known by it, cased as .NET cases acronyms (`IO`, `Xml`).
+- **Valid and unambiguous.** A valid C# identifier that no type in the project shares, and not a root that Unity, .NET or a package uses (`Unity`, `UnityEngine`, `UnityEditor`, `System`, `TMPro`, `Cysharp`, `VContainer`, `MessagePipe`, `DG`).
+- **Decided once.** The new-project flow derives it from the project's name, tells the user, and records it in `CLAUDE.md`, with the reason when it shortens the name. Renaming it later touches every file and assembly.
 
 ## Inside a domain
 
 ```
 Combat/
-├── <Company>.<Product>.Combat.asmdef
+├── <Root>.Combat.asmdef
 ├── CombatInstaller.cs      DI registrations of this domain
 ├── IDamageService.cs       Contracts and services at the root
 ├── DamageService.cs
@@ -48,10 +57,10 @@ Runtime:
 
 ```json
 {
-    "name": "Acme.Shooter.Combat",
-    "rootNamespace": "Acme.Shooter.Combat",
+    "name": "StarHarbor.Combat",
+    "rootNamespace": "StarHarbor.Combat",
     "references": [
-        "Acme.Shooter.Combat.Logic",
+        "StarHarbor.Combat.Logic",
         "VContainer",
         "UniTask",
         "MessagePipe"
@@ -64,8 +73,8 @@ Logic without Unity (`noEngineReferences` makes the compiler reject any `UnityEn
 
 ```json
 {
-    "name": "Acme.Shooter.Combat.Logic",
-    "rootNamespace": "Acme.Shooter.Combat.Logic",
+    "name": "StarHarbor.Combat.Logic",
+    "rootNamespace": "StarHarbor.Combat.Logic",
     "references": [],
     "autoReferenced": false,
     "noEngineReferences": true
@@ -76,10 +85,10 @@ Editor:
 
 ```json
 {
-    "name": "Acme.Shooter.Combat.Editor",
-    "rootNamespace": "Acme.Shooter.Combat.Editor",
+    "name": "StarHarbor.Combat.Editor",
+    "rootNamespace": "StarHarbor.Combat.Editor",
     "references": [
-        "Acme.Shooter.Combat"
+        "StarHarbor.Combat"
     ],
     "includePlatforms": [
         "Editor"
@@ -92,13 +101,13 @@ Edit Mode tests (for Play Mode tests, use an empty `includePlatforms`):
 
 ```json
 {
-    "name": "Acme.Shooter.Combat.Tests",
-    "rootNamespace": "Acme.Shooter.Combat.Tests",
+    "name": "StarHarbor.Combat.Tests",
+    "rootNamespace": "StarHarbor.Combat.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Acme.Shooter.Combat",
-        "Acme.Shooter.Combat.Logic"
+        "StarHarbor.Combat",
+        "StarHarbor.Combat.Logic"
     ],
     "includePlatforms": [
         "Editor"
@@ -121,4 +130,4 @@ Edit Mode tests (for Play Mode tests, use an empty `includePlatforms`):
 
 ## Shared contracts
 
-When two domains need each other's contracts, move the interfaces, messages and state types into a lower assembly named for what it holds (`Acme.Shooter.Combat.Contracts`), referenced by both. Never solve a cycle with a global or a service locator.
+When two domains need each other's contracts, move the interfaces, messages and state types into a lower assembly named for what it holds (`StarHarbor.Combat.Contracts`), referenced by both. Never solve a cycle with a global or a service locator.

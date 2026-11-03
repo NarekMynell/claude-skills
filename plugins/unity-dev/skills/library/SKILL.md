@@ -18,9 +18,9 @@ Ready building blocks written to the [code standards](../code-standards/SKILL.md
 
 ## Layout
 
-[code/](code/), next to this file, mirrors a project's `Assets/_Project/Scripts/` folder, written with the placeholder prefix `Company.Product`:
+[code/](code/), next to this file, mirrors a project's `Assets/_Project/Scripts/` folder, written with the placeholder root namespace `ProjectName`:
 
-- `code/Core/<Module>/`: generic building blocks, in the `Company.Product.Core` assembly;
+- `code/Core/<Module>/`: generic building blocks, in the `ProjectName.Core` assembly;
 - `code/<Domain>/`: ready domains, such as Audio or Persistence, each with its own assembly.
 
 Every module folder has a `README.md`: purpose, API with a short example, dependencies (other modules, packages, defines) and setup steps.
@@ -30,7 +30,7 @@ Every module folder has a `README.md`: purpose, API with a short example, depend
 1. Read the module's README. Take its module dependencies too.
 2. **Review the code** as you would a colleague's pull request, before copying it: correctness, resource lifetimes ([rules](../code-standards/references/resource-lifetimes.md)), cancellation, edge cases, allocations. Check every package API it calls against the project's installed version (`Packages/packages-lock.json`; the source is in `Library/PackageCache/`). Fix what you find in the project's copy, and tell the user, so the library gets the fix too.
 3. Copy its `.cs` files and its tests to the same relative path under the project's `Assets/_Project/Scripts/`, plus the assembly definitions and `AssemblyInfo.cs` the project doesn't have yet. The README stays in the library. Unity generates the `.meta` files.
-4. Replace every occurrence of `Company.Product` with the project's prefix (from `CLAUDE.md`), string literals included: namespaces, `using` directives, assembly definitions, `InternalsVisibleTo`, menu paths (`Tools/…`, `CreateAssetMenu`) and settings keys. If a file goes to a different folder, its namespace follows that folder.
+4. Replace every occurrence of `ProjectName` with the project's root namespace (from `CLAUDE.md`), string literals included: namespaces, `using` directives, assembly definitions, `InternalsVisibleTo`, menu paths (`Tools/…`, `CreateAssetMenu`) and settings keys. If a file goes to a different folder, its namespace follows that folder.
 5. Merge into the project's assemblies: files for `Core` join the project's existing Core assembly, with any missing references added. Never create a second Core assembly.
 6. Adapt the code to the project: keep what it needs, remove what it doesn't, extend it.
 7. Copy the module's tests into the matching test assembly. The project compiles with no errors or warnings, and the tests pass there: Edit Mode and Play Mode in the Editor, and the Play Mode tests in a development build of each target platform too. File systems, threading (none on Web) and IL2CPP differ from the Editor.

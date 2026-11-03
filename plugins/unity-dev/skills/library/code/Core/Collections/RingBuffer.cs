@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Company.Product.Core.Collections
+namespace ProjectName.Core.Collections
 {
     // Fixed-capacity buffer: once full, each Add overwrites the oldest item. Index 0 is the oldest.
     public sealed class RingBuffer<T> : IReadOnlyList<T>

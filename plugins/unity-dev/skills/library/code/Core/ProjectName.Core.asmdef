@@ -1,6 +1,6 @@
 {
-    "name": "Company.Product.Core",
-    "rootNamespace": "Company.Product.Core",
+    "name": "ProjectName.Core",
+    "rootNamespace": "ProjectName.Core",
     "references": [
         "VContainer",
         "UniTask",

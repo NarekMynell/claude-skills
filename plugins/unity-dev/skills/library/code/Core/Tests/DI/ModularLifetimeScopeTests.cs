@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.DI;
+using ProjectName.Core.DI;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -8,7 +8,7 @@ using VContainer;
 using Is = UnityEngine.TestTools.Constraints.Is;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Tests.DI
+namespace ProjectName.Core.Tests.DI
 {
     public sealed class ModularLifetimeScopeTests
     {

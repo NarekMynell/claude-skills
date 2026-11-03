@@ -1,11 +1,11 @@
 {
-    "name": "Company.Product.Audio.Tests",
-    "rootNamespace": "Company.Product.Audio.Tests",
+    "name": "ProjectName.Audio.Tests",
+    "rootNamespace": "ProjectName.Audio.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Company.Product.Audio",
-        "Company.Product.Core"
+        "ProjectName.Audio",
+        "ProjectName.Core"
     ],
     "includePlatforms": [
         "Editor"

@@ -1,14 +1,14 @@
 using System;
 using System.Runtime.CompilerServices;
-using Company.Product.Core.Extensions;
-using Company.Product.Core.Logging;
-using Company.Product.Core.Pooling;
+using ProjectName.Core.Extensions;
+using ProjectName.Core.Logging;
+using ProjectName.Core.Pooling;
 using UnityEngine;
 using VContainer.Unity;
 using Object = UnityEngine.Object;
 using Random = System.Random;
 
-namespace Company.Product.Audio
+namespace ProjectName.Audio
 {
     // Plays AudioCues on pooled AudioSources. Register it in the root scope: its voices live under a
     // DontDestroyOnLoad object, and its Tick returns finished voices to the pool.

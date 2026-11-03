@@ -1,7 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
-namespace Company.Product.Core.StateMachines
+namespace ProjectName.Core.StateMachines
 {
     public interface IAsyncState
     {

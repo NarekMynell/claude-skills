@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Logging
+namespace ProjectName.Core.Logging
 {
     public static class Log
     {

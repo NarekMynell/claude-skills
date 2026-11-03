@@ -1,7 +1,7 @@
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-namespace Company.Product.Core.ContentLoading
+namespace ProjectName.Core.ContentLoading
 {
     internal sealed class AddressablesOperations : IAssetOperations
     {

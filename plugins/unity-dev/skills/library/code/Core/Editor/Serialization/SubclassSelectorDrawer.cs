@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Company.Product.Core.Serialization;
+using ProjectName.Core.Serialization;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Editor.Serialization
+namespace ProjectName.Core.Editor.Serialization
 {
     [CustomPropertyDrawer(typeof(SubclassSelectorAttribute))]
     internal sealed class SubclassSelectorDrawer : PropertyDrawer

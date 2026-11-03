@@ -1,8 +1,8 @@
-using Company.Product.Core.Serialization;
+using ProjectName.Core.Serialization;
 using UnityEditor;
 using UnityEngine;
 
-namespace Company.Product.Core.Editor.Serialization
+namespace ProjectName.Core.Editor.Serialization
 {
     [CustomPropertyDrawer(typeof(SceneReference))]
     internal sealed class SceneReferenceDrawer : PropertyDrawer

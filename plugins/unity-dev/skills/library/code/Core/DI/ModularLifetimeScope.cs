@@ -3,7 +3,7 @@ using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 
-namespace Company.Product.Core.DI
+namespace ProjectName.Core.DI
 {
     // The scope lists its installers and runs them in that order. Nothing depends on script execution order,
     // and the composition root shows all of its parts in one place.

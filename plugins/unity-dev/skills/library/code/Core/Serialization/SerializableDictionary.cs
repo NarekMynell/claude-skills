@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Company.Product.Core.Serialization
+namespace ProjectName.Core.Serialization
 {
     // A dictionary edited in the Inspector as a list of entries and read-only at runtime, like any config data.
     // Entries with a null or repeated key are skipped; validate them with InvalidEntryCount in OnValidate.

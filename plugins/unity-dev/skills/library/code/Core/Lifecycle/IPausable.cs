@@ -1,4 +1,4 @@
-namespace Company.Product.Core.Lifecycle
+namespace ProjectName.Core.Lifecycle
 {
     public interface IPausable
     {

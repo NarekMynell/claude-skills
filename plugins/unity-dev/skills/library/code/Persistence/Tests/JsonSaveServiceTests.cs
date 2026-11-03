@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
-namespace Company.Product.Persistence.Tests
+namespace ProjectName.Persistence.Tests
 {
     public sealed class JsonSaveServiceTests
     {

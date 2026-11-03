@@ -1,0 +1,11 @@
+{
+    "name": "ProjectName.Core.Editor",
+    "rootNamespace": "ProjectName.Core.Editor",
+    "references": [
+        "ProjectName.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "autoReferenced": false
+}

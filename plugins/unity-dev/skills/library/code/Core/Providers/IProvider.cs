@@ -1,6 +1,6 @@
 using System;
 
-namespace Company.Product.Core.Providers
+namespace ProjectName.Core.Providers
 {
     // Read access to one piece of shared state and its changes.
     public interface IProvider<T>

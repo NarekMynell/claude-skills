@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Company.Product.Core.Algorithms;
+using ProjectName.Core.Algorithms;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace Company.Product.Core.Tests.Algorithms
+namespace ProjectName.Core.Tests.Algorithms
 {
     public sealed class SpatialHashRadiusTests
     {

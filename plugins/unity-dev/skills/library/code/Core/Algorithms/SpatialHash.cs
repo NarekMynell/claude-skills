@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.Extensions;
+using ProjectName.Core.Extensions;
 using UnityEngine;
 
-namespace Company.Product.Core.Algorithms
+namespace ProjectName.Core.Algorithms
 {
     // Uniform grid for neighbour queries. A query costs one lookup per cell its sphere covers,
     // so pick a cell size close to the usual query radius.

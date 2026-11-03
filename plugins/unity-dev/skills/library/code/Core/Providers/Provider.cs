@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.Logging;
+using ProjectName.Core.Logging;
 
-namespace Company.Product.Core.Providers
+namespace ProjectName.Core.Providers
 {
     // Main-thread state holder. A subscriber that throws is logged and doesn't stop the others.
     // A Set from inside a notification restarts delivery, so every subscriber ends on the newest value.

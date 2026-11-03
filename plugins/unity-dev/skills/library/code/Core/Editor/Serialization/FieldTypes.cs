@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Company.Product.Core.Editor.Serialization
+namespace ProjectName.Core.Editor.Serialization
 {
     internal static class FieldTypes
     {

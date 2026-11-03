@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Tests.Serialization
+namespace ProjectName.Core.Tests.Serialization
 {
     public sealed class SerializableDictionaryKeyTests
     {

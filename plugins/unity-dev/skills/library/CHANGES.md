@@ -4,6 +4,10 @@ This list can be wrong or out of date: verify what you rely on, as the [standard
 
 What each unity-dev release changed in the code library, so a project's copy can catch up, as [updating a copy](SKILL.md#updating-a-projects-copy) describes. **Fix** marks a defect that every copy of the module has: port it. **Change** alters an API or a behavior the project may rely on. **Added** is new code or tests.
 
+## 0.7.0
+
+- **All modules.** Change: the placeholder root namespace is `ProjectName` instead of `Company.Product`, because a project's root namespace is now its product's name alone ([code organization](../code-standards/references/code-organization.md#root-namespace)). Copies already in a project keep their own namespace: nothing to port.
+
 ## 0.6.0
 
 Found by an independent review that proved each defect with a failing test; every fix comes with that test.

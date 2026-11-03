@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.Extensions;
+using ProjectName.Core.Extensions;
 using NUnit.Framework;
 using UnityEngine;
 using Is = UnityEngine.TestTools.Constraints.Is;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Tests.Extensions
+namespace ProjectName.Core.Tests.Extensions
 {
     public sealed class ExtensionTests
     {

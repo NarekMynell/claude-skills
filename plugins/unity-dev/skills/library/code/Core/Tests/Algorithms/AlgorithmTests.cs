@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Company.Product.Core.Algorithms;
+using ProjectName.Core.Algorithms;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
 using Random = System.Random;
 
-namespace Company.Product.Core.Tests.Algorithms
+namespace ProjectName.Core.Tests.Algorithms
 {
     public sealed class AlgorithmTests
     {

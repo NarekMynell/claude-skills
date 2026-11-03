@@ -1,20 +1,20 @@
 using System;
-using Company.Product.Core.Bootstrap;
+using ProjectName.Core.Bootstrap;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 
-namespace Company.Product.Core.Editor.Bootstrap
+namespace ProjectName.Core.Editor.Bootstrap
 {
     // Play in the Editor always starts from the Bootstrap scene (scene 0 of the active Build Profile),
     // so the Editor runs the same startup as a build; the startup then opens the scene that was open.
-    // Tools > Company.Product > Play From Bootstrap turns it off, per user and project.
+    // Tools > ProjectName > Play From Bootstrap turns it off, per user and project.
     // Play Mode test runs are left alone: the Test Framework must start in its own scene.
     [InitializeOnLoad]
     internal static class PlayFromBootstrap
     {
-        private const string MenuPath = "Tools/Company.Product/Play From Bootstrap";
-        private const string EnabledKey = "Company.Product.Core.PlayFromBootstrap";
+        private const string MenuPath = "Tools/ProjectName/Play From Bootstrap";
+        private const string EnabledKey = "ProjectName.Core.PlayFromBootstrap";
 
         // Names the Unity Test Framework gives its run scene and controller object (internal to that package).
         private const string TestScenePathPrefix = "Assets/InitTestScene";

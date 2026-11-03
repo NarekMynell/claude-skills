@@ -3,7 +3,7 @@ using System.IO;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Serialization
+namespace ProjectName.Core.Serialization
 {
     // A scene picked in the Inspector as an asset and stored as a path, so a renamed or moved scene
     // updates the path the next time the owner is saved.

@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Company.Product.Core.Providers;
+using ProjectName.Core.Providers;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
 
-namespace Company.Product.Core.Tests.Providers
+namespace ProjectName.Core.Tests.Providers
 {
     public sealed class ProviderTests
     {

@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.Extensions;
-using Company.Product.Core.Lifecycle;
-using Company.Product.Core.Logging;
+using ProjectName.Core.Extensions;
+using ProjectName.Core.Lifecycle;
+using ProjectName.Core.Logging;
 using UnityEngine;
 
-namespace Company.Product.Core.Culling
+namespace ProjectName.Core.Culling
 {
     // Pauses IPausable targets while their bounding sphere is outside the camera's view, using one CullingGroup
     // for all of them. Unity's built-in culling (Animator and particle culling modes) comes first; this is for custom behaviour.

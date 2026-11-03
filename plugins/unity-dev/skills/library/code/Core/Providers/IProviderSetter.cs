@@ -1,4 +1,4 @@
-namespace Company.Product.Core.Providers
+namespace ProjectName.Core.Providers
 {
     // Write access, for the owner of the state only.
     public interface IProviderSetter<T> : IProvider<T>

@@ -3,7 +3,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
     // Mobile: no vSync and an explicit target, because the default renders at 30 fps.
     // Web: vSync, because targetFrameRate uses software timing there and micro-stutters.

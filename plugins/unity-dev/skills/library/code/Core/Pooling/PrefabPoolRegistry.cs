@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.DI;
+using ProjectName.Core.DI;
 using UnityEngine;
 using VContainer;
 
-namespace Company.Product.Core.Pooling
+namespace ProjectName.Core.Pooling
 {
     // One shared pool per prefab. Pools are registered and prewarmed during loading; asking for an
     // unregistered prefab throws, so a missing prewarm shows up immediately instead of as a spike.

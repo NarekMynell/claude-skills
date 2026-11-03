@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
-using Company.Product.Core.ContentLoading;
+using ProjectName.Core.ContentLoading;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -11,7 +11,7 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.PlayModeTests
+namespace ProjectName.Core.PlayModeTests
 {
     // Loads that are still running when they're cancelled or the loader is disposed.
     public sealed class ContentLoaderPlayModeTests

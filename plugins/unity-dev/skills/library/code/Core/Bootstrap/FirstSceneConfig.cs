@@ -1,9 +1,9 @@
-using Company.Product.Core.Serialization;
+using ProjectName.Core.Serialization;
 using UnityEngine;
 
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
-    [CreateAssetMenu(menuName = "Company.Product/Core/First Scene Config", fileName = "FirstSceneConfig")]
+    [CreateAssetMenu(menuName = "ProjectName/Core/First Scene Config", fileName = "FirstSceneConfig")]
     public sealed class FirstSceneConfig : ScriptableObject
     {
         [Tooltip("The scene the startup opens in builds. In the Editor, the scene that was open when Play was pressed opens instead.")]

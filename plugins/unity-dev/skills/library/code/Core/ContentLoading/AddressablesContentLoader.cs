@@ -7,7 +7,7 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 using VContainer;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.ContentLoading
+namespace ProjectName.Core.ContentLoading
 {
     // Each LoadAsync holds one reference to its key's handle until the matching Release; the handle is released
     // with the last reference. A load that fails or is cancelled drops its own reference. Dispose releases

@@ -8,9 +8,9 @@
         "UniTask",
         "Unity.Addressables",
         "Unity.ResourceManager",
-        "Company.Product.Core",
-        "Company.Product.Audio",
-        "Company.Product.Persistence"
+        "ProjectName.Core",
+        "ProjectName.Audio",
+        "ProjectName.Persistence"
     ],
     "autoReferenced": false,
     "defineConstraints": [

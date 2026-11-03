@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
-using Company.Product.Core.ContentLoading;
+using ProjectName.Core.ContentLoading;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -10,7 +10,7 @@ using UnityEngine.ResourceManagement;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.TestTools;
 
-namespace Company.Product.Core.PlayModeTests
+namespace ProjectName.Core.PlayModeTests
 {
     public sealed class ContentLoaderLateCompletionTests
     {

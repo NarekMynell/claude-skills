@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Company.Product.Persistence
+namespace ProjectName.Persistence
 {
     // Describes one save file: its storage key, the current schema version and the migrations that reach it.
     public sealed class SaveSchema<TData> where TData : class

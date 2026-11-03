@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Company.Product.Audio
+namespace ProjectName.Audio
 {
     // Converts a 0–1 volume slider to the decibels an exposed AudioMixer parameter expects, and back.
     public static class AudioVolume

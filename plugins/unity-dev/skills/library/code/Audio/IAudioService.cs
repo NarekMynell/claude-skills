@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Company.Product.Audio
+namespace ProjectName.Audio
 {
     public interface IAudioService
     {

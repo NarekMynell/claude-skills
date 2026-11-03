@@ -1,9 +1,9 @@
-using Company.Product.Core.UI;
+using ProjectName.Core.UI;
 using NUnit.Framework;
 using UnityEngine;
 using Is = UnityEngine.TestTools.Constraints.Is;
 
-namespace Company.Product.Core.Tests.UI
+namespace ProjectName.Core.Tests.UI
 {
     public sealed class SafeAreaTests
     {

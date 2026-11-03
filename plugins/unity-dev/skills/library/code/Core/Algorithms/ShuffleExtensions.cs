@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Company.Product.Core.Algorithms
+namespace ProjectName.Core.Algorithms
 {
     public static class ShuffleExtensions
     {

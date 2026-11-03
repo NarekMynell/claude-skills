@@ -1,6 +1,6 @@
 ---
 name: standards
-description: Loads every unity-dev standard and guide - new projects, C# architecture and code rules, the tested code library, game design, UI, performance, audio, VFX, Blender 3D models, docs, the done checklist - and turns them on for every session in a Unity project. Add a task to start it right away; `off` and `on` switch every-session loading.
+description: Loads every unity-dev standard and guide - new projects, C# architecture and code rules, the tested code library, game design, UI, performance, audio, VFX, Blender 3D models, characters and animation, docs, the done checklist - and turns them on for every session in a Unity project. Add a task to start it right away; `off` and `on` switch every-session loading.
 disable-model-invocation: true
 argument-hint: "[task | on | off]"
 allowed-tools:
@@ -46,7 +46,9 @@ Read every guide that matches the task before the work it covers, and read it ag
 | Sounds and music | [audio design](../audio-design/SKILL.md) |
 | Visual effects | [VFX](../vfx/SKILL.md) |
 | Game concepts, mechanics, features | [game design](../game-design/SKILL.md) |
-| 3D models, environments, characters | [game assets](../game-assets/SKILL.md), through the Blender MCP connector |
+| 3D models and environments | [game assets](../game-assets/SKILL.md), through the Blender MCP connector |
+| Characters: bases, customizing, rigging, skinning | [characters](../characters/SKILL.md), after [game assets](../game-assets/SKILL.md) |
+| Character animation: clips, retargeting, locomotion, IK, held props | [animation](../animation/SKILL.md) |
 | README, CLAUDE.md, `docs/`, `.claude/rules/` | [project docs](../project-docs/SKILL.md) |
 | Engine APIs that may have changed in recent Unity versions | the project's `docs/unity-version-notes.md`; to write or update it, [version notes](../version-notes/SKILL.md) |
 | Unity CLI, Editor link, C# language server or Blender connector problems | [toolchain](../toolchain/SKILL.md) |
@@ -65,6 +67,7 @@ Read every guide that matches the task before the work it covers, and read it ag
 5. **Robust.** Every resource released by its owner on every path ([resource lifetimes](../code-standards/references/resource-lifetimes.md)): subscriptions, handles, tokens, buffers, created objects. Destroyed objects, cancellation and errors handled.
 6. **Consistent.** Naming and structure rules followed; docs updated.
 7. **Verified.** Every API, setting and library module the work relies on was checked for the project's versions, and the report says how.
+8. **Assets.** Every model, character and animation passed its guide's checks, and a written review of its latest contact sheet found nothing left to fix.
 
 If a check fails, fix it before moving on.
 

@@ -1,9 +1,9 @@
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
     // Hands the scene that was open in the Editor to the startup flow, which plays from the Bootstrap scene.
     internal static class EditorPlaySession
     {
-        internal const string ReturnSceneKey = "Company.Product.Core.Bootstrap.ReturnScene";
+        internal const string ReturnSceneKey = "ProjectName.Core.Bootstrap.ReturnScene";
 
         public static bool TryTakeReturnScene(out string scenePath)
         {

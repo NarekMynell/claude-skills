@@ -6,7 +6,7 @@ using NUnit.Framework;
 using UnityEngine.TestTools;
 using VContainer;
 
-namespace Company.Product.Persistence.PlayModeTests
+namespace ProjectName.Persistence.PlayModeTests
 {
     // The public API end to end, on the real file storage of the platform the tests run on, which on Web is the
     // inline path without threads. Run it in a player of each target platform, not only in the Editor.

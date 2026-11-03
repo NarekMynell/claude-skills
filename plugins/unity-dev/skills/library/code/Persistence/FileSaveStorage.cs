@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace Company.Product.Persistence
+namespace ProjectName.Persistence
 {
     // Files under persistentDataPath/Saves, written so that a crash or a power loss costs at most the write in
     // progress: the data goes to a temporary file that is flushed to disk, the current save becomes the backup,

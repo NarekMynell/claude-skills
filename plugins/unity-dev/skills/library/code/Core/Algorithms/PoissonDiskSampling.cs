@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.Extensions;
+using ProjectName.Core.Extensions;
 using UnityEngine;
 using Random = System.Random;
 
-namespace Company.Product.Core.Algorithms
+namespace ProjectName.Core.Algorithms
 {
     // Bridson's algorithm: evenly spread random points, no two closer than minDistance.
     // Allocates its working grid per call: use it while generating content, not every frame.

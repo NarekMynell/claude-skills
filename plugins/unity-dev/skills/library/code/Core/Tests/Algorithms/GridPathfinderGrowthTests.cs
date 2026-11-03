@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using Company.Product.Core.Algorithms;
+using ProjectName.Core.Algorithms;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
 
-namespace Company.Product.Core.Tests.Algorithms
+namespace ProjectName.Core.Tests.Algorithms
 {
     public sealed class GridPathfinderGrowthTests
     {

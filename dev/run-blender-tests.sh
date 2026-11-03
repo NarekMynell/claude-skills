@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the game-assets Blender scripts headless against test scenes with known results.
+# Runs the game-assets Blender scripts headless against test scenes with known results (dev/blender/).
 # Usage: dev/run-blender-tests.sh [path-to-blender]
 set -euo pipefail
 
@@ -11,7 +11,7 @@ trap 'rm -rf "$out"' EXIT
 
 echo "$("$blender" --version | head -n 1)"
 status=0
-for test in validate_mesh render_views; do
+for test in validate_mesh render_views inspect_character inspect_animation export_fbx; do
   if "$blender" -b --factory-startup --python-exit-code 1 --python "$root/dev/blender/test_$test.py" -- "$scripts/$test.py" "$out" > "$out/$test.log" 2>&1; then
     echo "$test: passed"
   else

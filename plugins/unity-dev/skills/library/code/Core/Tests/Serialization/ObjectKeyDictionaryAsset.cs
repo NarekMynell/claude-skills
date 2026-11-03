@@ -1,7 +1,7 @@
-using Company.Product.Core.Serialization;
+using ProjectName.Core.Serialization;
 using UnityEngine;
 
-namespace Company.Product.Core.Tests.Serialization
+namespace ProjectName.Core.Tests.Serialization
 {
     internal sealed class ObjectKeyDictionaryAsset : ScriptableObject
     {

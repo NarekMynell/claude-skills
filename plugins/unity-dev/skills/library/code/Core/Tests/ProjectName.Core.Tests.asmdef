@@ -1,11 +1,11 @@
 {
-    "name": "Company.Product.Core.Tests",
-    "rootNamespace": "Company.Product.Core.Tests",
+    "name": "ProjectName.Core.Tests",
+    "rootNamespace": "ProjectName.Core.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Company.Product.Core",
-        "Company.Product.Core.Editor",
+        "ProjectName.Core",
+        "ProjectName.Core.Editor",
         "VContainer",
         "UniTask",
         "Unity.Addressables",

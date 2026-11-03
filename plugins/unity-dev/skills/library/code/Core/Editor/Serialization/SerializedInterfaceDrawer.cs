@@ -1,10 +1,10 @@
 using System;
-using Company.Product.Core.Serialization;
+using ProjectName.Core.Serialization;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Editor.Serialization
+namespace ProjectName.Core.Editor.Serialization
 {
     [CustomPropertyDrawer(typeof(SerializedInterface<>))]
     internal sealed class SerializedInterfaceDrawer : PropertyDrawer

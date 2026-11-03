@@ -3,7 +3,7 @@
     "rootNamespace": "LibraryTests.PlayMode",
     "references": [
         "UnityEngine.TestRunner",
-        "Company.Product.Core",
+        "ProjectName.Core",
         "UniTask"
     ],
     "includePlatforms": [],

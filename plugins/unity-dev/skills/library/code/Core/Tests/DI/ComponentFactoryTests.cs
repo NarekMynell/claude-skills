@@ -1,11 +1,11 @@
 using System;
-using Company.Product.Core.DI;
+using ProjectName.Core.DI;
 using NUnit.Framework;
 using UnityEngine;
 using VContainer;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Tests.DI
+namespace ProjectName.Core.Tests.DI
 {
     public sealed class ComponentFactoryTests
     {

@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Company.Product.Core.Bootstrap;
-using Company.Product.Core.Providers;
+using ProjectName.Core.Bootstrap;
+using ProjectName.Core.Providers;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Is = UnityEngine.TestTools.Constraints.Is;
 
-namespace Company.Product.Core.Tests.Bootstrap
+namespace ProjectName.Core.Tests.Bootstrap
 {
     public sealed class BootstrapTests
     {

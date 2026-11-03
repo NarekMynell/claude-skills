@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.DI;
-using Company.Product.Core.Extensions;
+using ProjectName.Core.DI;
+using ProjectName.Core.Extensions;
 using UnityEngine;
 using UnityEngine.Pool;
 using UnityEngine.SceneManagement;
 
-namespace Company.Product.Core.Pooling
+namespace ProjectName.Core.Pooling
 {
     // Pool of inactive instances built on UnityEngine.Pool. Spawn positions an instance before activating it,
     // then calls IPoolable.OnSpawned on every IPoolable in its hierarchy; Despawn does the reverse.

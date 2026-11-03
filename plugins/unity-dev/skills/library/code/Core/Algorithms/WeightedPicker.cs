@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Company.Product.Core.Algorithms
+namespace ProjectName.Core.Algorithms
 {
     // Picks items with probability proportional to their weight. Zero-weight items are never picked.
     public sealed class WeightedPicker<T>

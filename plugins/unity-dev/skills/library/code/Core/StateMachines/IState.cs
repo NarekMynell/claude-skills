@@ -1,4 +1,4 @@
-namespace Company.Product.Core.StateMachines
+namespace ProjectName.Core.StateMachines
 {
     public interface IState
     {

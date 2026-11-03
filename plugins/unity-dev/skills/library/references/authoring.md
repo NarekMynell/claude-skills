@@ -2,9 +2,9 @@
 
 ## Structure
 
-- `code/` mirrors `Assets/_Project/Scripts/` of a project whose prefix is `Company.Product`:
-  - `code/Core/<Module>/`: generic building blocks, all in the `Company.Product.Core` assembly, with `Company.Product.Core.Editor` and `Company.Product.Core.Tests` beside it;
-  - `code/<Domain>/`: ready domains, each with its own assembly (`Company.Product.Audio`).
+- `code/` mirrors `Assets/_Project/Scripts/` of a project whose root namespace is `ProjectName`:
+  - `code/Core/<Module>/`: generic building blocks, all in the `ProjectName.Core` assembly, with `ProjectName.Core.Editor` and `ProjectName.Core.Tests` beside it;
+  - `code/<Domain>/`: ready domains, each with its own assembly (`ProjectName.Audio`).
 - Every module folder has a `README.md`: what it is for, when to use it, the API with a short example, dependencies (modules, packages, scripting defines), and setup steps (scene objects, configs, installer registration).
 - `CATALOG.md` lists every module with one line on its purpose, its destination and its dependencies. Update it in the same change as the module.
 - No `.meta` files: the code is copied into projects, and Unity creates them there.

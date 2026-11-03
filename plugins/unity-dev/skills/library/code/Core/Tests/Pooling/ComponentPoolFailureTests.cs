@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Company.Product.Core.DI;
-using Company.Product.Core.Pooling;
+using ProjectName.Core.DI;
+using ProjectName.Core.Pooling;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VContainer;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Tests.Pooling
+namespace ProjectName.Core.Tests.Pooling
 {
     public sealed class ComponentPoolFailureTests
     {

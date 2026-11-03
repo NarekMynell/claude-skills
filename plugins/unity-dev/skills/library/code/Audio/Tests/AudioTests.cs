@@ -2,7 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Audio.Tests
+namespace ProjectName.Audio.Tests
 {
     public sealed class AudioTests
     {

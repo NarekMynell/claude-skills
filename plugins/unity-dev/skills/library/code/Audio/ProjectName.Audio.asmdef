@@ -1,0 +1,9 @@
+{
+    "name": "ProjectName.Audio",
+    "rootNamespace": "ProjectName.Audio",
+    "references": [
+        "ProjectName.Core",
+        "VContainer"
+    ],
+    "autoReferenced": false
+}

@@ -1,11 +1,11 @@
 using System;
 using System.Threading;
-using Company.Product.Core.Bootstrap;
-using Company.Product.Core.Providers;
+using ProjectName.Core.Bootstrap;
+using ProjectName.Core.Providers;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 
-namespace Company.Product.Core.Tests.Bootstrap
+namespace ProjectName.Core.Tests.Bootstrap
 {
     public sealed class BootstrapShutdownTests
     {

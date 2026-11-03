@@ -1,6 +1,6 @@
-using Company.Product.Core.Algorithms;
+using ProjectName.Core.Algorithms;
 
-namespace Company.Product.Core.Tests.Algorithms
+namespace ProjectName.Core.Tests.Algorithms
 {
     // Rows are written top to bottom: '#' is a wall, anything else is walkable.
     internal sealed class TestGrid : IWalkableGrid

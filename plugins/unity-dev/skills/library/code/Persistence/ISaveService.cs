@@ -1,7 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
-namespace Company.Product.Persistence
+namespace ProjectName.Persistence
 {
     public interface ISaveService<TData> where TData : class
     {

@@ -5,7 +5,7 @@ using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Audio.Tests
+namespace ProjectName.Audio.Tests
 {
     public sealed class AudioServiceTests
     {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Company.Product.Core.Collections
+namespace ProjectName.Core.Collections
 {
     // Binary min-heap keyed by priority. Equal priorities dequeue in no particular order.
     public sealed class MinHeap<TElement, TPriority>

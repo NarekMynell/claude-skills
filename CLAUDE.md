@@ -8,7 +8,7 @@ This repo is a Claude Code plugin marketplace with one plugin, `unity-dev`: a pa
 - `plugins/<plugin>/.claude-plugin/plugin.json` is the plugin's manifest. Bump its `version` (semver) with every change users should receive.
 - `plugins/<plugin>/skills/<skill>/SKILL.md` is one skill. Its supporting files (`references/`, `scripts/`, `templates/`) sit next to it. When a skill runs, Claude receives its base directory, so link supporting files with paths relative to the skill folder.
 - `plugins/unity-dev/skills/standards/` is the one command users need: it loads the standards and routes Claude to every other skill, which it reads as a guide. A new skill gets a row in its table.
-- `plugins/unity-dev/skills/library/` holds the Unity code library: `CATALOG.md`, and `code/`, which mirrors a project's `Assets/_Project/Scripts/` with the placeholder prefix `Company.Product`. Projects copy from it under their own namespace. Authoring rules: `plugins/unity-dev/skills/library/references/authoring.md`.
+- `plugins/unity-dev/skills/library/` holds the Unity code library: `CATALOG.md`, and `code/`, which mirrors a project's `Assets/_Project/Scripts/` with the placeholder root namespace `ProjectName`. Projects copy from it under their own root namespace. Authoring rules: `plugins/unity-dev/skills/library/references/authoring.md`.
 
 Put every new skill in `unity-dev`, so one command reaches it. A skill in another plugin couldn't be read from `standards`: each plugin is copied to its own folder.
 
@@ -46,7 +46,8 @@ The user decides when a plugin acts: no skill Claude can load by itself, and one
 - `claude --plugin-dir plugins/<plugin> plugin details <plugin>` shows the per-skill token cost. Its always-on figure counts descriptions that `disable-model-invocation` keeps out of context.
 - End-to-end: run `claude -p --plugin-dir <repo>/plugins --add-dir <repo>/plugins "<prompt>"` from a test project outside this repo (this file would leak into one inside it). Check both directions: a plain prompt loads nothing from these plugins, and a command loads what it should. With the switch in the test project's `.claude/settings.json`, a plain prompt gets the standards. `--add-dir` stands in for the read rule, which matches only the installed cache.
 - The session-start hook alone: pipe `{"source":"startup"}` into `plugins/unity-dev/hooks/standards.sh` with `UNITY_DEV_STANDARDS=on` and `CLAUDE_PLUGIN_ROOT` set. The output must be valid JSON whose `additionalContext` holds the standards, with every variable resolved and no `$ARGUMENTS`.
-- Blender scripts: `dev/run-blender-tests.sh` runs them headless against scenes with known results (`dev/blender/`). A new check or script gets a case there.
+- Blender scripts: `dev/run-blender-tests.sh` runs them headless against scenes with known results (`dev/blender/`; the test mannequin and walk cycle are built by `mannequin.py` and `gait.py`). A new check or script gets a case there, both a defect it must catch and a clean case it must pass.
+- Humanoid import claims (sides, facing, root-motion speed) are tested in `LibraryTests/AnimationClaims/` on `dev/library-tests/Fixtures/Mannequin.fbx`. Regenerate the fixture with `dev/blender/make_fixtures.py` when the export settings or the mannequin change.
 - Library modules: see the authoring rules, including the player runs (`dev/run-library-tests.sh player`).
 - A C# snippet added to or changed in a guide or README is mirrored in `dev/library-tests/Assets/LibraryTests/SnippetCheck/SnippetCheck.cs`; a claim about how VContainer, MessagePipe, UniTask or Unity behaves gets a test in `LibraryTests/GuideClaims/`.
 

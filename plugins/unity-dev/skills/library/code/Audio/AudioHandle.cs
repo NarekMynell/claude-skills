@@ -1,6 +1,6 @@
 using System;
 
-namespace Company.Product.Audio
+namespace ProjectName.Audio
 {
     // Identifies one playing sound. Stays safe to use after the sound ends: it simply refers to nothing.
     public readonly struct AudioHandle : IEquatable<AudioHandle>

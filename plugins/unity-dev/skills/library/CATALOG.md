@@ -2,7 +2,7 @@
 
 Every module, where it goes in a project's `Assets/_Project/Scripts/`, and what it needs. Details and examples: each module's `README.md` under `code/`. Tested, but not guaranteed free of bugs: review each file before copying it, as the [library guide](SKILL.md) describes.
 
-Core modules share one assembly, `Company.Product.Core`, which references VContainer, UniTask and Addressables (`Unity.Addressables`, `Unity.ResourceManager`). A project that copies only some modules drops the references it doesn't need.
+Core modules share one assembly, `ProjectName.Core`, which references VContainer, UniTask and Addressables (`Unity.Addressables`, `Unity.ResourceManager`). A project that copies only some modules drops the references it doesn't need.
 
 | Module | Destination | Provides | Depends on |
 |---|---|---|---|

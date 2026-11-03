@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using Company.Product.Core.Collections;
+using ProjectName.Core.Collections;
 using NUnit.Framework;
 using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
 
-namespace Company.Product.Core.Tests.Collections
+namespace ProjectName.Core.Tests.Collections
 {
     public sealed class RingBufferTests
     {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Company.Product.Core.ContentLoading;
+using ProjectName.Core.ContentLoading;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.ResourceManagement;
@@ -10,7 +10,7 @@ using UnityEngine.TestTools;
 using Is = UnityEngine.TestTools.Constraints.Is;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Tests.ContentLoading
+namespace ProjectName.Core.Tests.ContentLoading
 {
     public sealed class AddressablesContentLoaderTests
     {

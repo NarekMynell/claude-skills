@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Company.Product.Core.Logging;
-using Company.Product.Core.Providers;
+using ProjectName.Core.Logging;
+using ProjectName.Core.Providers;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using VContainer.Unity;
 
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
     // Runs every registered IBootstrapStep in order and publishes the overall progress, so a loading
     // screen only subscribes to IProvider<BootstrapProgress>. A failing step stops the startup.

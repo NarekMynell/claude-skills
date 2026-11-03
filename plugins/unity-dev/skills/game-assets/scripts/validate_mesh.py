@@ -1,21 +1,32 @@
 """Validates mesh objects for export to a game engine.
 
-Run through the Blender MCP `execute_blender_code` tool. Optional settings, defined
-before this code:
+Run it as the game-assets guide's "Running the scripts" describes. Optional settings:
     TARGETS = ["Crate"]       object names; default: selected meshes, else all meshes
     TRIANGLE_BUDGET = 500     maximum triangles per object
     MERGE_DISTANCE = 1e-5     metres; vertices closer than this count as duplicates
+    ZFIGHT_DISTANCE = 0.002   metres; overlapping faces facing the same way closer than this z-fight, also across
+                              objects. Facing opposite ways (a box on a floor, a thin sheet) only counts in `info`,
+                              since back faces are culled; it matters for two-sided materials
+    ZFIGHT_IGNORE = []        objects that never render together with the others, such as collision meshes
+    FLAT_DETAIL = False       True when flat areas need their extra vertices: they deform (cloth, flags) or carry
+                              vertex-color detail
 
-Sets `result`: `passed`, and one entry per object with its non-zero issues and stats.
-Modifiers are applied first, so the check sees what the exporter writes.
+Sets `result`: `passed`, and one entry per object with its non-zero issues, `examples` (where to look, world
+coordinates in metres) and stats; `z_fighting` lists face pairs between objects. Modifiers are applied first, so
+the check sees what the exporter writes. LOD siblings (`_LOD0`, `_LOD1`) never count as z-fighting.
 """
 
+import math
+import re
 from collections import defaultdict
 
 import bmesh
 import bpy
+from mathutils.bvhtree import BVHTree
 
 AREA_EPSILON = 1e-10
+MAX_EXAMPLES = 3
+PARALLEL_COS = math.cos(math.radians(10.0))
 NORMAL_QUANTUM = 1e-3
 PLANE_QUANTUM = 1e-4
 OVERLAP_EPSILON = 1e-6
@@ -88,6 +99,7 @@ def _coplanar_overlaps(faces):
 
     same_facing = 0
     opposite_facing = 0
+    examples = []
     for key, members in buckets.items():
         if len(members) < 2:
             continue
@@ -100,6 +112,7 @@ def _coplanar_overlaps(faces):
             xs = [p[0] for p in polygon]
             ys = [p[1] for p in polygon]
             shapes.append({
+                "face": face,
                 "verts": frozenset(face.verts),
                 "sign": sign,
                 "polygon": polygon,
@@ -120,8 +133,10 @@ def _coplanar_overlaps(faces):
                     same_facing += 1
                 else:
                     opposite_facing += 1
+                if len(examples) < MAX_EXAMPLES:
+                    examples.append(shape["face"].calc_center_median())
             active.append(shape)
-    return same_facing, opposite_facing
+    return same_facing, opposite_facing, examples
 
 
 def _connected_components(faces):
@@ -201,26 +216,46 @@ def _transform_report(obj):
     return scale_ok and rotation_ok, [round(s, 4) for s in obj.scale], [round(r, 4) for r in rotation]
 
 
-def validate_object(obj, triangle_budget, merge_distance):
+def _flat_extra_triangles(bm):
+    """Triangles that dissolving perfectly flat areas would remove (UV seams, sharp edges and materials kept)."""
+    copy = bm.copy()
+    bmesh.ops.dissolve_limit(copy, angle_limit=math.radians(0.1), use_dissolve_boundaries=False,
+                             verts=copy.verts[:], edges=copy.edges[:], delimit={"MATERIAL", "SEAM", "SHARP", "UV"})
+    after = sum(len(face.verts) - 2 for face in copy.faces)
+    copy.free()
+    return after
+
+
+def _evaluated_bmesh(obj):
     depsgraph = bpy.context.evaluated_depsgraph_get()
     evaluated = obj.evaluated_get(depsgraph)
     bm = bmesh.new()
     bm.from_mesh(evaluated.to_mesh())
     evaluated.to_mesh_clear()
     bm.verts.index_update()
+    bm.faces.index_update()
     bm.normal_update()
+    return bm
 
-    vertex_sets = defaultdict(int)
+
+def _where(obj, points):
+    return [[round(c, 4) for c in obj.matrix_world @ p] for p in points[:MAX_EXAMPLES]]
+
+
+def validate_object(obj, triangle_budget, merge_distance, flat_detail=False):
+    bm = _evaluated_bmesh(obj)
+
+    vertex_sets = defaultdict(list)
     for face in bm.faces:
-        vertex_sets[frozenset(v.index for v in face.verts)] += 1
-    same_facing, opposite_facing = _coplanar_overlaps(bm.faces[:])
+        vertex_sets[frozenset(v.index for v in face.verts)].append(face)
+    same_facing, opposite_facing, overlap_examples = _coplanar_overlaps(bm.faces[:])
     triangles = sum(len(face.verts) - 2 for face in bm.faces)
     applied, scale, rotation = _transform_report(obj)
     uv_issues, uv_info = _uv_report(bm)
 
     issues = {
         "duplicate_vertices": len(bmesh.ops.find_doubles(bm, verts=bm.verts[:], dist=merge_distance)["targetmap"]),
-        "duplicate_faces": sum(count - 1 for count in vertex_sets.values() if count > 1),
+        "duplicate_faces": sum(len(faces) - 1 for faces in vertex_sets.values() if len(faces) > 1),
         "overlapping_coplanar_faces": same_facing,
         "back_to_back_coplanar_faces": opposite_facing,
         "non_manifold_edges": sum(1 for edge in bm.edges if len(edge.link_faces) > 2),
@@ -233,8 +268,23 @@ def validate_object(obj, triangle_budget, merge_distance):
         "over_triangle_budget": triangle_budget is not None and triangles > triangle_budget,
     }
     issues.update(uv_issues)
+    flat_after = _flat_extra_triangles(bm)
+    extra = triangles - flat_after
+    if not flat_detail and extra >= max(20, 0.5 * triangles):
+        issues["over_tessellated_flat_areas"] = extra
+    examples = {
+        "duplicate_faces": [faces[1].calc_center_median() for faces in vertex_sets.values() if len(faces) > 1],
+        "overlapping_coplanar_faces": overlap_examples,
+        "back_to_back_coplanar_faces": overlap_examples,
+        "non_manifold_edges": [(e.verts[0].co + e.verts[1].co) / 2 for e in bm.edges if len(e.link_faces) > 2],
+        "loose_vertices": [v.co for v in bm.verts if not v.link_edges],
+        "loose_edges": [(e.verts[0].co + e.verts[1].co) / 2 for e in bm.edges if not e.link_faces],
+        "zero_area_faces": [f.calc_center_median() for f in bm.faces if f.calc_area() <= AREA_EPSILON],
+    }
+    examples = {key: _where(obj, points) for key, points in examples.items() if issues.get(key) and points}
     info = {
         "triangles": triangles,
+        "flat_area_extra_triangles": extra,
         "vertices": len(bm.verts),
         "ngons": sum(1 for face in bm.faces if len(face.verts) > 4),
         "boundary_edges": sum(1 for edge in bm.edges if len(edge.link_faces) == 1),
@@ -245,10 +295,69 @@ def validate_object(obj, triangle_budget, merge_distance):
     }
     info.update(uv_info)
     bm.free()
-    return {"name": obj.name, "issues": {k: v for k, v in issues.items() if v}, "info": info}
+    report = {"name": obj.name, "issues": {k: v for k, v in issues.items() if v}, "info": info}
+    if examples:
+        report["examples"] = examples
+    return report
 
 
-def validate(targets=None, triangle_budget=None, merge_distance=1e-5):
+def _lod_base(name):
+    match = re.match(r"^(.*)_LOD\d+$", name)
+    return match.group(1) if match else None
+
+
+def _z_fighting(objects, distance, ignore):
+    """Parallel faces that overlap closer than `distance`: between objects, or within one object when not exactly
+    coplanar (the exact case has its own counts). Samples each face's center and points toward its corners."""
+    meshes = []
+    for obj in objects:
+        if obj.name in ignore:
+            continue
+        bm = _evaluated_bmesh(obj)
+        bm.transform(obj.matrix_world)
+        bm.normal_update()
+        meshes.append((obj.name, bm))
+    points, polygons, owners = [], [], []
+    for index, (name, bm) in enumerate(meshes):
+        offset = len(points)
+        points.extend(v.co.copy() for v in bm.verts)
+        for face in bm.faces:
+            polygons.append([offset + v.index for v in face.verts])
+            owners.append((index, face))
+    pairs = {}
+    if polygons:
+        tree = BVHTree.FromPolygons(points, polygons)
+        for index, (mesh_index, face) in enumerate(owners):
+            if face.calc_area() <= AREA_EPSILON:
+                continue
+            normal = face.normal
+            corners = set(polygons[index])
+            center = face.calc_center_median()
+            for sample in [center] + [center.lerp(v.co, 0.6) for v in face.verts]:
+                for location, other_normal, other, gap in tree.find_nearest_range(sample, distance):
+                    if other == index or (min(index, other), max(index, other)) in pairs:
+                        continue
+                    if corners & set(polygons[other]) or abs(normal.dot(other_normal)) < PARALLEL_COS:
+                        continue
+                    offset = location - sample
+                    if gap > 1e-9 and abs(offset.normalized().dot(other_normal)) < 0.99:
+                        continue  # the nearest point is on the other face's edge: they don't overlap here
+                    other_mesh = owners[other][0]
+                    same_object = other_mesh == mesh_index
+                    if same_object and gap <= 1e-4:
+                        continue
+                    names = (meshes[mesh_index][0], meshes[other_mesh][0])
+                    if not same_object and _lod_base(names[0]) and _lod_base(names[0]) == _lod_base(names[1]):
+                        continue
+                    facing = "z_fighting" if normal.dot(other_normal) > 0 else "back_to_back"
+                    pairs[(min(index, other), max(index, other))] = (facing, names, [round(c, 4) for c in sample], round(gap * 1000, 2))
+    for _, bm in meshes:
+        bm.free()
+    return list(pairs.values())
+
+
+def validate(targets=None, triangle_budget=None, merge_distance=1e-5, zfight_distance=0.002, zfight_ignore=(),
+             flat_detail=False):
     missing = []
     if targets:
         objects = []
@@ -261,9 +370,24 @@ def validate(targets=None, triangle_budget=None, merge_distance=1e-5):
     else:
         objects = [o for o in bpy.context.selected_objects if o.type == "MESH"]
         objects = objects or [o for o in bpy.context.scene.objects if o.type == "MESH"]
-    reports = [validate_object(o, triangle_budget, merge_distance) for o in objects if o.type == "MESH"]
+    meshes = [o for o in objects if o.type == "MESH"]
+    reports = [validate_object(o, triangle_budget, merge_distance, flat_detail) for o in meshes]
+    by_name = {r["name"]: r for r in reports}
+    between = []
+    for facing, names, location, gap_mm in _z_fighting(meshes, zfight_distance, set(zfight_ignore)):
+        for name in set(names):
+            entry = by_name[name]
+            bucket = entry["issues"] if facing == "z_fighting" else entry["info"]
+            bucket[facing] = bucket.get(facing, 0) + 1
+            examples = entry.setdefault("examples", {}).setdefault(facing, [])
+            if len(examples) < MAX_EXAMPLES:
+                examples.append({"at": location, "gap_mm": gap_mm, "with": names[1] if names[0] == name else names[0]})
+        if names[0] != names[1] and facing == "z_fighting" and len(between) < 10:
+            between.append({"objects": list(names), "at": location, "gap_mm": gap_mm, "kind": facing})
     passed = not missing and all(not report["issues"] for report in reports)
     report = {"passed": passed, "objects": reports}
+    if between:
+        report["z_fighting_between_objects"] = between
     if missing:
         report["missing_objects"] = missing
     return report
@@ -273,4 +397,7 @@ result = validate(
     globals().get("TARGETS"),
     globals().get("TRIANGLE_BUDGET"),
     globals().get("MERGE_DISTANCE", 1e-5),
+    globals().get("ZFIGHT_DISTANCE", 0.002),
+    globals().get("ZFIGHT_IGNORE", ()),
+    globals().get("FLAT_DETAIL", False),
 )

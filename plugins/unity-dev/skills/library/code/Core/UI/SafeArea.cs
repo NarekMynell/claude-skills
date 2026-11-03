@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Company.Product.Core.UI
+namespace ProjectName.Core.UI
 {
     // Fits this RectTransform to Screen.safeArea. Put it on a full-screen container under a screen-space canvas,
     // with the interactive content inside it; backgrounds stay outside so they still fill the screen.

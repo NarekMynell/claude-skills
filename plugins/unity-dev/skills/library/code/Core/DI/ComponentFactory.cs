@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 using VContainer;
 using VContainer.Unity;
 
-namespace Company.Product.Core.DI
+namespace ProjectName.Core.DI
 {
     // Instantiates a prefab through the resolver, so the new hierarchy receives its [Inject] dependencies.
     // Without a parent, the instance joins the active scene, like Object.Instantiate. VContainer alone would put it

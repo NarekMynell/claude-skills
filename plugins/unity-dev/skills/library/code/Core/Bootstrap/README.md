@@ -20,5 +20,5 @@ builder.RegisterBootstrapFlow();
 - **Typical steps:** frame rate and quality, DOTween init, Addressables init and preload, saves and settings, app services (audio, localization, analytics), pool and shader warm-up, then the first scene.
 - `FrameRateStep` + `FrameRateConfig`: mobile gets no vSync and an explicit target (Unity's mobile default is 30 fps), Web gets vSync (software timing micro-stutters there), desktop gets vSync.
 - `LoadFirstSceneStep` + `FirstSceneConfig` opens the first scene. In the Editor it opens the scene that was open when Play was pressed instead.
-- **Play from Bootstrap** (Editor): Play always starts from the first enabled scene of the active Build Profile, saving modified scenes first. Play Mode test runs are left alone. Turn it off in **Tools > Company.Product > Play From Bootstrap**, per user and project.
+- **Play from Bootstrap** (Editor): Play always starts from the first enabled scene of the active Build Profile, saving modified scenes first. Play Mode test runs are left alone. Turn it off in **Tools > ProjectName > Play From Bootstrap**, per user and project.
 - Keep the Bootstrap scene tiny: a camera, a loading screen with small assets, and the scope. Something is on screen on the first frame.

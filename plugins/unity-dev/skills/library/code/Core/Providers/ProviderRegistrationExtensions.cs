@@ -1,6 +1,6 @@
 using VContainer;
 
-namespace Company.Product.Core.Providers
+namespace ProjectName.Core.Providers
 {
     public static class ProviderRegistrationExtensions
     {

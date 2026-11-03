@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using VContainer;
 
-namespace Company.Product.Core.DI
+namespace ProjectName.Core.DI
 {
     // Last resort for code that DI can't reach. Every call site needs a comment explaining why.
     // Set by the ModularLifetimeScope that exposes itself, and cleared when that scope's container is disposed.

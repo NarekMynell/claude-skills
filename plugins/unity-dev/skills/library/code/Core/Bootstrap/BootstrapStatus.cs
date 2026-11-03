@@ -1,4 +1,4 @@
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
     public enum BootstrapStatus
     {

@@ -7,7 +7,7 @@ using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-namespace Company.Product.Persistence.Tests
+namespace ProjectName.Persistence.Tests
 {
     // File work runs on the thread pool, so these tests await it instead of blocking.
     public sealed class FileSaveStorageTests

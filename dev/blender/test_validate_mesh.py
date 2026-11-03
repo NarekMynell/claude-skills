@@ -209,6 +209,94 @@ def mirrored_onto_itself():
 # The mirror copy lands exactly on the original: only visible if modifiers are applied first.
 case("modifier output is checked", ["duplicate_vertices", "overlapping_coplanar_faces"], mirrored_onto_itself)
 
+
+
+def run_many(names, **settings):
+    g = {"TARGETS": names}
+    g.update(settings)
+    exec(compile(script, "validate_mesh.py", "exec"), g)
+    return g["result"]
+
+
+def scene_case(label, expected, build_scene, **settings):
+    """expected: object name -> sorted issue names."""
+    clear()
+    names = build_scene()
+    report = run_many(names, **settings)
+    found = {o["name"]: sorted(o["issues"]) for o in report["objects"]}
+    ok = found == {k: sorted(v) for k, v in expected.items()} and report["passed"] == (not any(expected.values()))
+    cases.append({"case": label, "expected": expected, "found": found, "ok": ok, "issues": [o["issues"] for o in report["objects"]]})
+
+
+def quad(bm, z, size=1.0, flip=False, shift=0.0):
+    points = [(shift, 0, z), (shift + size, 0, z), (shift + size, size, z), (shift, size, z)]
+    verts = [bm.verts.new(p) for p in (reversed(points) if flip else points)]
+    bm.faces.new(verts)
+
+
+def floor_and_box():
+    floor = from_bmesh("Floor", lambda bm: quad(bm, 0.0, size=2.0, shift=-0.5))
+    box = from_bmesh("Box", cube)
+    box.location.z = 0.5  # its bottom face lies on the floor, facing down: back to back with the floor
+    bpy.ops.object.select_all(action="DESELECT")
+    box.select_set(True)
+    bpy.context.view_layer.objects.active = box
+    bpy.ops.object.transform_apply(location=True)
+    return ["Floor", "Box"]
+
+
+# Facing opposite ways, the two faces never show at once with back faces culled: information only.
+scene_case("box standing on a floor", {"Floor": [], "Box": []}, floor_and_box)
+
+
+def stacked_objects(gap):
+    def build():
+        from_bmesh("Lower", lambda bm: quad(bm, 0.0))
+        from_bmesh("Upper", lambda bm: quad(bm, gap, shift=0.3))
+        return ["Lower", "Upper"]
+    return build
+
+
+scene_case("two objects' faces 0.5 mm apart", {"Lower": ["z_fighting"], "Upper": ["z_fighting"]}, stacked_objects(0.0005))
+scene_case("decal 5 mm above a surface", {"Lower": [], "Upper": []}, stacked_objects(0.005))
+scene_case("decal 5 mm above, with a 1 cm z-fighting distance", {"Lower": ["z_fighting"], "Upper": ["z_fighting"]},
+           stacked_objects(0.005), ZFIGHT_DISTANCE=0.01)
+
+
+def near_coplanar_in_one_object():
+    def build(bm):
+        quad(bm, 0.0)
+        quad(bm, 0.0005, shift=0.3)
+    from_bmesh("Layered", build)
+    return ["Layered"]
+
+
+scene_case("one object, faces 0.5 mm apart", {"Layered": ["z_fighting"]}, near_coplanar_in_one_object)
+
+
+def lods():
+    from_bmesh("Rock_LOD0", cube)
+    from_bmesh("Rock_LOD1", cube)
+    return ["Rock_LOD0", "Rock_LOD1"]
+
+
+scene_case("LOD siblings in the same place", {"Rock_LOD0": [], "Rock_LOD1": []}, lods)
+
+
+def grid():
+    def build(bm):
+        bmesh.ops.create_grid(bm, x_segments=10, y_segments=10, size=1.0)
+    obj = from_bmesh("Grid", build, uv=False)
+    layer = obj.data.uv_layers.new(name="UVMap")
+    for loop in obj.data.loops:  # one continuous island: a planar projection
+        co = obj.data.vertices[loop.vertex_index].co
+        layer.data[loop.index].uv = ((co.x + 1) / 2, (co.y + 1) / 2)
+    return ["Grid"]
+
+
+scene_case("flat plane split into 162 triangles", {"Grid": ["over_tessellated_flat_areas"]}, grid)
+scene_case("flat plane that deforms", {"Grid": []}, grid, FLAT_DETAIL=True)
+
 failed = [c for c in cases if not c["ok"]]
 for c in cases:
     print("CASE", "ok  " if c["ok"] else "FAIL", c["case"], "expected", c["expected"], "found", c["found"])

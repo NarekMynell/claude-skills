@@ -1,13 +1,13 @@
 using System;
-using Company.Product.Core.Culling;
-using Company.Product.Core.Lifecycle;
+using ProjectName.Core.Culling;
+using ProjectName.Core.Lifecycle;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Tests.Culling
+namespace ProjectName.Core.Tests.Culling
 {
     public sealed class VisibilityPauserTests
     {

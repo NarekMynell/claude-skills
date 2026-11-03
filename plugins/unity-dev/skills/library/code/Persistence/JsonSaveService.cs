@@ -6,7 +6,7 @@ using Cysharp.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Company.Product.Persistence
+namespace ProjectName.Persistence
 {
     // Saves TData as JSON in an envelope with its schema version: { "version": 2, "data": { ... } }.
     // Loading runs the migrations from the saved version up to the current one, and refuses saves from a newer version.

@@ -1,6 +1,6 @@
 using System;
 
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
     public readonly struct BootstrapProgress : IEquatable<BootstrapProgress>
     {

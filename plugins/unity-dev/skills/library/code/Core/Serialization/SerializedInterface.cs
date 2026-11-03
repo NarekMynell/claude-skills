@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Serialization
+namespace ProjectName.Core.Serialization
 {
     // An Inspector field for a MonoBehaviour or ScriptableObject that implements T.
     [Serializable]

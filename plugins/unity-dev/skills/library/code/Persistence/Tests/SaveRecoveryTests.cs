@@ -7,7 +7,7 @@ using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-namespace Company.Product.Persistence.Tests
+namespace ProjectName.Persistence.Tests
 {
     public sealed class SaveRecoveryTests
     {

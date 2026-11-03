@@ -1,7 +1,7 @@
 using System;
 using VContainer;
 
-namespace Company.Product.Persistence
+namespace ProjectName.Persistence
 {
     // Registers the module's internal implementations under its public interfaces.
     public static class PersistenceRegistrationExtensions

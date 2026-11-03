@@ -1,6 +1,6 @@
 using Newtonsoft.Json.Linq;
 
-namespace Company.Product.Persistence
+namespace ProjectName.Persistence
 {
     // Moves save data from FromVersion to FromVersion + 1 by editing its JSON.
     public interface ISaveMigration

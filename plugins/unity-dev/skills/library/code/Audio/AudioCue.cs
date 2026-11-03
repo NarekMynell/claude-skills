@@ -2,10 +2,10 @@ using System;
 using UnityEngine;
 using UnityEngine.Audio;
 
-namespace Company.Product.Audio
+namespace ProjectName.Audio
 {
     // One game sound: its variants, mix output and variation. Data only; AudioService plays it.
-    [CreateAssetMenu(menuName = "Company.Product/Audio/Audio Cue", fileName = "AudioCue")]
+    [CreateAssetMenu(menuName = "ProjectName/Audio/Audio Cue", fileName = "AudioCue")]
     public sealed class AudioCue : ScriptableObject
     {
         [Tooltip("Variants picked at random, never the same one twice in a row.")]

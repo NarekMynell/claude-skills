@@ -1,5 +1,5 @@
 using System.Linq;
-using Company.Product.Core.Editor.Serialization;
+using ProjectName.Core.Editor.Serialization;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -7,7 +7,7 @@ using UnityEngine.TestTools;
 using Is = UnityEngine.TestTools.Constraints.Is;
 using Object = UnityEngine.Object;
 
-namespace Company.Product.Core.Tests.Serialization
+namespace ProjectName.Core.Tests.Serialization
 {
     public sealed class SerializationTests
     {
@@ -78,8 +78,8 @@ namespace Company.Product.Core.Tests.Serialization
         public void SubclassSelector_LeavesOutTypesThatDontExistInBuilds()
         {
             Assert.That(SubclassSelectorDrawer.AssignableTypes(typeof(TestStrategy)), Is.Empty);
-            Assert.That(SubclassSelectorDrawer.PlayerAssemblyNames, Does.Contain("Company.Product.Core"));
-            Assert.That(SubclassSelectorDrawer.PlayerAssemblyNames, Does.Not.Contain("Company.Product.Core.PlayModeTests"));
+            Assert.That(SubclassSelectorDrawer.PlayerAssemblyNames, Does.Contain("ProjectName.Core"));
+            Assert.That(SubclassSelectorDrawer.PlayerAssemblyNames, Does.Not.Contain("ProjectName.Core.PlayModeTests"));
         }
 
         [Test]

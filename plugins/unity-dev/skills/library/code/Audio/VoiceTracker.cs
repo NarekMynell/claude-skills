@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Company.Product.Audio
+namespace ProjectName.Audio
 {
     // Bookkeeping of playing voices, separate from AudioSource playback so the limits are testable.
     internal sealed class VoiceTracker

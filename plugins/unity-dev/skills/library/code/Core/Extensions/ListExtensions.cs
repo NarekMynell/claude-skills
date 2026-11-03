@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Company.Product.Core.Extensions
+namespace ProjectName.Core.Extensions
 {
     public static class ListExtensions
     {

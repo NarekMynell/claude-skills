@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Company.Product.Core.StateMachines;
+using ProjectName.Core.StateMachines;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using Is = UnityEngine.TestTools.Constraints.Is;
 
-namespace Company.Product.Core.Tests.StateMachines
+namespace ProjectName.Core.Tests.StateMachines
 {
     public sealed class StateMachineTests
     {

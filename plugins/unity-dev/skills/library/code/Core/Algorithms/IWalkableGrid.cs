@@ -1,4 +1,4 @@
-namespace Company.Product.Core.Algorithms
+namespace ProjectName.Core.Algorithms
 {
     public interface IWalkableGrid
     {

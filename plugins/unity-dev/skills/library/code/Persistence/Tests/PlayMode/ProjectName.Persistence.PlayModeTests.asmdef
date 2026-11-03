@@ -1,9 +1,9 @@
 {
-    "name": "Company.Product.Persistence.PlayModeTests",
-    "rootNamespace": "Company.Product.Persistence.PlayModeTests",
+    "name": "ProjectName.Persistence.PlayModeTests",
+    "rootNamespace": "ProjectName.Persistence.PlayModeTests",
     "references": [
         "UnityEngine.TestRunner",
-        "Company.Product.Persistence",
+        "ProjectName.Persistence",
         "VContainer",
         "UniTask"
     ],

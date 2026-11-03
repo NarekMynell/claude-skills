@@ -1,9 +1,0 @@
-{
-    "name": "Company.Product.Audio",
-    "rootNamespace": "Company.Product.Audio",
-    "references": [
-        "Company.Product.Core",
-        "VContainer"
-    ],
-    "autoReferenced": false
-}

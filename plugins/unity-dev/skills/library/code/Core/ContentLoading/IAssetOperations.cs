@@ -1,6 +1,6 @@
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-namespace Company.Product.Core.ContentLoading
+namespace ProjectName.Core.ContentLoading
 {
     // Test seam over the Addressables calls the loader makes.
     internal interface IAssetOperations

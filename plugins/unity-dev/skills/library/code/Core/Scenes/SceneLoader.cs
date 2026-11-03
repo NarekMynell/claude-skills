@@ -4,7 +4,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Company.Product.Core.Scenes
+namespace ProjectName.Core.Scenes
 {
     // Shows the transition, loads the scene, then hides the transition, which is hidden however the load ends.
     // The load starts only once the transition covers the screen, and the scene activates as soon as it has loaded:

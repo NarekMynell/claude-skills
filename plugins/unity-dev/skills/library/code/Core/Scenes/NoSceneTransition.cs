@@ -1,7 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
-namespace Company.Product.Core.Scenes
+namespace ProjectName.Core.Scenes
 {
     public sealed class NoSceneTransition : ISceneTransition
     {

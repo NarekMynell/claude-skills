@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
-namespace Company.Product.Persistence
+namespace ProjectName.Persistence
 {
     // Where save data lives. Keys are file-name-safe identifiers such as "progress".
     public interface ISaveStorage

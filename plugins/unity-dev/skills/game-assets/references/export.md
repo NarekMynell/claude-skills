@@ -2,6 +2,8 @@
 
 This reference can be wrong or out of date: verify what you rely on, as the [standards](../../standards/SKILL.md#verify-before-relying-on-them) require. Check every exporter option in the connected Blender before use; they change between versions.
 
+[export_fbx.py](../scripts/export_fbx.py) applies these settings after the asset's checks pass: export through it rather than calling the exporter yourself. The settings below are what it uses, and what to check when an import looks wrong.
+
 ## FBX: static meshes
 
 Select the objects to export, then run through `execute_blender_code`:
@@ -43,8 +45,16 @@ Verified with Blender 5.2.1 and Unity 6000.6.2f1: a static mesh imports with rot
     use_armature_deform_only=True,    # no control or helper bones in the game rig
     add_leaf_bones=False,
     bake_anim=True,                   # IK and constraints baked into keyframes
-    use_mesh_modifiers=False,         # keeps shape keys
+    bake_anim_use_all_actions=False,  # the current action; one clip per file: Character@Walk.fbx
+    bake_anim_use_nla_strips=False,
+    bake_anim_force_startend_keying=True,
+    bake_anim_simplify_factor=0.0,    # no key reduction: reduced keys move planted feet and hands
+    use_mesh_modifiers=False,         # only with shape keys; True otherwise, see below
 ```
+
+- **Frame range.** The exporter bakes the scene's frame range, not the action's: set the scene's start and end to the action's range first (`export_fbx.py` does, and restores them).
+- **Modifiers and shape keys.** Armature modifiers are never applied on export. Other modifiers, such as Mirror, are applied with `use_mesh_modifiers=True`, which drops shape keys. A mesh with shape keys exports with `False`, so apply its other modifiers to the source first.
+- **Deform-only export** writes a non-deforming bone anyway when a deform bone is its child: every deform bone's parent must deform too (Rigify's `DEF` bones hang under `ORG` bones, so a Rigify rig doesn't export clean).
 
 Verified with Blender 5.2.1 and Unity 6000.6.2f1 on a two-bone test rig whose action moves it forward and bends it: the model root imports with rotation 0 and scale 1, the mesh faces +Z, and the animation moves it along +Z. Under the root, the `Armature` and mesh objects carry an X rotation of −90° (shown as 270) and the root bone +90°. That is Blender's axis conversion, and together they are correct: never zero them. Bake Axis Conversion stays off here too: it turned the rig around to face −Z.
 
@@ -76,7 +86,7 @@ Set them in the model's import settings, or with an `AssetPostprocessor` when ev
 - **Animation Type** None for static meshes (Unity otherwise imports them as Generic); **Import Animation** off.
 - **Generate Colliders** off: colliders come from primitives or a dedicated collision mesh. It's acceptable only on static environment pieces whose render mesh is already simple.
 - **Generate Lightmap UVs** on for static meshes in baked lighting without their own second UV set.
-- **Rigs:** set **Avatar Definition** to **Create From This Model**, then turn **Optimize Game Objects** on. Unity 6.6 imports a Generic rig with no avatar, and without one the option does nothing. Bones that props or effects attach to go in **Extra Transforms to Expose**. **Skin Weights** at most 4.
+- **Rigs:** Animation Type **Humanoid** for humanoid characters ([animation guide](../../animation/SKILL.md#3-import-in-unity)), **Generic** for everything else. Set **Avatar Definition** to **Create From This Model**, then turn **Optimize Game Objects** on. Unity 6.6 imports a Generic rig with no avatar, and without one the option does nothing. Bones that props or effects attach to go in **Extra Transforms to Expose**. **Skin Weights** at most 4.
 - **Animator culling.** The Animator that Unity adds to a model with an avatar uses **Cull Update Transforms**: off screen, its transforms stop updating. A character whose bone positions gameplay reads while off screen needs **Always Animate**.
 
 ## Check in Unity

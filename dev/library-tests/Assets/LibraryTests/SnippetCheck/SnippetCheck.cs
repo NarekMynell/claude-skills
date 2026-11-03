@@ -4,19 +4,19 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Company.Product.Audio;
-using Company.Product.Core.Algorithms;
-using Company.Product.Core.Bootstrap;
-using Company.Product.Core.ContentLoading;
-using Company.Product.Core.Culling;
-using Company.Product.Core.DI;
-using Company.Product.Core.Lifecycle;
-using Company.Product.Core.Logging;
-using Company.Product.Core.Pooling;
-using Company.Product.Core.Providers;
-using Company.Product.Core.Scenes;
-using Company.Product.Core.Serialization;
-using Company.Product.Persistence;
+using ProjectName.Audio;
+using ProjectName.Core.Algorithms;
+using ProjectName.Core.Bootstrap;
+using ProjectName.Core.ContentLoading;
+using ProjectName.Core.Culling;
+using ProjectName.Core.DI;
+using ProjectName.Core.Lifecycle;
+using ProjectName.Core.Logging;
+using ProjectName.Core.Pooling;
+using ProjectName.Core.Providers;
+using ProjectName.Core.Scenes;
+using ProjectName.Core.Serialization;
+using ProjectName.Persistence;
 using Cysharp.Threading.Tasks;
 using MessagePipe;
 using Newtonsoft.Json.Linq;
@@ -355,6 +355,102 @@ namespace LibraryTests.SnippetCheck.Library
         {
             var progress = await _saves.LoadAsync(cancellationToken) ?? new ProgressData();
             await _saves.SaveAsync(progress, cancellationToken);
+        }
+    }
+}
+
+namespace LibraryTests.SnippetCheck.Animation
+{
+    // unity-setup.md (animation) #1
+    [RequireComponent(typeof(Animator), typeof(CharacterController))]
+    public sealed class RootMotionMover : MonoBehaviour
+    {
+        private const float GroundedFallSpeed = -2f; // keeps the controller on the ground down slopes and steps
+
+        private Animator _animator;
+        private CharacterController _controller;
+        private float _fallSpeed;
+
+        private void Awake()
+        {
+            _animator = GetComponent<Animator>();
+            _controller = GetComponent<CharacterController>();
+        }
+
+        private void OnAnimatorMove()
+        {
+            _fallSpeed = _controller.isGrounded ? GroundedFallSpeed : _fallSpeed + Physics.gravity.y * Time.deltaTime;
+            Vector3 delta = _animator.deltaPosition; // root motion, upward included: jumps and stair clips
+            delta.y += _fallSpeed * Time.deltaTime;
+            _controller.Move(delta);
+            transform.rotation *= _animator.deltaRotation;
+        }
+    }
+
+    internal sealed class LocomotionView : MonoBehaviour
+    {
+        private Animator _animator; // stub
+
+        // unity-setup.md (animation) #2
+        private static readonly int SpeedId = Animator.StringToHash("Speed");
+        private static readonly int PlaybackId = Animator.StringToHash("Playback");
+
+        [SerializeField, Min(0.01f)] private float _fastestClipSpeed = 5.5f; // the run clip's speed on this character, m/s
+
+        private void UpdateLocomotion(Vector3 velocity)
+        {
+            float speed = new Vector3(velocity.x, 0f, velocity.z).magnitude;
+            _animator.SetFloat(SpeedId, speed);
+            _animator.SetFloat(PlaybackId, speed > _fastestClipSpeed ? speed / _fastestClipSpeed : 1f);
+        }
+
+        private void Update() => UpdateLocomotion(Vector3.zero);
+    }
+
+    // unity-setup.md (animation) #3
+    [RequireComponent(typeof(Animator))]
+    public sealed class FootPlacement : MonoBehaviour
+    {
+        private static readonly int LeftFootWeightId = Animator.StringToHash("LeftFootIK");
+        private static readonly int RightFootWeightId = Animator.StringToHash("RightFootIK");
+
+        [SerializeField] private LayerMask _ground;
+        [SerializeField, Min(0f)] private float _reach = 0.5f;      // how far above and below a foot to look for ground
+        [SerializeField, Min(0f)] private float _maxDrop = 0.4f;    // how far the body may lower for a low foot
+        [SerializeField, Min(0f)] private float _bodySpeed = 1.5f;  // how fast the body follows, m/s
+
+        private Animator _animator;
+        private float _bodyDrop;
+
+        private void Awake() => _animator = GetComponent<Animator>();
+
+        private void OnAnimatorIK(int layerIndex)
+        {
+            float left = Place(AvatarIKGoal.LeftFoot, _animator.GetFloat(LeftFootWeightId), _animator.leftFeetBottomHeight);
+            float right = Place(AvatarIKGoal.RightFoot, _animator.GetFloat(RightFootWeightId), _animator.rightFeetBottomHeight);
+            float drop = Mathf.Min(Mathf.Max(left, right), _maxDrop);
+            _bodyDrop = Mathf.MoveTowards(_bodyDrop, drop, _bodySpeed * Time.deltaTime);
+            _animator.bodyPosition += Vector3.down * _bodyDrop;
+        }
+
+        // Puts a planted foot on the ground under it. Returns how far below the animated foot that ground is.
+        private float Place(AvatarIKGoal goal, float weight, float soleHeight)
+        {
+            Vector3 foot = _animator.GetIKPosition(goal);
+            var ray = new Ray(foot + Vector3.up * _reach, Vector3.down);
+            if (weight <= 0f || !Physics.Raycast(ray, out RaycastHit hit, _reach * 2f, _ground, QueryTriggerInteraction.Ignore))
+            {
+                _animator.SetIKPositionWeight(goal, 0f);
+                _animator.SetIKRotationWeight(goal, 0f);
+                return 0f;
+            }
+
+            Vector3 target = hit.point + Vector3.up * soleHeight;
+            _animator.SetIKPositionWeight(goal, weight);
+            _animator.SetIKRotationWeight(goal, weight);
+            _animator.SetIKPosition(goal, target);
+            _animator.SetIKRotation(goal, Quaternion.FromToRotation(Vector3.up, hit.normal) * _animator.GetIKRotation(goal));
+            return Mathf.Max(0f, foot.y - target.y) * weight;
         }
     }
 }

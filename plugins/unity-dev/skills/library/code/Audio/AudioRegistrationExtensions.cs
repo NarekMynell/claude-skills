@@ -2,7 +2,7 @@ using System;
 using VContainer;
 using VContainer.Unity;
 
-namespace Company.Product.Audio
+namespace ProjectName.Audio
 {
     // Registers the module's internal implementation under its public interface.
     public static class AudioRegistrationExtensions

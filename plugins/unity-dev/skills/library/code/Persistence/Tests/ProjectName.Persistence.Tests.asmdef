@@ -1,10 +1,10 @@
 {
-    "name": "Company.Product.Persistence.Tests",
-    "rootNamespace": "Company.Product.Persistence.Tests",
+    "name": "ProjectName.Persistence.Tests",
+    "rootNamespace": "ProjectName.Persistence.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Company.Product.Persistence",
+        "ProjectName.Persistence",
         "UniTask"
     ],
     "includePlatforms": [

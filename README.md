@@ -1,6 +1,6 @@
 # narek-skills
 
-[Claude Code](https://claude.com/claude-code) plugin `unity-dev` for professional Unity game development: architecture and C# standards, new-project setup, game design, UI, performance, audio and VFX quality bars, game-ready 3D models through Blender, project documentation, a tested code library and a toolchain check.
+[Claude Code](https://claude.com/claude-code) plugin `unity-dev` for professional Unity game development: architecture and C# standards, new-project setup, game design, UI, performance, audio and VFX quality bars, game-ready 3D models, characters and animation through Blender, project documentation, a tested code library and a toolchain check.
 
 ## How it works
 
@@ -10,7 +10,7 @@ You need one command. `/unity-dev:standards` gives Claude every guide in the plu
 /unity-dev:standards Create a new mobile puzzle game: <concept, mechanics, art style, models, screens...>
 ```
 
-Claude reads the guides the task needs, from the new-project setup to game design, code, UI and the Blender models, and decides what applies. It follows the standards strictly; where one doesn't fit your project and a different solution is clearly better, it uses that, tells you why and records it in the project's `CLAUDE.md`.
+Claude reads the guides the task needs, from the new-project setup to game design, code, UI, the Blender models, characters and their animation, and decides what applies. It follows the standards strictly; where one doesn't fit your project and a different solution is clearly better, it uses that, tells you why and records it in the project's `CLAUDE.md`.
 
 The guides and the code library can contain mistakes or fall behind new Unity and package versions, and they say so. Claude checks every API, setting and library module it relies on against the official documentation or the package source for your project's exact versions, reviews library code before copying it, and tells you when a guide turns out wrong.
 
@@ -30,10 +30,10 @@ The switch is `UNITY_DEV_STANDARDS` under `env` in the project's `.claude/settin
 
 ## Quality
 
-- The unity-dev code library is covered by 172 automated tests: 143 Edit Mode and 29 Play Mode, 12 of which check what the guides claim about VContainer, MessagePipe, UniTask and Unity. They include allocation tests on hot paths and disposal tests on disposable types. The library compiles with no warnings on Unity 6000.6, and the Play Mode tests also pass in macOS and WebGL (IL2CPP) player builds. Run them with `dev/run-library-tests.sh`, `dev/run-library-tests.sh player` and `dev/run-library-tests.sh player WebGL`.
+- The unity-dev code library is covered by 175 automated tests: 146 Edit Mode and 29 Play Mode, 15 of which check what the guides claim about VContainer, MessagePipe, UniTask and Unity. They include allocation tests on hot paths and disposal tests on disposable types. The library compiles with no warnings on Unity 6000.6, and the Play Mode tests also pass in macOS and WebGL (IL2CPP) player builds. Run them with `dev/run-library-tests.sh`, `dev/run-library-tests.sh player` and `dev/run-library-tests.sh player WebGL`.
 - Every C# example in the guides and module READMEs compiles against the real packages (`dev/library-tests/Assets/LibraryTests/SnippetCheck`).
 - The guides' technical claims were checked against the official documentation and package sources for Unity 6.6, URP, VContainer 1.19, UniTask 2.5, MessagePipe 1.8, Addressables 4.1 and Blender 5.2, and the ones that can run were run: FBX exports from Blender into Unity, player builds, package behavior. Where a run contradicted the documentation, the guides follow the run. That lowers the risk of mistakes but doesn't remove it, which is why Claude verifies again in each project.
-- The Blender scripts are tested headless against scenes with known results: `dev/run-blender-tests.sh`.
+- The Blender scripts (mesh validation, contact-sheet renders, character and animation checks, gated FBX export) are tested headless against scenes with known defects: `dev/run-blender-tests.sh`. A mannequin exported through them is imported as a Unity Humanoid by the library tests, which check its sides, facing and root-motion speed.
 - `claude plugin validate` passes for the marketplace and the plugin.
 
 ## Requirements

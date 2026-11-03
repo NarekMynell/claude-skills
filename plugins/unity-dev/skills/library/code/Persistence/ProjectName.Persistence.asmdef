@@ -1,6 +1,6 @@
 {
-    "name": "Company.Product.Persistence",
-    "rootNamespace": "Company.Product.Persistence",
+    "name": "ProjectName.Persistence",
+    "rootNamespace": "ProjectName.Persistence",
     "references": [
         "UniTask",
         "VContainer"

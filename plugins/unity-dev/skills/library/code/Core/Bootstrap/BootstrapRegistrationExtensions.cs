@@ -1,8 +1,8 @@
-using Company.Product.Core.Providers;
+using ProjectName.Core.Providers;
 using VContainer;
 using VContainer.Unity;
 
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
     public static class BootstrapRegistrationExtensions
     {

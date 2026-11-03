@@ -1,9 +1,9 @@
 using System;
 using System.Threading;
-using Company.Product.Core.Scenes;
+using ProjectName.Core.Scenes;
 using Cysharp.Threading.Tasks;
 
-namespace Company.Product.Core.Bootstrap
+namespace ProjectName.Core.Bootstrap
 {
     // The last startup step: opens the first scene, or in the Editor the scene that was open when Play was pressed.
     public sealed class LoadFirstSceneStep : IBootstrapStep
