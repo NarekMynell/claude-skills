@@ -35,21 +35,24 @@ public sealed class RootMotionMover : MonoBehaviour
 }
 ```
 
-**In-place clips at the controller's speed.** The blend tree's thresholds are each clip's measured speed in m/s on this character. Feed it the real horizontal speed, and past the fastest clip raise the state's speed multiplier, a float parameter set as the state's Multiplier:
+**In-place clips at the controller's speed.** The blend tree's thresholds are each clip's measured speed in m/s at scale 1. Feed it the real horizontal speed, and past the fastest clip raise the state's speed multiplier, a float parameter set as the state's Multiplier:
 
 ```csharp
 private static readonly int SpeedId = Animator.StringToHash("Speed");
 private static readonly int PlaybackId = Animator.StringToHash("Playback");
 
-[SerializeField, Min(0.01f)] private float _fastestClipSpeed = 5.5f; // the run clip's speed on this character, m/s
+[SerializeField, Min(0.01f)] private float _fastestClipSpeed = 5.5f; // the run clip's speed at scale 1, m/s
 
 private void UpdateLocomotion(Vector3 velocity)
 {
-    float speed = new Vector3(velocity.x, 0f, velocity.z).magnitude;
+    // In the clip's terms: a character scaled up covers more ground per step.
+    float speed = new Vector3(velocity.x, 0f, velocity.z).magnitude / transform.lossyScale.y;
     _animator.SetFloat(SpeedId, speed);
     _animator.SetFloat(PlaybackId, speed > _fastestClipSpeed ? speed / _fastestClipSpeed : 1f);
 }
 ```
+
+**Rate.** Playback rate stays near 1, or another clip takes over.
 
 **Measuring a clip's speed on the character.** Play the clip on the character in Play Mode with root motion applied and read `Animator.velocity`. Humanoid root motion is stored relative to the avatar's size and scaled to the character playing it, so the average velocity in the clip's import inspector can differ from its speed on this character. Measure in-place clips in Blender with `inspect_animation.py` on the character's rig (`stride_speed_mps`).
 

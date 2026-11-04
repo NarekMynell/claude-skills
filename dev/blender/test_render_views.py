@@ -7,6 +7,7 @@ import sys
 import warnings
 
 import bpy
+import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mannequin  # noqa: E402
@@ -103,10 +104,29 @@ result = run(TARGETS=["Body"], PRESET="CHARACTER", TILE=48, FRAMES=[0, 1], NAME=
 after = snapshot()
 expect(before == after, f"scene not restored after the character preset: {[k for k in before if before[k] != after[k]]}")
 labels = [label for row in result["layout"] for label in row]
-expected = ["front", "back", "left", "right", "front_left", "back_right", "face", "face_left", "left_hand_top",
+expected = ["front", "back", "left", "right", "front_left", "back_right", "top", "face", "face_left", "head_top", "left_hand_top",
             "right_hand_top", "left_hand_bottom", "feet_front"]
 expect(labels == [f"{name}@{frame}" for frame in (0, 1) for name in expected], f"character layout {result['layout']}")
 expect(os.path.exists(result["sheet"]), "no character sheet")
+
+# The game camera's view, and the model at the size it has on screen: few pixels, enlarged without smoothing.
+result = run(TARGETS=["Body"], VIEWS=["front"], CLOSEUPS=[], TILE=96, COLUMNS=3, GAME_VIEW={"yaw": -30, "pitch": 55}, GAME_PIXELS=12, NAME="game", COLOR="OBJECT")
+expect(result["layout"] == [["front", "game", "game_on_screen"]], f"game layout {result['layout']}")
+image = bpy.data.images.load(result["sheet"], check_existing=False)
+width, height = image.size
+pixels = np.array(image.pixels[:]).reshape(height, width, -1)
+bpy.data.images.remove(image)
+on_screen = pixels[:96, 2 * (96 + 4):2 * (96 + 4) + 96, :3]
+blocks = on_screen[::8, ::8]
+expect(len({tuple(np.round(p, 3)) for p in blocks.reshape(-1, 3)}) > 1, "the on-screen tile is empty")
+row = np.round(on_screen[48], 3)
+runs = sum(1 for a, b in zip(row, row[1:]) if (a != b).any())
+expect(runs <= 13, f"the on-screen tile isn't blocky: {runs} changes along a row of a 13-pixel render")
+try:
+    run(TARGETS=["Body"], VIEWS=["front"], GAME_PIXELS=12)
+    expect(False, "GAME_PIXELS without GAME_VIEW was accepted")
+except ValueError:
+    pass
 
 print("RENDER", json.dumps({"problems": problems}))
 if problems:

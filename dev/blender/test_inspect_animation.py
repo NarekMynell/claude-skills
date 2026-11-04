@@ -10,6 +10,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gait  # noqa: E402
 import mannequin  # noqa: E402
+import quadruped  # noqa: E402
 
 script_path = sys.argv[sys.argv.index("--") + 1]
 script = open(script_path).read()
@@ -29,17 +30,25 @@ def run(**settings):
 cases = []
 
 
-def case(label, expected, walk=None, check=None, props=None, **settings):
+def case(label, expected, walk=None, check=None, props=None, keys=None, at_least=False, parts=None, **settings):
+    """expected: the issues the report must hold, exactly, or among others with at_least. keys: keys another clip.
+    parts: adds other skinned meshes."""
     mannequin.clear()
     body, rig = mannequin.build()
-    action = gait.key_walk(rig, rig_helpers=helpers, **(walk or {}))
+    action = keys(rig) if keys else gait.key_walk(rig, rig_helpers=helpers, **(walk or {}))
     if props:
         props(rig)
         settings["PROPS"] = ["Prop"]
+    if parts:
+        parts(rig)
     report = run(ACTIONS=[action.name], **settings)
     entry = report["actions"][action.name]
     found = sorted(entry["issues"])
     ok = found == sorted(expected) and report["passed"] == (not expected)
+    if at_least:
+        ok = set(expected) <= set(found)
+    if parts:
+        ok = ok and any("Bag through the body" in label for label in entry["issues"].get("limbs_through_body", {}))
     detail = None
     if check:
         detail = check(entry["info"])
@@ -79,6 +88,116 @@ def held_prop(rig):
 
 
 case("hand through a held prop", ["hand_through_prop"], props=held_prop)
+
+def bag_on_the_arm(rig):
+    # A bag skinned to the left forearm, at the wrist and clear of the body at rest; the arm brings it into the body.
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.06, location=rig.matrix_world @ rig.data.bones["forearm.L"].tail_local)
+    bag = bpy.context.active_object
+    bag.name = "Bag"
+    bpy.ops.object.transform_apply(location=True)
+    group = bag.vertex_groups.new(name="forearm.L")
+    group.add([v.index for v in bag.data.vertices], 1.0, "REPLACE")
+    modifier = bag.modifiers.new("Armature", "ARMATURE")
+    modifier.object = rig
+    bag.parent = rig
+
+
+case("a bag through the body", ["limbs_through_body"], walk={"arms_inward": (10, 13)}, props=None, at_least=True, parts=bag_on_the_arm,
+     check=lambda info: True)
+
+# Robotic motion: motion that is absent, whatever the style.
+case("the body travels level, the trunk still", ["no_pelvis_motion", "trunk_still"], walk={"natural": False}, at_least=True)
+case("straight legs swinging at a constant speed", ["stiff_knees", "linear_motion", "no_pelvis_motion", "trunk_still"],
+     keys=gait.key_stiff_walk, at_least=True)
+case("a limp", ["uneven_steps"], walk={"limp": 0.2})
+case("an idle that breathes", [], keys=gait.key_breathing_idle)
+case("a frozen idle", ["frozen"], keys=lambda rig: gait.key_breathing_idle(rig, amount=0.0))
+case("a machine is exempt", [], walk={"natural": False}, NATURAL=False)
+
+
+def near(key, expected, tolerance):
+    def check(info):
+        value = info.get(key)
+        return True if value is not None and abs(value - expected) <= tolerance else f"{key} = {value}, expected {expected}"
+    return check
+
+
+case("the natural walk's numbers are reported", [], check=near("froude", gait.SPEED ** 2 / (9.81 * 0.79), 0.04))
+case("speed beyond what walking legs can carry", ["too_fast_for_a_walk"], MAX_WALK_FROUDE=0.1)
+case("the game's speed asks for the right cadence", [], GAME_SPEED=gait.SPEED * 1.2, check=near("playback_rate", 1.2, 0.08))
+case("the game's speed asks for a frantic cadence", ["playback_rate_out_of_range"], GAME_SPEED=gait.SPEED * 2.0)
+
+# Four legs.
+QUADRUPED_FEET = ["hind_paw.L", "fore_paw.L", "hind_paw.R", "fore_paw.R"]
+
+
+def quadruped_case(label, expected, order, at_least=False, **settings):
+    mannequin.clear()
+    body, rig = quadruped.build()
+    action = quadruped.key_walk(rig, helpers, **order)
+    report = run(ACTIONS=[action.name], ARMATURE=rig.name, ROOT_BONE="hips", FEET=QUADRUPED_FEET, **settings)
+    entry = report["actions"][action.name]
+    found = sorted(entry["issues"])
+    cases.append({"case": label, "ok": (set(expected) <= set(found) if at_least else set(expected) == set(found) and report["passed"] == (not expected)),
+                  "expected": sorted(expected), "found": found, "issues": entry["issues"], "info": entry["info"], "check": None})
+
+
+quadruped_case("a four-legged walk in lateral sequence", [], {})
+quadruped_case("a walk that must be a walk", [], {}, GAIT="walk")
+quadruped_case("a trot is a trot", [], {"offsets": quadruped.TROT, "stance": 0.6}, GAIT="trot")
+quadruped_case("a trot where a walk was asked for", ["wrong_gait"], {"offsets": quadruped.TROT, "stance": 0.6}, GAIT="walk")
+quadruped_case("feet in no order", ["irregular_footfall"], {"offsets": quadruped.IRREGULAR})
+quadruped_case("a tail that hangs dead", ["secondary_still"], {"tail": False})
+quadruped_case("a sliding paw", ["foot_sliding"], {"root": 1.3}, at_least=True)
+
+# The receipt.
+proofs = os.path.join(os.path.dirname(script_path), "..", "..", "..", "..", "..", "dev", "library-tests", "Logs", "proofs-test")
+mannequin.clear()
+_, receipt_rig = mannequin.build()
+receipt_action = gait.key_walk(receipt_rig, rig_helpers=helpers)
+run(ACTIONS=[receipt_action.name], PROOF_DIR=proofs, PROOF_NAME="walk")
+receipt_path = os.path.join(proofs, f"inspect_animation-walk-{receipt_action.name}.json")
+cases.append({"case": "writes one receipt per clip", "ok": os.path.exists(receipt_path), "expected": [], "found": [], "issues": {}, "info": {}, "check": None})
+
+
+def dense_hair(rig):
+    # Hair with far more triangles than the body: the body is still what holds the feet.
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=128, ring_count=96, radius=0.13, location=rig.matrix_world @ rig.data.bones["head"].tail_local)
+    hair = bpy.context.active_object
+    hair.name = "Hair"
+    bpy.ops.object.transform_apply(location=True)
+    hair.vertex_groups.new(name="head").add([v.index for v in hair.data.vertices], 1.0, "REPLACE")
+    hair.modifiers.new("Armature", "ARMATURE").object = rig
+
+
+mannequin.clear()
+_, dense_rig = mannequin.build()
+dense_action = gait.key_walk(dense_rig, rig_helpers=helpers, root=1.5)
+dense_hair(dense_rig)
+dense_entry = run(ACTIONS=[dense_action.name])["actions"][dense_action.name]
+cases.append({"case": "a sliding clip with hair denser than the body", "ok": "foot_sliding" in dense_entry["issues"], "expected": ["foot_sliding"],
+              "found": sorted(dense_entry["issues"]), "issues": dense_entry["issues"], "info": dense_entry["info"], "check": None})
+
+mannequin.clear()
+_, nofeet_rig = mannequin.build()
+nofeet_action = gait.key_walk(nofeet_rig, rig_helpers=helpers)
+bpy.data.objects["Body"].vertex_groups.clear()
+nofeet_entry = run(ACTIONS=[nofeet_action.name], MESHES=["Body"])["actions"][nofeet_action.name]
+cases.append({"case": "a walk nothing measured can't pass", "ok": "feet_not_measured" in nofeet_entry["issues"], "expected": ["feet_not_measured"],
+              "found": sorted(nofeet_entry["issues"]), "issues": nofeet_entry["issues"], "info": nofeet_entry["info"], "check": None})
+
+
+def parented_bag(rig):
+    # A rigid bag parented to the forearm's bone, in the body when the arm comes in.
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.06)
+    bag = bpy.context.active_object
+    bag.name = "Bag"
+    bag.parent = rig
+    bag.parent_type = "BONE"
+    bag.parent_bone = "forearm.L"
+
+
+case("a bag parented to a bone, through the body", ["limbs_through_body"], walk={"arms_inward": (10, 13)}, at_least=True, parts=parented_bag)
 
 failed = [c for c in cases if not c["ok"]]
 for c in cases:

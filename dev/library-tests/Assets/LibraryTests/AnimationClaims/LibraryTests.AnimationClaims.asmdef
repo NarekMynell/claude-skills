@@ -3,7 +3,8 @@
     "rootNamespace": "LibraryTests.AnimationClaims",
     "references": [
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "ProjectName.Core"
     ],
     "includePlatforms": [
         "Editor"

@@ -10,20 +10,30 @@ allowed-tools:
 
 This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
 
-These rules apply to new and changed code. In an existing project that doesn't follow them yet, apply them to the code you write, and refactor existing code only when the user asks. Decisions recorded in the project's `CLAUDE.md` or `.claude/rules/` take precedence.
+These rules apply to new and changed code. In an existing project that doesn't follow them yet, apply them to the code you write, and refactor existing code only when the user asks: there, `ProjectArchitectureTests`' findings may only go down. Decisions recorded in the project's `CLAUDE.md` or `.claude/rules/` take precedence, except over the Architecture section, which only the user changes.
 
 Generic building blocks named below (`IsAlive()`, Providers, pools, installers, the state machine) come from the code library: copy them into the project's Core from the [code library](../library/SKILL.md) instead of writing them again.
 
 ## Architecture
 
-- **SOLID.** Interfaces are the main design tool. A class depends on interfaces, never on another domain's concrete classes.
-- **Composition over inheritance.** Inherit only for a true is-a relationship with shared behavior, and keep hierarchies shallow: one abstract base and its implementations.
-- **Role interfaces.** An object implements only the capabilities it has: `IClickable`, `IDamageable`. Input arrives through Unity's EventSystem interfaces and the Input System; role interfaces say what the input means in the game.
-- **Cohesive interfaces.** One interface per role, not per method. Operations that always come together stay together (`IPausable` has `Pause()` and `Resume()`). Split where consumers differ: read access and write access are separate interfaces.
-- **Every abstraction needs a reason:** a DI service, a domain boundary, more than one implementation, or a test seam. Services always sit behind an interface. Data types, views and configs don't need one.
-- **Single responsibility** for every class, component and method. A method does one thing at one level of abstraction.
-- **No singletons, no mutable static state.** Static is allowed only for stateless code: extension methods, pure helpers, constants, cached IDs (`static readonly int SpeedId = Animator.StringToHash("Speed")`). This also keeps Enter Play Mode without domain reload safe.
+This section is a **must**: it holds in every project, under every schedule, and only the user can change it. The rest of this guide is strong defaults. The proof is a test: the library's [Architecture module](../library/code/Core/Editor/Architecture/README.md) brings `ProjectArchitectureTests`, which fails on a violation, from the first commit on. An exception states its reason in that test, and the user sees it.
+
+- **Capabilities are interfaces.** What an object can do is a small interface named for that capability: what moves is `IMovable`, what shoots `IShooter`, what flies `IFlying`, what can be hit `IDamageable` (the names are examples). An object with several capabilities implements them all. Code that uses an object asks only for the capability it needs: a turret targets `IDamageable`, and can't tell a drone from a tank. Input arrives through Unity's EventSystem interfaces and the Input System; role interfaces such as `IClickable` say what it means in the game. Worked examples, including crowds kept in arrays: [references/capabilities.md](references/capabilities.md).
+- **SOLID, all of it.**
+  - Single responsibility for every class, component and method. A method does one thing at one level of abstraction.
+  - Open for extension: a new kind of thing is a new class behind existing interfaces, not a new `case` in every `switch`.
+  - Substitutable: every implementation honors its interface's contract.
+  - Interface segregation: one interface per role, not per method. Operations that always come together stay together (`IPausable` has `Pause()` and `Resume()`). Split where consumers differ: read access and write access are separate interfaces.
+  - Dependency inversion: a class depends on interfaces, never on another class that does work, whatever assembly it is in. Installers are the composition root and name concrete types.
+- **Composition over inheritance.** Inherit only for a true is-a relationship with shared behavior that composition can't give, one abstract base and its implementations, with the reason in a comment on the base. Deriving from `MonoBehaviour`, `ScriptableObject` or the library's base classes doesn't count.
+- **What needs an interface:** every service, every capability, every view that other code calls. Data types and configs don't.
+- **Dependency injection through VContainer**, details below. No singletons, no service locators, no mutable static state. Static is allowed only for stateless code: extension methods, pure helpers, constants, cached IDs (`static readonly int SpeedId = Animator.StringToHash("Speed")`). This also keeps Enter Play Mode without domain reload safe.
+- **Modular.** One domain per feature area, each its own assembly, with one-way dependencies, as the next section describes.
 - **Logic in plain C#, Unity at the edges.** Game logic lives in plain C# classes registered in DI. MonoBehaviours are thin views and adapters: they display state, forward input and hold scene references.
+- **Designed first.** Before a domain's code, write its capabilities in the capability map in `docs/architecture.md`: capability, interface, who implements it, who uses it. A design that can't fill the table isn't ready.
+
+Strong defaults for the same code:
+
 - **Unity null.** An interface reference doesn't see Unity's destroyed state: after its MonoBehaviour is destroyed, `IDamageable damageable` is still non-null and `damageable?.TakeDamage()` calls into a destroyed object. When an interface can point to a `UnityEngine.Object`, check it with `IsAlive()`, or call through `OrNull()?.`, never with `== null`, `?.` or `??` on the reference itself.
 - **Completion is awaited.** An operation that finishes later returns a `UniTask`. Don't signal completion with `OnCompleted` events: awaiting carries exceptions and cancellation, events don't.
 - **State machines** model behavior with a clear set of modes: app flow, character behavior, screens. Use the library's StateMachines module.
@@ -135,7 +145,7 @@ Budgets, rendering and profiling are in the [performance guide](../performance/S
 - Physics queries use non-allocating overloads with preallocated buffers and a layer mask.
 - **No reflection in runtime code.** Editor code finds types with `TypeCache`.
 - **Pooling.** Objects created and destroyed repeatedly (projectiles, effects, enemies, list items, audio sources) are pooled with the library's Pooling module: one pool per prefab shared by all users, sized to the peak alive count, prewarmed during loading, never at first use. Pooled objects implement `IPoolable` and reset all state on return.
-- **Off-screen objects.** Built-in culling first (Animator and particle culling modes, renderer visibility). For custom behavior, a `CullingGroup` drives `IPausable` components.
+- **Off-screen objects** stop working: [choosing how](../performance/SKILL.md#work-the-player-cant-see).
 - **Data layout.** Order struct fields largest to smallest. Hot data in contiguous arrays, struct-of-arrays in tight loops, large structs passed with `in`. Structs used as keys or compared implement `IEquatable<T>`.
 - **Burst and jobs** for heavy parallel work over thousands of elements: `Unity.Mathematics`, no managed objects, native containers disposed deterministically. Remove only unpredictable branches in hot loops (`math.select`), check the Burst Inspector and measure. Entities (ECS) is an architecture decision made with the user.
 - **Logging** goes through the library's `Log`: `Log.Debug` compiles out of release builds together with its message; warnings, errors and exceptions are always logged.
@@ -185,6 +195,7 @@ Every resource has one owner that releases it on every path, including cancellat
 
 ## Before finishing
 
+- `ProjectArchitectureTests` passes on the new code, with any new exception stated and shown to the user.
 - The code compiles with no errors or warnings: check the C# language server diagnostics, then let Unity recompile and read its console.
 - Changes visible at runtime were checked in Play Mode.
 - Each rule above holds for the changed code: right domain and assembly, DI instead of statics, every resource released by its owner, cancellation passed down, no per-frame allocations.

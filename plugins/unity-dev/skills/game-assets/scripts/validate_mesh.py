@@ -10,13 +10,17 @@ Run it as the game-assets guide's "Running the scripts" describes. Optional sett
     ZFIGHT_IGNORE = []        objects that never render together with the others, such as collision meshes
     FLAT_DETAIL = False       True when flat areas need their extra vertices: they deform (cloth, flags) or carry
                               vertex-color detail
+    PROOF_DIR = "/abs/docs/proofs"  writes this report to validate_mesh-<PROOF_NAME>.json there
+    PROOF_NAME = "crate"      default: the first target's name, else "all"
 
 Sets `result`: `passed`, and one entry per object with its non-zero issues, `examples` (where to look, world
 coordinates in metres) and stats; `z_fighting` lists face pairs between objects. Modifiers are applied first, so
 the check sees what the exporter writes. LOD siblings (`_LOD0`, `_LOD1`) never count as z-fighting.
 """
 
+import json
 import math
+import os
 import re
 from collections import defaultdict
 
@@ -401,3 +405,9 @@ result = validate(
     globals().get("ZFIGHT_IGNORE", ()),
     globals().get("FLAT_DETAIL", False),
 )
+
+if globals().get("PROOF_DIR"):
+    os.makedirs(globals()["PROOF_DIR"], exist_ok=True)
+    proof_name = globals().get("PROOF_NAME") or (globals().get("TARGETS") or ["all"])[0]
+    with open(os.path.join(globals()["PROOF_DIR"], f"validate_mesh-{proof_name}.json"), "w") as proof_file:
+        json.dump(result, proof_file, indent=1, default=str)

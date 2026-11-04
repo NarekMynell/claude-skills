@@ -26,8 +26,7 @@ namespace ProjectName.Audio
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
 
-            _root = new GameObject("[Audio]");
-            if (Application.isPlaying) Object.DontDestroyOnLoad(_root);
+            _root = AudioSourceFactory.CreateRoot();
             _pool = new ComponentPool<AudioSource>(new AudioSourceFactory(_root.transform), _root.transform, settings.PrewarmedVoices, settings.MaxVoices);
             _pool.Prewarm(settings.PrewarmedVoices);
         }

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using ProjectName.Core.Motion;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -95,6 +96,63 @@ namespace LibraryTests.AnimationClaims
             Assert.That(speed, Is.EqualTo(BlenderWalkSpeed).Within(0.05f), $"moved {moved}");
             Assert.That(moved.z / moved.magnitude, Is.GreaterThan(0.99f), $"moved {moved}: not toward +Z");
             Assert.That(animator.velocity.magnitude, Is.EqualTo(BlenderWalkSpeed).Within(0.1f), $"velocity {animator.velocity}");
+        }
+
+        // The animation guide's central claim, on the imported clip: feet stay planted when code moves the character at the
+        // clip's speed, and slide when it doesn't, faster or slower.
+        [Test]
+        public void PlantedFeetStayPut_AtTheClipsSpeed()
+        {
+            FootSlideMeter meter = MeasureSlide(BlenderWalkSpeed, playbackRate: 1f);
+
+            Assert.That(meter.WorstSlide, Is.LessThanOrEqualTo(meter.AllowedSlide));
+        }
+
+        [TestCase(1.5f)]
+        [TestCase(0.5f)]
+        [TestCase(1.2f)]
+        public void PlantedFeetSlide_AtAnyOtherSpeed(float speedFactor)
+        {
+            FootSlideMeter meter = MeasureSlide(BlenderWalkSpeed * speedFactor, playbackRate: 1f);
+
+            Assert.That(meter.WorstSlide, Is.GreaterThan(meter.AllowedSlide));
+        }
+
+        // The guide's cure for a speed that differs from the clip's: play it at the rate that matches.
+        [Test]
+        public void PlayingTheClipAtTheMatchingRateKeepsFeetPlanted()
+        {
+            const float speed = 1.2f;
+
+            FootSlideMeter meter = MeasureSlide(speed, playbackRate: speed / BlenderWalkSpeed);
+
+            Assert.That(meter.WorstSlide, Is.LessThanOrEqualTo(meter.AllowedSlide));
+        }
+
+        // In Edit Mode an Animator doesn't write its bones, so this samples the clip and moves the body by code, as
+        // in-place locomotion does: the foot's place relative to the hips, carried along at the code's speed.
+        private FootSlideMeter MeasureSlide(float speed, float playbackRate)
+        {
+            AnimationClip walk = AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<AnimationClip>()
+                .Single(clip => !clip.name.StartsWith("__preview__"));
+            _instance = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath));
+            var animator = _instance.GetComponent<Animator>();
+
+            const float step = 1f / 60f;
+            Transform foot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+            var meter = new FootSlideMeter(legLength: 0.8f);
+            Vector3 body = Vector3.zero;
+            for (int frame = 0; frame < 300; frame++)
+            {
+                walk.SampleAnimation(_instance, frame * step * playbackRate % walk.length);
+                body += Vector3.forward * (speed * step);
+                Vector3 relative = foot.position - hips.position;
+                meter.Sample(new Vector3(body.x + relative.x, foot.position.y, body.z + relative.z));
+            }
+
+            Assert.That(meter.Steps, Is.GreaterThanOrEqualTo(2));
+            return meter;
         }
     }
 }

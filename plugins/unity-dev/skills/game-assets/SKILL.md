@@ -13,9 +13,16 @@ This guide can be wrong or out of date: verify what you rely on, as the [standar
 
 Characters follow the [characters](../characters/SKILL.md) guide, and their motion the [animation](../animation/SKILL.md) guide. Both build on this one.
 
+## Must
+
+- **Every asset passes its checks and a clean review before it counts,** whatever built it. A custom pipeline, mesh format or generator goes through the same scripts: bring the mesh into Blender and run them, or write a check of your own and prove it catches the same defects. With `PROOF_DIR` set to the project's `docs/proofs`, the checks leave their receipts.
+- **No stacked or hidden faces, no artifacts in textures, no visible facets on curves,** from the game's camera, at game distance.
+- **Reviews include the game's camera.** A model that looks good from the front and is seen from above has only been half reviewed: `GAME_VIEW` on the sheet, then the real game.
+- **Cheap by construction:** a shared material, instancing, baked light, no triangle the player can't see ([performance](../performance/SKILL.md)).
+
 ## How to work
 
-This guide gives the quality bar, the methods known to work and the failures already seen. The solution for each asset is Claude's choice, from this guide or outside it, whatever gives the best result for the project; tell the user the choice and why. Quality is the one thing not traded: every asset passes its checks and a clean review.
+The method for each asset is a guide: your choice, from this guide or outside it, whatever gives the best result for the project; tell the user the choice and why. The look comes from the [art direction](../art-direction/SKILL.md).
 
 - **Build with code, judge with checks and renders.** Create and edit geometry with `bpy` and `bmesh` through `execute_blender_code`: exact, repeatable, cheap to redo. Never model by clicking through the UI from screenshots: vision judges the result, it doesn't build it.
 - **Code builds what code describes well:** hard-surface props, architecture, modular kits, stylized low-poly shapes. It doesn't sculpt organic forms: a body, face, hand or animal made of primitives or moved vertices looks wrong however long it's tweaked. Those start from a professional base or a skeleton-first body, as the characters guide describes.
@@ -46,10 +53,12 @@ result = ns["result"]
 | Script | Does | When |
 |---|---|---|
 | validate_mesh.py | Duplicate, overlapping and z-fighting faces, also between objects; non-manifold edges, loose geometry, normals, UVs, transforms, triangle budget, triangles wasted on flat areas. `examples` give each problem's position | After every geometry change, and before export |
-| render_views.py | One contact sheet: all sides, 3/4 views, close-ups, wireframe, proportion grid, floor, animation frames | Every review round |
+| render_views.py | One contact sheet: all sides, 3/4 views, close-ups, wireframe, proportion grid, floor, animation frames, the game camera's view and the on-screen size | Every review round |
 | build_body.py | A character body from a joint skeleton: surface, armature, cleaned weights | [Characters](../characters/SKILL.md) |
-| inspect_character.py | Anatomy, covered and intersecting surfaces, rig, weights, deformation in test poses | [Characters](../characters/SKILL.md) |
-| inspect_animation.py | Foot contact and sliding, in-place speed, arm swing, loops, pops, limbs through the body or props | [Animation](../animation/SKILL.md) |
+| inspect_character.py | Anatomy, covered and intersecting surfaces, variants that clash, rig, weights, deformation in test poses | [Characters](../characters/SKILL.md) |
+| inspect_animation.py | Foot contact and sliding, speed against the body, gaits on any number of legs, robotic motion, loops, pops, limbs through the body or props | [Animation](../animation/SKILL.md) |
+| study_screenshot.py | A game screenshot in gray and blurred, its palette and value structure, against references | [Art direction](../art-direction/SKILL.md), [UI](../ui-quality/SKILL.md) |
+| bake_light.py | Bakes the scene's light and shadow into vertex colors or a texture, with Cycles | [Performance](../performance/SKILL.md#light) |
 | export_fbx.py | Runs the checks, refuses a failing asset, exports with the Unity settings | Export |
 
 ## Before modeling
@@ -91,9 +100,10 @@ Objects that differ only in position, rotation, scale or color are one asset pla
   Check the whole asset at once, every part in `TARGETS`: faces in separate objects z-fight too. Opposite-facing touching faces, such as a box on a floor or a thin sheet, appear in `info`: they don't z-fight with back faces culled, only with two-sided materials.
 - **No hidden faces:** inside other geometry, or under parts that always cover them, such as the bottom of a prop fixed to the floor or a body under clothes.
 - No loose vertices or edges, no zero-area faces, no duplicate vertices: merge by distance.
+- **Curves look curved** at the size they reach on screen: enough segments, smooth normals. A circle with visible corners reads as cheap.
 - Normals point outward consistently. Smooth or flat shading is set on purpose, with sharp edges marked. Blender 4.1+ has no auto smooth property: use `shade_smooth_by_angle`, or `shade_auto_smooth`, which adds a modifier.
 - **Polygons where they show:** on the silhouette, where it deforms and where light changes, never on flat areas. `flat_area_extra_triangles` counts the triangles perfectly flat areas don't need. Set `FLAT_DETAIL` only when they do something: the area deforms (cloth, flags) or carries vertex-color detail.
-- **No noise as detail.** Random vertex jitter, noise displacement and noise textures read as damage, and they break the shading. Detail comes from deliberate shapes, bevels and textures; every bump has a reason the art direction names.
+- **No noise as detail.** Random vertex jitter, noise displacement and high-frequency noise textures read as damage, and they break the shading. Detail comes from deliberate shapes, bevels and textures; every bump has a reason the art direction names. Soft, low-frequency color variation over large areas is something else: the art direction asks for it, in color alone.
 - **Planar faces** on hard surfaces: a quad or n-gon bent out of its plane shades differently with each triangulation. Split it on purpose where it bends.
 - Inspect the scene before changing it; never modify objects destructively without the user's confirmation.
 
@@ -117,8 +127,9 @@ Objects that differ only in position, rotation, scale or color are one asset pla
 - **Blender's shader nodes don't reach Unity.** Unity receives the mesh, its UVs, vertex colors, material slot names and textures. Bake procedural or layered looks into textures on the asset's UVs before export, and build the materials in Unity with the URP shaders.
 - **Shared textures over unique ones:** a trim sheet for architecture, an atlas for props, and for flat-colored stylized art a small palette texture that many props share with one material.
 - **As few materials per mesh as possible:** each material is a separate draw.
-- **No artifacts in textures.** Every mark is intended: no noise, smears, blotches or visible seams. Base color holds color only, without baked lighting, shadows or highlights; AI-generated textures usually carry them, so remove them or don't use the texture. Look at each texture on the model in a close-up tile, at full resolution.
-- **Bakes:** triangulate before baking normal maps and export that same triangulation; enough samples (a noisy bake had too few); a cage or ray distance that covers the high-poly without catching neighboring parts; base color baked from color alone, with no lighting.
+- **Light can live in the asset, on purpose.** Baking light and occlusion into the texture or vertex colors, then drawing with an unlit or Baked Lit shader, gives the look with no runtime cost ([performance](../performance/SKILL.md#light)).
+- **No artifacts in textures.** Every mark is intended: no noise, smears, blotches or visible seams. A texture meant for a lit material holds color only, without lighting, shadows or highlights: the engine lights it, and light in it would be lit twice. AI-generated textures usually carry them, so remove them or don't use the texture. Look at each texture on the model in a close-up tile, at full resolution.
+- **Bakes:** triangulate before baking normal maps and export that same triangulation; enough samples (a noisy bake had too few); a cage or ray distance that covers the high-poly without catching neighboring parts; for a lit material, base color baked from color alone.
 - **PBR maps for URP Lit:** metallic in R and smoothness in A of the metallic map, occlusion in G (one channel-packed texture can fill both slots). Smoothness is 1 − Blender's roughness. Data textures have sRGB off; normal maps are imported as Normal Map.
 - Power-of-two texture sizes, chosen for the asset's on-screen size on the target devices.
 - **Sources:** made on purpose for the asset, the project's own, or CC0 libraries: ambientCG (CC0, no credit needed) and Poly Haven (CC0; its API asks for a visible credit and a unique User-Agent). Record every third-party asset in `docs/third-party-assets.md`: source URL, author, license, date obtained.

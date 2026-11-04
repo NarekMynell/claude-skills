@@ -11,7 +11,7 @@ trap 'rm -rf "$out"' EXIT
 
 echo "$("$blender" --version | head -n 1)"
 status=0
-for test in validate_mesh render_views inspect_character inspect_animation export_fbx build_body; do
+for test in validate_mesh render_views inspect_character inspect_animation export_fbx build_body study_screenshot bake_light; do
   if "$blender" -b --factory-startup --python-exit-code 1 --python "$root/dev/blender/test_$test.py" -- "$scripts/$test.py" "$out" > "$out/$test.log" 2>&1; then
     echo "$test: passed"
   else

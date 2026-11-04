@@ -12,6 +12,7 @@ using ProjectName.Core.Culling;
 using ProjectName.Core.DI;
 using ProjectName.Core.Lifecycle;
 using ProjectName.Core.Logging;
+using ProjectName.Core.Motion;
 using ProjectName.Core.Pooling;
 using ProjectName.Core.Providers;
 using ProjectName.Core.Scenes;
@@ -395,11 +396,12 @@ namespace LibraryTests.SnippetCheck.Animation
         private static readonly int SpeedId = Animator.StringToHash("Speed");
         private static readonly int PlaybackId = Animator.StringToHash("Playback");
 
-        [SerializeField, Min(0.01f)] private float _fastestClipSpeed = 5.5f; // the run clip's speed on this character, m/s
+        [SerializeField, Min(0.01f)] private float _fastestClipSpeed = 5.5f; // the run clip's speed at scale 1, m/s
 
         private void UpdateLocomotion(Vector3 velocity)
         {
-            float speed = new Vector3(velocity.x, 0f, velocity.z).magnitude;
+            // In the clip's terms: a character scaled up covers more ground per step.
+            float speed = new Vector3(velocity.x, 0f, velocity.z).magnitude / transform.lossyScale.y;
             _animator.SetFloat(SpeedId, speed);
             _animator.SetFloat(PlaybackId, speed > _fastestClipSpeed ? speed / _fastestClipSpeed : 1f);
         }
@@ -451,6 +453,242 @@ namespace LibraryTests.SnippetCheck.Animation
             _animator.SetIKPosition(goal, target);
             _animator.SetIKRotation(goal, Quaternion.FromToRotation(Vector3.up, hit.normal) * _animator.GetIKRotation(goal));
             return Mathf.Max(0f, foot.y - target.y) * weight;
+        }
+    }
+}
+
+namespace LibraryTests.SnippetCheck.Capabilities
+{
+    // Stubs the snippets take from a game.
+    public interface IMover
+    {
+        void MoveTo(Transform body, Vector3 destination);
+    }
+
+    public interface IGun
+    {
+        void Fire(Vector3 from, Vector3 target);
+    }
+
+    public interface IHealth
+    {
+        void Reduce(int amount);
+    }
+
+    public enum AnimalAction
+    {
+        Rest,
+        Graze,
+    }
+
+    public readonly struct AnimalContext
+    {
+        public readonly float Random01;
+
+        public AnimalContext(float random01) => Random01 = random01;
+    }
+
+    // capabilities.md #1
+    public interface IMovable
+    {
+        Vector3 Position { get; }
+        void MoveTo(Vector3 destination);
+    }
+
+    public interface IFlying
+    {
+        float Altitude { get; set; }
+    }
+
+    public interface IShooter
+    {
+        void ShootAt(Vector3 target);
+    }
+
+    public interface IDamageable
+    {
+        void TakeDamage(int amount);
+    }
+
+    internal sealed class Drone : MonoBehaviour, IMovable, IFlying, IShooter, IDamageable
+    {
+        private IMover _mover;
+        private IGun _gun;
+        private IHealth _health;
+
+        [Inject]
+        public void Construct(IMover mover, IGun gun, IHealth health)
+        {
+            _mover = mover;
+            _gun = gun;
+            _health = health;
+        }
+
+        public Vector3 Position => transform.position;
+        public float Altitude { get; set; }
+
+        public void MoveTo(Vector3 destination) => _mover.MoveTo(transform, destination);
+        public void ShootAt(Vector3 target) => _gun.Fire(transform.position, target);
+        public void TakeDamage(int amount) => _health.Reduce(amount);
+    }
+
+    internal sealed class Turret : MonoBehaviour, IShooter, IDamageable
+    {
+        private IGun _gun;
+        private IHealth _health;
+
+        [Inject]
+        public void Construct(IGun gun, IHealth health)
+        {
+            _gun = gun;
+            _health = health;
+        }
+
+        public void ShootAt(Vector3 target) => _gun.Fire(transform.position, target);
+        public void TakeDamage(int amount) => _health.Reduce(amount);
+    }
+
+    public interface IFireControl
+    {
+        void FireAll(Vector3 target);
+    }
+
+    internal sealed class FireControl : IFireControl
+    {
+        private readonly IReadOnlyList<IShooter> _shooters;
+
+        public FireControl(IReadOnlyList<IShooter> shooters) => _shooters = shooters;
+
+        public void FireAll(Vector3 target)
+        {
+            foreach (var shooter in _shooters) shooter.ShootAt(target);
+        }
+    }
+
+    // capabilities.md #2
+    public interface IAnimalBehavior
+    {
+        AnimalAction ChooseAction(in AnimalContext context);
+    }
+
+    [Serializable]
+    internal sealed class Grazer : IAnimalBehavior
+    {
+        [SerializeField, Range(0f, 1f)] private float _restShare = 0.5f;
+
+        public AnimalAction ChooseAction(in AnimalContext context) =>
+            context.Random01 < _restShare ? AnimalAction.Rest : AnimalAction.Graze;
+    }
+
+    [CreateAssetMenu(menuName = "Game/Animal")]
+    internal sealed class AnimalDefinition : ScriptableObject
+    {
+        [SerializeReference] private IAnimalBehavior _behavior;
+
+        public IAnimalBehavior Behavior => _behavior;
+    }
+
+    // capabilities.md #3
+    public interface ICrowdPositions
+    {
+        int Count { get; }
+        Vector3 PositionOf(int actor);
+    }
+
+    public interface ICrowdOrders
+    {
+        void WalkTo(int actor, Vector3 destination);
+    }
+
+    internal sealed class CrowdSystem : ICrowdPositions, ICrowdOrders, ITickable
+    {
+        private Vector3[] _positions = new Vector3[1024];
+        private Vector3[] _destinations = new Vector3[1024];
+
+        public int Count { get; private set; }
+
+        public Vector3 PositionOf(int actor) => _positions[actor];
+
+        public void WalkTo(int actor, Vector3 destination) => _destinations[actor] = destination;
+
+        public void Tick()
+        {
+            // Tight loops over the arrays: no interface calls per actor, no allocations.
+        }
+    }
+
+    // capabilities.md #4
+    public interface IAdvancing
+    {
+        void Advance(float deltaTime);
+    }
+
+    public struct WalkingActor : IAdvancing
+    {
+        public float Phase;
+
+        public void Advance(float deltaTime) => Phase += deltaTime;
+    }
+
+    public static class ActorUpdate
+    {
+        public static void AdvanceAll<T>(T[] actors, int count, float deltaTime) where T : struct, IAdvancing
+        {
+            for (var i = 0; i < count; i++) actors[i].Advance(deltaTime);
+        }
+    }
+}
+
+namespace LibraryTests.SnippetCheck.OffScreen
+{
+    // stub: DOTween isn't in the test project.
+    public sealed class Tween
+    {
+        public void Pause() { }
+
+        public void Play() { }
+    }
+
+    // Culling README and performance guide
+    public sealed class SwayingTree : MonoBehaviour, IPausable
+    {
+        private Tween _sway;
+
+        public void Pause() => _sway.Pause();
+
+        public void Resume() => _sway.Play();
+    }
+
+    internal sealed class SceneInstaller : ScopeInstaller
+    {
+        [SerializeField] private Camera _camera;
+
+        public override void Install(IContainerBuilder builder)
+        {
+            // Culling README
+            builder.RegisterVisibilityPauser(_camera);
+        }
+    }
+
+    // Motion README
+    internal sealed class SlideMeasure
+    {
+        public float Overlaps(IReadOnlyList<Vector3> positions)
+        {
+            var overlaps = new CrowdOverlapMeter(minimumDistance: 0.5f);
+            // Every frame:
+            overlaps.Sample(positions, Time.deltaTime);
+            // Afterwards, pairs closer than the minimum, per second:
+            return overlaps.PairsPerSecond;
+        }
+
+        public float Activity(string state, float deltaTime)
+        {
+            var shares = new ActivityShares();
+            // Every step of the behavior code:
+            shares.Add(state, deltaTime);
+            // Afterwards:
+            return shares.ShareOf("Resting");
         }
     }
 }

@@ -42,7 +42,7 @@ Run it with `NAME`, `JOINTS`, `BONES` and `SUBDIVISIONS` (0 for low poly, 1 or 2
 The body is a base: the design goes on top of it.
 
 - **Head and face:** the head's joints set its shape (a stack of joints with their own radii gives a jaw, a skull, a brow). Eyes, brows, nose, mouth and ears are parts modeled like props and fitted to the head, weighted to the head bone; eyes that move get their own bones.
-- **Hair, clothes and accessories:** parts modeled like props and fitted with 2–5 mm clearance; where a garment covers the body, its body faces are deleted, as the characters guide describes.
+- **Hair, clothes and accessories:** parts modeled like props and fitted with 2–5 mm clearance, measured against the largest part they can sit over; where a garment covers the body, its body faces are deleted, as the characters guide describes. Variants go in `PART_GROUPS`.
 - **Colors** from the project's palette: a small palette texture or vertex colors, no noise.
 - **Rigid parts** (robot plates, armor, helmets) weighted fully to one bone each.
 

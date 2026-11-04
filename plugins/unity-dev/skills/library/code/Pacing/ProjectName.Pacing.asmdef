@@ -1,0 +1,7 @@
+{
+    "name": "ProjectName.Pacing",
+    "rootNamespace": "ProjectName.Pacing",
+    "references": [],
+    "autoReferenced": false,
+    "noEngineReferences": true
+}

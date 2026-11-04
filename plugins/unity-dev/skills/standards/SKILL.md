@@ -10,19 +10,45 @@ allowed-tools:
 
 # unity-dev standards
 
-Follow the unity-dev standards strictly in all work for the rest of this session, and verify them as you use them. Decisions recorded in the project's `CLAUDE.md` and `.claude/rules/` take precedence over them. Where a standard turns out wrong, doesn't fit the project, or a different solution is clearly better, use the better one, tell the user why, and record it under **Decisions** in the project's `CLAUDE.md`.
+Two levels apply to all work for the rest of this session.
+
+**Musts** are the bar for the result. A must holds whatever the task's wording, the schedule, a usage limit or Claude's own notes say. Only the user changes one, in their own words, naming it; a decision Claude records doesn't. A brief that asks for something else changes the means, not the bar: "no third-party assets" removes a source, and motion must still look natural. When a must can't be met, say so, with the numbers.
+
+**Guides** are everything else: methods known to work, failures seen, strong defaults. The solution is Claude's to find by thinking it through for this project, inside the guides or outside them. Take what is clearly best, tell the user why, and record it under **Decisions** in the project's `CLAUDE.md`. Decisions there and in `.claude/rules/` beat guides, never musts.
+
+## Musts
+
+| Area | The bar | Proof, before the work counts as done |
+|---|---|---|
+| Architecture | Modular, SOLID, interface-based, DI through VContainer. Each capability is an interface (such as `IMovable`, `IShooter`); an object with several implements them all; whoever uses an object sees only the capability it needs. Inheritance only for a true is-a; no singletons or mutable statics | `ProjectArchitectureTests` green, the capability map in `docs/architecture.md` included |
+| Optimization | Equal to beauty: as beautiful and as cheap as possible. Nothing is paid for that the player can't see: what stands still is static, light that doesn't change is baked, work off screen stops | `BudgetTests`, `OffScreenTests` green; `SceneCostAudit` clean |
+| Art | A current, beautiful look from references, one style throughout. One screen at final quality before mass production | `study_screenshot.py` on real game screenshots: no gaps against references; a written critique |
+| Models | No stacked or hidden faces, no artifacts, no visible facets on curves | `validate_mesh.py` passes; contact-sheet critique finds nothing |
+| Characters, animals | Nothing pokes through anything: in any variant, in any pose, from the game's camera | `inspect_character.py` over all variants; sheet with `GAME_VIEW` |
+| Motion, behavior | Natural. Planted feet never slide, in the running game, at every speed; speed fits the body; weight and overlap, nothing robotic. Actors rest, have reasons, react, and don't walk through each other | `inspect_animation.py` per clip; `LocomotionTests` in Play Mode; frames of the running game reviewed |
+| UI | Designed for this game: no template or AI look, no capsule containers by default, one radius scale, nothing stretched, a small HUD | `UiAudit` clean against the project's tokens at each aspect ratio; device-size critique against references |
+| Balance | Calculated, every number justified; never boring, never a wall | A simulation of the real game logic per player type, from the first playable; `PacingAnalyzer` clean against targets stated first |
+
+How the work runs:
+
+- **The proof stands whatever the pipeline.** A custom format, shader skinning or UI built from code doesn't replace a check: bring the result to where the check can see it, or write an equal check and prove it catches the same defect.
+- **Receipts.** Checks write their results to `docs/proofs/` themselves, and a hook compares them with what changed. A must without a passing, current receipt is unproven: say so. What a project truly has no use for goes in `docs/proofs/not-applicable.txt`, as `family: reason`.
+- **Subagents know only their brief.** Each brief names the guide files, by full path, the checks and the bar.
+- **Fresh eyes.** At every milestone a new agent reviews the work against the guides: [how](references/fresh-review.md).
+- **Ask early.** What only the user can give (downloads, accounts, clips, fonts, references) is asked for at the start of a long task, all at once. Without it, go on with the best substitute, and report what stays unproven.
+- **Limits end work, not the bar.** Near a usage or time limit, stop and report what isn't proven. Never skip a check or a review round to finish.
+- **Honest reports.** Say what ran, with its numbers, and what didn't.
 
 ## Verify before relying on them
 
-These standards, the guides and the code library can contain mistakes, outdated facts, and advice that isn't the best practice for this project. They are strong defaults to check, not facts to trust. Checking is mandatory:
+These standards, the guides and the code library can contain mistakes and outdated facts. Checking is mandatory:
 
-- **APIs, settings and versions.** Before using an API, attribute, setting, menu path, command or package id named in a guide, confirm it for the project's exact versions (`ProjectSettings/ProjectVersion.txt`, `Packages/packages-lock.json`): in the official documentation for that version, in the package source under `Library/PackageCache/`, or by compiling and running it. The guides and your training data both lag behind new releases.
-- **What ran beats what is written.** A test, a build or the package source outranks the documentation, which outranks a guide or memory. Even Unity's documentation can describe behavior the installed version doesn't have: for 6000.6.2f1 it says a Mesh Collider mesh without Read/Write fails the build, and the build only warns. When sources disagree, rely on what ran, and report the disagreement.
-- **Library code.** Review every file before it enters the project, as you would a colleague's pull request: lifetimes, cancellation, edge cases, allocations. It compiles there with no warnings, and its tests pass there.
-- **Advice.** Before applying a rule, check that it fits the project. When the official documentation, a measurement or the project's needs contradict a guide, follow the evidence, and tell the user that the unity-dev guide needs the same fix.
-- **Honest reports.** Say what you verified and how. Never present something as checked when it wasn't.
+- **APIs, settings and versions.** Before using anything a guide names, confirm it for the project's exact versions (`ProjectSettings/ProjectVersion.txt`, `Packages/packages-lock.json`): in the official documentation, in the package source under `Library/PackageCache/`, or by running it.
+- **What ran beats what is written.** A test, a build or the package source outranks the documentation, which outranks a guide or memory. Report disagreements.
+- **Library code.** Review every file before it enters the project. It compiles there with no warnings, and its tests pass there.
+- **Advice.** When the documentation, a measurement or the project's needs contradict a guide, follow the evidence, and tell the user the guide needs the same fix. A wrong must is reported to the user, not dropped.
 
-Links here are relative to `${CLAUDE_SKILL_DIR}`, and each guide links its own references relative to its folder. The plugin's root folder is two levels above this one.
+Links here are relative to `${CLAUDE_SKILL_DIR}`.
 
 ## Start
 
@@ -30,44 +56,45 @@ Before the first task, read the [code standards](../code-standards/SKILL.md) and
 
 ## Guides
 
-The guides are this plugin's other skills. They load only on the user's command, so the Skill tool refuses them: read their files with the Read tool instead. That is how these standards are meant to work.
+The guides are this plugin's other skills. The Skill tool refuses them: read their files with the Read tool, as these standards intend.
 
-Read every guide that matches the task before the work it covers, and read it again after the conversation is compacted. A large task, such as a whole game, touches several guides: plan with all of them, then read each again when its part of the work starts.
+Read every guide that matches the task before the work it covers, with the references it links for that work, and read them again after the conversation is compacted: what was read before compaction is gone. A whole game touches nearly all of them: follow its [production order](../game-design/SKILL.md#production-order).
 
 | Work | Guide |
 |---|---|
-| Creating a new Unity project | [new project](../new-project/SKILL.md). When the task goes on after the project exists, such as building the game, continue in the new project's folder in this session |
+| Creating a new Unity project | [new project](../new-project/SKILL.md), then continue in its folder |
 | Bringing an existing project under the standards | [adopt standards](../adopt-standards/SKILL.md) |
-| Writing, refactoring or reviewing C# | [code standards](../code-standards/SKILL.md), its [resource lifetimes](../code-standards/references/resource-lifetimes.md) rules, and the references it links for the topic |
+| Writing, refactoring or reviewing C# | [code standards](../code-standards/SKILL.md), with its [capabilities](../code-standards/references/capabilities.md), [organization](../code-standards/references/code-organization.md), [DI](../code-standards/references/dependency-injection.md), [messaging](../code-standards/references/messaging-and-state.md) and [resource lifetimes](../code-standards/references/resource-lifetimes.md) references |
 | Generic code, or a common system | [code library](../library/SKILL.md): check its [catalog](../library/CATALOG.md) before writing the code |
 | A new feature area | [new domain](../new-domain/SKILL.md) |
-| Screens, menus, HUDs, popups | [UI quality](../ui-quality/SKILL.md) |
-| Frame rate, memory, load time, build size | [performance](../performance/SKILL.md) |
+| Game concepts, mechanics, features | [game design](../game-design/SKILL.md) |
+| Economy, progression, pacing, rewards | [balance](../game-design/references/balance.md) |
+| Colors, style, environments, the game's look | [art direction](../art-direction/SKILL.md) |
+| Screens, menus, HUDs, popups, world markers | [UI quality](../ui-quality/SKILL.md) |
+| Frame rate, memory, load time, build size, lighting setup | [performance](../performance/SKILL.md) |
 | Sounds and music | [audio design](../audio-design/SKILL.md) |
 | Visual effects | [VFX](../vfx/SKILL.md) |
-| Game concepts, mechanics, features | [game design](../game-design/SKILL.md) |
 | 3D models and environments | [game assets](../game-assets/SKILL.md), through the Blender MCP connector |
-| Characters: bases, customizing, rigging, skinning | [characters](../characters/SKILL.md), after [game assets](../game-assets/SKILL.md) |
-| Character animation: clips, retargeting, locomotion, IK, held props | [animation](../animation/SKILL.md) |
+| Characters and animals: bases, variants, rigging, skinning | [characters](../characters/SKILL.md), after [game assets](../game-assets/SKILL.md) |
+| Animation: clips, locomotion, IK, held props, keying motion | [animation](../animation/SKILL.md) |
+| How people and animals move through the world and behave | [NPC behavior](../npc-behavior/SKILL.md) |
 | README, CLAUDE.md, `docs/`, `.claude/rules/` | [project docs](../project-docs/SKILL.md) |
-| Engine APIs that may have changed in recent Unity versions | the project's `docs/unity-version-notes.md`; to write or update it, [version notes](../version-notes/SKILL.md) |
-| Unity CLI, Editor link, C# language server or Blender connector problems | [toolchain](../toolchain/SKILL.md) |
+| Engine APIs that may have changed recently | the project's `docs/unity-version-notes.md`; to update it, [version notes](../version-notes/SKILL.md) |
+| Unity CLI, Editor link, language server or Blender connector problems | [toolchain](../toolchain/SKILL.md) |
 
 ## Every task
 
 - Drive the open Editor through the Unity CLI (`unity status`, `unity command`; syntax in the official `unity:unity-cli` skill) instead of hand-editing scene, prefab or asset files.
-- Keep the docs current: a change that affects documented behavior updates the matching `docs/` file in the same change, and adding, renaming or removing a docs file updates the indexes in `README.md` and `CLAUDE.md`. New docs are concise, one topic per file, linked instead of duplicated.
+- Keep the docs current, in the same change, and the indexes in `README.md` and `CLAUDE.md` with them.
 
 ## Before reporting a task as done
 
-1. **Correct.** No errors or warnings from the C# language server or the Unity console. Checked in Play Mode where the change is visible.
-2. **Best solution.** Nothing simpler or better; it scales with the expected growth without over-engineering.
-3. **Architecture.** Right domain and assembly, dependency direction, DI instead of statics, interfaces where they belong.
-4. **Performance.** No per-frame allocations or needless work; draw calls and memory within the project's budgets (`docs/performance-budgets.md`).
-5. **Robust.** Every resource released by its owner on every path ([resource lifetimes](../code-standards/references/resource-lifetimes.md)): subscriptions, handles, tokens, buffers, created objects. Destroyed objects, cancellation and errors handled.
-6. **Consistent.** Naming and structure rules followed; docs updated.
-7. **Verified.** Every API, setting and library module the work relies on was checked for the project's versions, and the report says how.
-8. **Assets.** Every model, character and animation passed its guide's checks, and a written review of its latest contact sheet found nothing left to fix.
+1. **Proof.** The musts the work touches have their proof, on the latest state, and the report gives the numbers.
+2. **Correct.** No errors or warnings from the C# language server or the Unity console. Checked in Play Mode where the change is visible.
+3. **Best solution.** Name the alternatives you weighed, and why this one wins.
+4. **Robust.** Every resource released by its owner on every path ([resource lifetimes](../code-standards/references/resource-lifetimes.md)). Destroyed objects, cancellation and errors handled.
+5. **Consistent.** Naming and structure rules followed; docs updated.
+6. **Verified.** APIs, settings and library modules checked for the project's versions; the report says how.
 
 If a check fails, fix it before moving on.
 

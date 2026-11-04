@@ -10,7 +10,7 @@ namespace ProjectName.Core.Culling
     // Pauses IPausable targets while their bounding sphere is outside the camera's view, using one CullingGroup
     // for all of them. Unity's built-in culling (Animator and particle culling modes) comes first; this is for custom behaviour.
     // A target is resumed when it's unregistered or the pauser is disposed, so nothing stays paused for good.
-    public sealed class VisibilityPauser : IDisposable
+    public sealed class VisibilityPauser : IVisibilityPauser, IDisposable
     {
         private readonly CullingGroup _group;
         private readonly Dictionary<IPausable, int> _indices = new Dictionary<IPausable, int>();

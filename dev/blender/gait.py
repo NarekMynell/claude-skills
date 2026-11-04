@@ -12,6 +12,9 @@ SPEED = 2 * STEP     # metres per second: a stride (2 steps) per cycle
 HIP_DROP = 0.05      # the hips sit lower than in the rest pose, so the planted leg can reach
 LIFT = 0.07
 ARM_SWING = math.radians(18)
+BOB = 0.015          # the hips rise over the planted leg and sink between steps
+SWAY = 0.012         # and lean over the planted foot
+HIP_YAW = 5.0        # degrees each way; the shoulders turn against the hips
 
 
 def _ik(hip, target, thigh, shin):
@@ -37,9 +40,11 @@ def _foot(phase):
 
 
 def key_walk(rig, name="Walk", root=1.0, same_side_arms=False, feet_offset=0.0, end=FRAMES, pop_frame=None,
-             arms_inward=None, rig_helpers=None):
+             arms_inward=None, rig_helpers=None, natural=True, limp=0.0):
     """root: 0 in place, 1 root motion that matches the stride, more than 1 root motion faster than the feet.
-    arms_inward: (first, last) frames where the forearms point into the body, easing in and out over 4 frames."""
+    arms_inward: (first, last) frames where the forearms point into the body, easing in and out over 4 frames.
+    natural: False keeps the body level and the trunk still: legs and arms alone.
+    limp: moves the right foot's timing away from half a cycle."""
     helpers = rig_helpers
     bones = rig.data.bones
     world = rig.matrix_world
@@ -65,13 +70,21 @@ def key_walk(rig, name="Walk", root=1.0, same_side_arms=False, feet_offset=0.0, 
         for pose_bone in rig.pose.bones:
             pose_bone.matrix_basis.identity()
         bpy.context.view_layer.update()
-        offset = Vector((0.0, -SPEED * t * root, -HIP_DROP))
+        bob = -BOB * math.cos(4 * math.pi * t) if natural else 0.0  # lowest at each heel strike, when both feet are down
+        sway = SWAY * math.sin(2 * math.pi * t) if natural else 0.0  # toward the left foot while it stands
+        offset = Vector((sway, -SPEED * t * root, -HIP_DROP + bob))
         hips = rig.pose.bones["hips"]
         matrix = hips.matrix.copy()
         matrix.translation = matrix.translation + offset
         hips.matrix = matrix
         bpy.context.view_layer.update()
-        for side, phase_shift in (("L", 0.0), ("R", 0.5)):
+        if natural:
+            # The left hip leads at the left heel strike, the trunk answers later and the other way, joint by joint.
+            helpers.turn_bone(rig, "hips", (0.0, 0.0, 1.0), -HIP_YAW * math.cos(2 * math.pi * t))
+            helpers.turn_bone(rig, "spine", (0.0, 0.0, 1.0), 1.1 * HIP_YAW * math.cos(2 * math.pi * (t - 0.04)))
+            helpers.turn_bone(rig, "chest", (0.0, 0.0, 1.0), 1.1 * HIP_YAW * math.cos(2 * math.pi * (t - 0.08)))
+            helpers.turn_bone(rig, "head", (0.0, 0.0, 1.0), -1.2 * HIP_YAW * math.cos(2 * math.pi * (t - 0.12)))
+        for side, phase_shift in (("L", 0.0), ("R", 0.5 + limp)):
             y, lift = _foot((t + phase_shift) % 1.0)
             hip = world @ rig.pose.bones[f"thigh.{side}"].head
             # Relative to the hips the legs move as in place; root 1 keeps the planted foot still in the world.
@@ -94,12 +107,68 @@ def key_walk(rig, name="Walk", root=1.0, same_side_arms=False, feet_offset=0.0, 
                 first, last = arms_inward
                 inward = max(0.0, min(1.0, (frame - first + 4) / 4, (last + 4 - frame) / 4))
             target = Vector((-0.95 * sign, -0.05, -0.3)).normalized()
-            helpers.point_bone(rig, f"forearm.{side}", direction.slerp(target, inward))
+            trailing = direction.copy()
+            if natural:
+                # The forearm follows the upper arm late, bent a little at the elbow.
+                late = -sign * ARM_SWING * math.cos(2 * math.pi * (t - 0.06))
+                trailing = arm_dir[side].copy()
+                trailing.rotate(Matrix.Rotation(-(late if not same_side_arms else -late) * 1.2 - math.radians(12), 3, "X"))
+            helpers.point_bone(rig, f"forearm.{side}", trailing.slerp(target, inward))
         if frame == pop_frame:
             helpers.point_bone(rig, "upper_arm.L", Vector((0.2, 0.0, 1.0)))
         for pose_bone in rig.pose.bones:
             pose_bone.keyframe_insert("location", frame=frame)
             pose_bone.keyframe_insert("rotation_quaternion", frame=frame)
     action.frame_range = (0, end)
+    action.use_frame_range = True
+    return action
+
+
+def key_stiff_walk(rig, name="Stiff", frames=FRAMES):
+    """The walk code tends to write first: straight legs and arms swinging about the hips at a constant speed, keyed at
+    the extremes with linear interpolation, everything on the same beat, nothing else moving. For checks that must
+    call it robotic."""
+    action = bpy.data.actions.new(name)
+    if rig.animation_data is None:
+        rig.animation_data_create()
+    rig.animation_data.action = action
+    bpy.context.scene.render.fps = 30
+    swing = math.radians(22)
+    for frame in range(0, frames + 1):
+        t = frame / frames
+        # A triangle wave: constant speed, then an instant turn.
+        wave = 4 * abs(((t + 0.25) % 1.0) - 0.5) - 1
+        for pose_bone in rig.pose.bones:
+            pose_bone.matrix_basis.identity()
+            pose_bone.rotation_mode = "QUATERNION"
+        for side, sign in (("L", 1.0), ("R", -1.0)):
+            for bone, amount in ((f"thigh.{side}", sign), (f"upper_arm.{side}", -sign)):
+                rig.pose.bones[bone].rotation_quaternion = Matrix.Rotation(swing * wave * amount, 4, "X").to_quaternion()
+        bpy.context.view_layer.update()
+        for pose_bone in rig.pose.bones:
+            pose_bone.keyframe_insert("location", frame=frame)
+            pose_bone.keyframe_insert("rotation_quaternion", frame=frame)
+    action.frame_range = (0, frames)
+    action.use_frame_range = True
+    return action
+
+
+def key_breathing_idle(rig, name="Idle", frames=60, amount=2.5):
+    """An idle: the chest rises and falls, the weight shifts. amount 0 freezes it."""
+    action = bpy.data.actions.new(name)
+    if rig.animation_data is None:
+        rig.animation_data_create()
+    rig.animation_data.action = action
+    for frame in range(0, frames + 1):
+        t = frame / frames
+        for pose_bone in rig.pose.bones:
+            pose_bone.matrix_basis.identity()
+            pose_bone.rotation_mode = "QUATERNION"
+        rig.pose.bones["chest"].rotation_quaternion = Matrix.Rotation(math.radians(amount) * math.sin(2 * math.pi * t), 4, "X").to_quaternion()
+        rig.pose.bones["spine"].rotation_quaternion = Matrix.Rotation(math.radians(amount) * math.sin(2 * math.pi * (t - 0.1)), 4, "Y").to_quaternion()
+        for pose_bone in rig.pose.bones:
+            pose_bone.keyframe_insert("location", frame=frame)
+            pose_bone.keyframe_insert("rotation_quaternion", frame=frame)
+    action.frame_range = (0, frames)
     action.use_frame_range = True
     return action

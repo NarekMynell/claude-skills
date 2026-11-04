@@ -23,6 +23,15 @@ Tiles: face, face_left.
 - Neck joins the head and shoulders without a step or a pinch.
 - **Hair** sits on the scalp: no gap above it, never cutting into the forehead, ears or neck. A natural hairline. No scalp showing through unless designed, and no hair inside the face or neck.
 
+## From above, and from the game
+
+Tiles: top, head_top, game, game_on_screen. The player sees these, and most of them rarely appear in a modeling tool's default views.
+
+- **Hats and hair:** nothing of the head or hair comes through the crown. No gap under the brim that shows the scalp.
+- **Shoulders, top of the head, bags:** they fill most of a high camera's view: are they designed, or just left over?
+- **At on-screen size:** can you tell who it is, and which way they face? Which details vanished? Remove them; enlarge what must read.
+- **Each variant,** not only the first one.
+
 ## Arms and hands
 
 Tiles: front, left_hand_top, right_hand_top, left_hand_bottom.

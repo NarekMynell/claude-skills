@@ -1,7 +1,7 @@
 {
   "name": "unity-dev",
-  "version": "0.8.0",
-  "description": "Professional Unity development: architecture and C# standards (VContainer, MessagePipe, UniTask), project setup, game design, UI, performance, audio, VFX, Blender 3D models, characters and animation, docs, a tested code library and a toolchain check",
+  "version": "0.9.0",
+  "description": "Professional Unity development: SOLID interface-based architecture and C# standards (VContainer, MessagePipe, UniTask) with automated audits, project setup, game design and proven balance, art direction, UI, performance, audio, VFX, Blender 3D models, characters, animation and NPC behavior, docs, a tested code library and a toolchain check",
   "author": {
     "name": "Narek"
   },
@@ -22,7 +22,10 @@
     "documentation",
     "characters",
     "animation",
-    "rigging"
+    "rigging",
+    "balance",
+    "ui",
+    "art-direction"
   ],
   "dependencies": [
     "unity@claude-plugins-official",

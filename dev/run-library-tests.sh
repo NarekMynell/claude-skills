@@ -38,6 +38,14 @@ rsync -a --delete --exclude '*.meta' "$library/" "$project/Assets/_Project/Scrip
 timeout_seconds=900
 if [ "$mode" = player ]; then timeout_seconds=2700; fi
 
+# The UiChecks tests need TMP Essentials, which projects import from the UGUI package and this repo doesn't carry.
+if [ ! -d "$project/Assets/TextMesh Pro" ]; then
+  [ -d "$project/Library/PackageCache" ] || "$unity" -batchmode -quit -projectPath "$project" -logFile "$project/Logs/resolve.log" || true
+  for package in "$project"/Library/PackageCache/com.unity.ugui*/"Package Resources/TMP Essential Resources.unitypackage"; do
+    [ -f "$package" ] && "$unity" -batchmode -quit -projectPath "$project" -importPackage "$package" -logFile "$project/Logs/import-tmp.log" || true
+  done
+fi
+
 status=0
 
 # Runs one test platform and prints its summary. Arguments: project, test platform, result name, extra Unity arguments.

@@ -10,6 +10,10 @@ allowed-tools:
 
 This guide can be wrong or out of date: verify what you rely on, as the [standards](../standards/SKILL.md#verify-before-relying-on-them) require.
 
+## Must
+
+Readable at gameplay speed, no hard edges or popping, within the overdraw budget, checked in the running game: the sections below. How each effect looks is your decision, and it should have its own identity.
+
 ## Design
 
 - **Purpose first.** Gameplay readability beats spectacle.

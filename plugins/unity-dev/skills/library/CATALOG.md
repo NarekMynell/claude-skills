@@ -19,9 +19,15 @@ Core modules share one assembly, `ProjectName.Core`, which references VContainer
 | Scenes | `Core/Scenes/` | `ISceneLoader`, `SceneLoader`, `ISceneTransition`, `NoSceneTransition` | UniTask |
 | Bootstrap | `Core/Bootstrap/`, `Core/Editor/Bootstrap/` | `IBootstrapStep`, `BootstrapFlow`, `BootstrapProgress`, `FrameRateStep`, `LoadFirstSceneStep`, Play from Bootstrap | Providers, Scenes, Serialization, Logging; VContainer, UniTask |
 | ContentLoading | `Core/ContentLoading/` | `IContentLoader`, `AddressablesContentLoader` | Addressables, UniTask; VContainer |
-| Culling | `Core/Culling/` | `VisibilityPauser` (CullingGroup driver) | Lifecycle, Extensions, Logging |
-| UI | `Core/UI/` | `SafeArea` | — |
+| Culling | `Core/Culling/` | `IVisibilityPauser` (one CullingGroup for all targets), `PauseWhenHidden`, `RegisterVisibilityPauser()`, `MovementProbe` | Lifecycle, Extensions, Logging; VContainer |
+| Motion | `Core/Motion/` | `FootSlideMeter`, `Gait`, `CrowdOverlapMeter`, `ActivityShares`: foot sliding, speed and cadence against the body, actors inside each other and how actors spend their time, measured in the running game | — |
+| Proofs | `Core/Proofs/` | `ProofReceipt`: a check records its last run in `docs/proofs/` | — |
+| Architecture | `Core/Editor/Architecture/`, `Core/Tests/Architecture/` | `ArchitectureAudit` and `ProjectArchitectureTests`: fails the test run on violations of the architecture rules. In every project | Proofs |
+| UiChecks | `Core/Editor/UiChecks/` | `UiAudit`, `UiAuditSettings`, `UssTokenAudit`: capsules, stretched sprites, the project's radius and type scales, overflow, touch targets. In every project with UGUI | Proofs, UI; `UnityEngine.UI`, `Unity.TextMeshPro` |
+| CostChecks | `Core/Editor/CostChecks/` | `SceneCostAudit`, `NeverMovedProbe`: realtime light, missing static flags, work off screen | Proofs, Culling |
+| UI | `Core/UI/` | `SafeArea`, `IUiShape` | — |
 | Persistence | `Persistence/` | `ISaveService<T>`, `ISaveStorage`, `SaveSchema<T>`, `ISaveMigration`; `RegisterJsonSave<T>()` and `RegisterFileSaveStorage()` for versioned JSON saves in crash-safe files | Newtonsoft JSON, UniTask; VContainer |
 | Audio | `Audio/` | `AudioCue`, `IAudioService` with `RegisterAudio()`, `AudioVolume` | Pooling, DI, Extensions, Logging; VContainer |
+| Pacing | `Pacing/` | `PacingAnalyzer`: pacing measures and findings from a balance simulation's timelines, with no engine references | — |
 
-Tests: `Core/Tests/` (Edit Mode), `Core/Tests/PlayMode/`, `Persistence/Tests/`, `Persistence/Tests/PlayMode/`, `Audio/Tests/`. Copy the tests of every module you take. Play Mode tests also run in players: run them in a development build of every target platform, because file systems, threading (none on Web) and IL2CPP differ from the Editor.
+Tests: `Core/Tests/` (Edit Mode), `Core/Tests/PlayMode/`, `Persistence/Tests/`, `Persistence/Tests/PlayMode/`, `Audio/Tests/`, `Pacing/Tests/`. Copy the tests of every module you take. Play Mode tests also run in players: run them in a development build of every target platform, because file systems, threading (none on Web) and IL2CPP differ from the Editor.

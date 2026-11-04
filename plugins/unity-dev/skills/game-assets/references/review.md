@@ -18,6 +18,9 @@ How to critique a contact sheet from `render_views.py`, and what to look for in 
 
 ## Props and environments
 
+- **From the game's camera and distance:** set `GAME_VIEW` and `GAME_PIXELS`. Is it readable? Is what's facing the camera designed? Does anything poke through from up there?
+- **Curves:** no visible polygon corners on anything round at its size on screen.
+
 - **Silhouette:** reads clearly at the distance the game shows it; no detail too small to see from there.
 - **Proportions and scale:** match the reference and real dimensions, next to a 1 m reference: a door about 2.0–2.1 m high, a table top about 0.75 m, a chair seat about 0.45 m, a stair step 0.15–0.18 m high and 0.28–0.30 m deep. Parts have believable thickness: no paper-thin walls, planks or blades unless the style asks for them.
 - **Construction:** parts that should touch, touch; nothing floats; nothing pokes through another part where it shows. Hinges, joints and fasteners sit where they would work.

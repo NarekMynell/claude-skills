@@ -11,7 +11,10 @@ dev/library-tests/[Oo]bj/
 dev/library-tests/[Uu]ser[Ss]ettings/
 dev/library-tests/Assets/_Project/
 dev/library-tests/Assets/_Project.meta
+dev/library-tests/Assets/TextMesh Pro/
+dev/library-tests/Assets/TextMesh Pro.meta
 dev/library-tests/*.csproj
 dev/library-tests/*.sln
 dev/library-tests/*.slnx
 dev/library-tests/.vscode/
+dev/library-tests/docs/proofs/

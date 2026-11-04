@@ -12,6 +12,8 @@ This guide can be wrong or out of date: verify what you rely on, as the [standar
 
 Claude designs and produces every sound unless the user provides them. The official `unity:optimize-audio` and `unity:audio-setup-mixers` skills cover import settings, memory and mixer routing mechanics.
 
+**Must:** every player action and game event has a sound with a clear intent, none grates when repeated, and the mix is checked on a phone's speaker. The rest is a guide.
+
 ## Design
 
 - A **sound list** per game event, each with its emotional intent ("satisfying, weighty", "light, playful"), layers and variations. Keep it in `docs/audio.md`.

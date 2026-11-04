@@ -4,6 +4,18 @@ This list can be wrong or out of date: verify what you rely on, as the [standard
 
 What each unity-dev release changed in the code library, so a project's copy can catch up, as [updating a copy](SKILL.md#updating-a-projects-copy) describes. **Fix** marks a defect that every copy of the module has: port it. **Change** alters an API or a behavior the project may rely on. **Added** is new code or tests.
 
+## 0.9.0
+
+- **Architecture.** Added: `ArchitectureAudit` and `ProjectArchitectureTests`, a test that fails on violations of the architecture rules.
+- **UiChecks.** Added: `UiAudit`, `UiAuditSettings`, `UssTokenAudit`. Core's Editor and test assemblies now reference `UnityEngine.UI` and `Unity.TextMeshPro`; a project without UGUI drops them with the module.
+- **CostChecks.** Added: `SceneCostAudit`, `NeverMovedProbe`.
+- **Motion.** Added: `FootSlideMeter`, `Gait`, `CrowdOverlapMeter`, `ActivityShares`.
+- **Proofs.** Added: `ProofReceipt`, a check's record of its last run in `docs/proofs/`.
+- **UI.** Added: `IUiShape`.
+- **Pacing.** Added: `PacingAnalyzer`, as its own engine-free assembly.
+- **Culling.** Added: `MovementProbe`, `IVisibilityPauser`, `RegisterVisibilityPauser()` and `PauseWhenHidden`, so an object pauses off screen by injection, with no code of its own. `VisibilityPauser` now implements the interface; nothing else changed.
+- **Audio.** Change: the service's root object comes from `AudioSourceFactory.CreateRoot()`, so the service creates no objects itself. Behavior is the same.
+
 ## 0.7.0
 
 - **All modules.** Change: the placeholder root namespace is `ProjectName` instead of `Company.Product`, because a project's root namespace is now its product's name alone ([code organization](../code-standards/references/code-organization.md#root-namespace)). Copies already in a project keep their own namespace: nothing to port.

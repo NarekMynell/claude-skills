@@ -6,7 +6,8 @@
         "VContainer",
         "MessagePipe",
         "MessagePipe.VContainer",
-        "UniTask"
+        "UniTask",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "overrideReferences": true,

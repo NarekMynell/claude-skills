@@ -1,6 +1,6 @@
 ---
 name: library
-description: The tested unity-dev code library - DI scopes and installers, Providers, pooling, state machines, startup flow, saving, audio, safe area, extensions, collections, algorithms - copied into a project under its own namespace.
+description: The tested unity-dev code library - DI scopes and installers, Providers, pooling, state machines, startup flow, saving, audio, off-screen pausing, the architecture, UI and scene cost audits, pacing analysis, safe area, extensions, collections, algorithms - copied into a project under its own namespace.
 disable-model-invocation: true
 allowed-tools:
   - Read(~/.claude/plugins/cache/*/unity-dev/**)

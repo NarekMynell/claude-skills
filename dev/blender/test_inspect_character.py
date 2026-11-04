@@ -78,13 +78,15 @@ for side, word in (("L", "Left"), ("R", "Right")):
 cases = []
 
 
-def case(label, expected, build, **settings):
+def case(label, expected, build, at_least=False, **settings):
     mannequin.clear()
     build_settings = build() or {}
     settings = dict(build_settings, **settings)
     report = run(**settings)
     found = sorted(report["issues"])
     ok = found == sorted(expected) and report["passed"] == (not expected)
+    if at_least:
+        ok = set(expected) <= set(found)
     cases.append({"case": label, "ok": ok, "expected": sorted(expected), "found": found, "issues": report["issues"]})
 
 
@@ -238,6 +240,227 @@ def no_head_bone():
 
 
 case("head bone missing", ["missing_humanoid_bones"], no_head_bone)
+
+
+def add_shell(name, profile, rig=None, bone=None, segments=24):
+    """A lathe around the head's axis, open underneath like a hat or a hair cap: (radius, height) from the rim up."""
+    mesh = bpy.data.meshes.new(name)
+    verts, faces = [], []
+    rings = [(r, z) for r, z in profile if r > 0.0]
+    for r, z in rings:
+        for i in range(segments):
+            angle = 2 * math.pi * i / segments
+            verts.append((r * math.cos(angle), r * math.sin(angle), z))
+    for k in range(len(rings) - 1):
+        for i in range(segments):
+            j = (i + 1) % segments
+            faces.append((k * segments + i, k * segments + j, (k + 1) * segments + j, (k + 1) * segments + i))
+    top = len(verts)
+    verts.append((0.0, 0.0, profile[-1][1]))
+    last = (len(rings) - 1) * segments
+    for i in range(segments):
+        faces.append((last + i, last + (i + 1) % segments, top))
+    mesh.from_pydata(verts, [], faces)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    if rig:
+        skin_to(obj, rig, bone)
+    return obj
+
+
+HAIR = [(0.135, 1.66), (0.135, 1.73), (0.1, 1.80), (0.0, 1.825)]
+HAT_FITS = [(0.22, 1.70), (0.15, 1.705), (0.145, 1.82), (0.0, 1.87)]
+HAT_TOO_SMALL = [(0.2, 1.70), (0.105, 1.705), (0.1, 1.76), (0.0, 1.80)]
+HAT_OVER_BALD_HEAD = [(0.2, 1.70), (0.12, 1.705), (0.115, 1.79), (0.0, 1.815)]  # clears the head, not the hair
+COVERED = ["Body<Hair", "Body<Hat", "Body<HatFits", "Body<HatSmall", "Body<HatBald", "Hair<Hat", "Hair<HatFits", "Hair<HatSmall", "Hair<HatBald"]
+
+
+def hat_on_head(profile):
+    def build():
+        body, rig = mannequin.build()
+        add_shell("Hat", profile, rig, "head")
+        return {"TARGETS": ["Body", "Hat"], "ALLOW_HIDDEN": COVERED}
+    return build
+
+
+case("a hat that clears the head", [], hat_on_head(HAT_FITS))
+case("the head pokes through the hat", ["parts_intersect"], hat_on_head(HAT_TOO_SMALL))
+
+
+def hair_and_hats():
+    body, rig = mannequin.build()
+    add_shell("Hair", HAIR, rig, "head")
+    add_shell("HatFits", HAT_FITS, rig, "head")
+    add_shell("HatSmall", HAT_TOO_SMALL, rig, "head")
+    return {"TARGETS": ["Body", "Hair", "HatFits", "HatSmall"], "ALLOW_HIDDEN": COVERED}
+
+
+case("a variant that cuts into another variant", ["variants_clash", "variant_swallowed", "shows_through_from_above"], hair_and_hats,
+     PART_GROUPS={"hair": ["Hair"], "hat": ["HatFits", "HatSmall"]})
+
+
+def hair_and_bald_hat():
+    body, rig = mannequin.build()
+    add_shell("Hair", HAIR, rig, "head")
+    add_shell("HatFits", HAT_FITS, rig, "head")
+    add_shell("HatBald", HAT_OVER_BALD_HEAD, rig, "head")
+    return {"TARGETS": ["Body", "Hair", "HatFits", "HatBald"], "ALLOW_HIDDEN": COVERED}
+
+
+case("a clash the game can show", ["variants_clash", "variant_swallowed", "shows_through_from_above"], hair_and_bald_hat, PART_GROUPS={"hair": ["Hair"], "hat": ["HatFits", "HatBald"]})
+case("a clash the game never shows", [], hair_and_bald_hat, PART_GROUPS={"hair": ["Hair"], "hat": ["HatFits", "HatBald"]},
+     NEVER_TOGETHER=["Hair+HatBald"])
+
+
+# Defects that cut no surface: only a look from above finds them.
+def hat_lost_in_hair(hat_second):
+    def build():
+        body, rig = mannequin.build()
+        add_shell("Hair", HAIR, rig, "head")
+        add_shell("HatFits", HAT_FITS, rig, "head")
+        add_shell("HatInside", [(0.125, 1.70), (0.12, 1.75), (0.08, 1.80), (0.0, 1.815)], rig, "head")
+        names = ["HatFits", "HatInside"] if hat_second else ["HatInside", "HatFits"]
+        return {"TARGETS": ["Body", "Hair", "HatFits", "HatInside"], "ALLOW_HIDDEN": COVERED + ["Body<HatInside", "Hair<HatInside"],
+                "PART_GROUPS": {"hair": ["Hair"], "hat": names}, "POSES": False}
+    return build
+
+
+case("a hat swallowed by the hair, second in its group", ["shows_through_from_above", "variant_swallowed"], hat_lost_in_hair(True))
+# First in its group, the plain hidden-face check sees it too.
+case("a hat swallowed by the hair, first in its group", ["covered_faces", "shows_through_from_above", "variant_swallowed"], hat_lost_in_hair(False))
+
+
+def open_crown():
+    body, rig = mannequin.build()
+    # A ring of a crown with no top: the head stands 5 cm out of it, touching nothing.
+    mesh = bpy.data.meshes.new("Hat")
+    verts, faces = [], []
+    rings = [(0.2, 1.68), (0.13, 1.685), (0.125, 1.74)]
+    for r, z in rings:
+        for i in range(24):
+            angle = 2 * math.pi * i / 24
+            verts.append((r * math.cos(angle), r * math.sin(angle), z))
+    for k in range(len(rings) - 1):
+        for i in range(24):
+            j = (i + 1) % 24
+            faces.append((k * 24 + i, k * 24 + j, (k + 1) * 24 + j, (k + 1) * 24 + i))
+    mesh.from_pydata(verts, [], faces)
+    hat = bpy.data.objects.new("Hat", mesh)
+    bpy.context.scene.collection.objects.link(hat)
+    skin_to(hat, rig, "head")
+    return {"TARGETS": ["Body", "Hat"], "ALLOW_HIDDEN": COVERED}
+
+
+case("the head out of an open crown, touching nothing", ["shows_through_from_above", "open_part"], open_crown)
+case("an open crown that is meant to be: a tiara", [], open_crown, COVERS_FROM_ABOVE=[])
+
+
+def renamed_open_crown(name):
+    def build():
+        settings = open_crown()
+        bpy.data.objects["Hat"].name = name
+        settings["TARGETS"] = ["Body", name]
+        settings["ALLOW_HIDDEN"] = COVERED + [f"Body<{name}"]
+        return settings
+    return build
+
+
+# By shape, not by name.
+case("an open crown named Fedora", ["shows_through_from_above", "open_part"], renamed_open_crown("Fedora"))
+
+
+def bald_spot():
+    body, rig = mannequin.build()
+    # Hair with its top missing: from above, the head shows.
+    add_shell("Hair", HAIR, rig, "head")
+    hair = bpy.data.objects["Hair"]
+    bm = bmesh.new()
+    bm.from_mesh(hair.data)
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_center_median().z > 1.78], context="FACES_ONLY")
+    bm.to_mesh(hair.data)
+    bm.free()
+    return {"TARGETS": ["Body", "Hair"], "ALLOW_HIDDEN": COVERED}
+
+
+case("the head through a hole in the hair", ["shows_through_from_above", "open_part"], bald_spot)
+
+
+def side_hole():
+    body, rig = mannequin.build()
+    hat = add_shell("Hat", HAT_FITS, rig, "head", segments=24)
+    bm = bmesh.new()
+    bm.from_mesh(hat.data)
+    bm.faces.ensure_lookup_table()
+    # One face out of the crown's side, halfway up.
+    crown = [f for f in bm.faces if 1.72 < f.calc_center_median().z < 1.80]
+    bmesh.ops.delete(bm, geom=[crown[0]], context="FACES_ONLY")
+    bm.to_mesh(hat.data)
+    bm.free()
+    return {"TARGETS": ["Body", "Hat"], "ALLOW_HIDDEN": COVERED}
+
+
+case("a hole in the side of a hat", ["open_part"], side_hole, at_least=True)
+
+
+def flipped_hat():
+    body, rig = mannequin.build()
+    hat = add_shell("Hat", HAT_FITS, rig, "head")
+    hat.data.flip_normals()
+    return {"TARGETS": ["Body", "Hat"], "ALLOW_HIDDEN": COVERED + ["Hat", "Hat<Body"]}
+
+
+case("a hat inside out", ["inside_out"], flipped_hat, at_least=True)
+
+
+def hat_left_out():
+    body, rig = mannequin.build()
+    add_shell("Hat", HAT_TOO_SMALL, rig, "head")
+    return {"TARGETS": ["Body"]}
+
+
+case("a hat on the rig, left out of TARGETS", ["parts_left_out"], hat_left_out)
+
+
+def parented_hat(profile):
+    def build():
+        body, rig = mannequin.build()
+        hat = add_shell("Hat", profile)
+        hat.parent = rig
+        hat.parent_type = "BONE"
+        hat.parent_bone = "head"
+        # Keep it where it was built: a bone parent works from the bone's tail, in the bone's orientation.
+        bone = rig.data.bones["head"]
+        hat.matrix_parent_inverse = (rig.matrix_world @ Matrix.Translation(bone.tail_local) @ bone.matrix_local.to_3x3().to_4x4()).inverted()
+        return {"ARMATURE": rig.name, "ALLOW_HIDDEN": COVERED}
+    return build
+
+
+case("a too-small hat parented to a bone, no TARGETS", ["parts_intersect"], parented_hat(HAT_TOO_SMALL))
+case("a fitting hat parented to a bone is fine, not 'not skinned'", [], parented_hat(HAT_FITS))
+
+
+def one_mesh_hat():
+    body, rig = mannequin.build()
+    add_shell("Hat", HAT_TOO_SMALL, rig, "head")
+    bpy.ops.object.select_all(action="DESELECT")
+    body.select_set(True)
+    bpy.data.objects["Hat"].select_set(True)
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.join()
+    return {"TARGETS": ["Body"], "ALLOW_HIDDEN": ["Body"]}
+
+
+case("the same defect inside one mesh", ["self_intersections"], one_mesh_hat)
+
+# The receipt.
+proofs = os.path.join(os.path.dirname(script_path), "..", "..", "..", "..", "..", "dev", "library-tests", "Logs", "proofs-test")
+mannequin.clear()
+mannequin.build()
+receipt_report = run(SYMMETRIC=["Body"], PROOF_DIR=proofs, PROOF_NAME="mannequin", POSES=False)
+receipt = os.path.join(proofs, "inspect_character-mannequin.json")
+ok = os.path.exists(receipt) and open(receipt).read().lstrip("{ \n").startswith('"passed": ' + str(receipt_report["passed"]).lower())
+cases.append({"case": "writes its receipt", "ok": ok, "expected": [], "found": [], "issues": {}})
 
 failed = [c for c in cases if not c["ok"]]
 for c in cases:

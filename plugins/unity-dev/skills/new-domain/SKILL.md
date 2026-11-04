@@ -17,6 +17,7 @@ This guide can be wrong or out of date: verify what you rely on, as the [standar
 2. **Does it belong in the library instead?** If it knows nothing about this project and is generic, it is a library module, not a domain (see the [code library](../library/SKILL.md)).
 3. **Dependencies.** List the domains it needs. Each dependency must be one-way. If two domains would need each other, plan the shared contracts assembly first.
 4. **Root namespace.** Read it from `CLAUDE.md`, or from an existing project assembly.
+5. **Capabilities.** List what the domain's objects and services can do, as interfaces, in the capability map in `docs/architecture.md`: capability, interface, who implements it, who uses it ([capabilities](../code-standards/references/capabilities.md)). Other domains see only these.
 
 ## Create
 
@@ -32,4 +33,4 @@ Follow the layout and asmdef templates in [code organization](../code-standards/
 
 ## Verify
 
-The project compiles with no errors or warnings, the tests pass, and entering Play Mode resolves the domain's services without VContainer exceptions.
+The project compiles with no errors or warnings, the tests pass, `ProjectArchitectureTests` among them, and entering Play Mode resolves the domain's services without VContainer exceptions.

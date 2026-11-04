@@ -4,7 +4,12 @@ Run it as the game-assets guide's "Running the scripts" describes. Settings:
     OUTPUT_DIR = "/abs/path"   required; the sheet is written here
     TARGETS = ["Crate"]        default: selected objects, else all meshes
     PRESET = "PROP"            "PROP": front, left, back, top and two 3/4 views. "CHARACTER": front, back, left, right,
-                               two 3/4 views, a floor, and close-ups of the face, hands and feet (needs an armature)
+                               two 3/4 views, top, a floor, and close-ups of the face, top of the head, hands and feet
+                               (needs an armature)
+    GAME_VIEW = {"yaw": -33, "pitch": 50}  adds a tile from the game camera's direction, in degrees: pitch above the
+                               horizon, yaw around the model from its front. The player sees this side and no other
+    GAME_PIXELS = 72           adds a tile at the size the model has on screen, in pixels of height, enlarged without
+                               smoothing: what the player can actually read. Needs GAME_VIEW
     VIEWS = ["front", "left"]  replaces the preset's views: front, back, left, right, top, bottom, front_left,
                                front_right, back_left, back_right (left is the model's own left, +X)
     CLOSEUPS = [{"label": "buckle", "center": [0, -0.1, 1.0], "size": 0.2, "view": "front"}]  added zoomed tiles;
@@ -42,7 +47,7 @@ DIRECTIONS = {
 }
 PRESETS = {
     "PROP": ["front", "left", "back", "top", "front_right", "back_left"],
-    "CHARACTER": ["front", "back", "left", "right", "front_left", "back_right"],
+    "CHARACTER": ["front", "back", "left", "right", "front_left", "back_right", "top"],
 }
 ORTHOGRAPHIC = {"front", "back", "left", "right", "top", "bottom"}
 GRID_VIEWS = {"front", "back", "left", "right"}
@@ -98,7 +103,8 @@ def _character_closeups(objects, low, high):
         # Rigs start the head bone anywhere from the top of the neck to the middle of the skull.
         size = max((high.z - head.z) * 1.6, height * 0.16)
         tiles += [{"label": "face", "center": center, "size": size, "view": "front"},
-                  {"label": "face_left", "center": center, "size": size, "view": "left"}]
+                  {"label": "face_left", "center": center, "size": size, "view": "left"},
+                  {"label": "head_top", "center": center, "size": size, "view": "top"}]
     for side in ("Left", "Right"):
         hand = roles.get(f"{side}Hand")
         if hand:
@@ -203,6 +209,11 @@ def _add_helpers(objects, low, high, floor, grid, wire, created):
     return grid_objects, wire_objects
 
 
+def _game_direction(game_view):
+    yaw, pitch = math.radians(game_view["yaw"]), math.radians(game_view["pitch"])
+    return (math.sin(yaw) * math.cos(pitch), -math.cos(yaw) * math.cos(pitch), math.sin(pitch))
+
+
 def _render_tile(scene, camera, camera_data, path, view, center, size, orthographic):
     direction = Vector(DIRECTIONS[view]).normalized()
     camera_data.type = "ORTHO" if orthographic else "PERSP"
@@ -228,10 +239,15 @@ def _compose(paths_by_row, tile, output):
         images = []
         for path in row:
             image = bpy.data.images.load(path, check_existing=False)
-            pixels = np.empty(tile * tile * 4, dtype=np.float32)
+            side = image.size[0]
+            pixels = np.empty(side * side * 4, dtype=np.float32)
             image.pixels.foreach_get(pixels)
             bpy.data.images.remove(image)
-            images.append(np.flipud(pixels.reshape(tile, tile, 4)))
+            pixels = np.flipud(pixels.reshape(side, side, 4))
+            if side != tile:  # a tile at on-screen size, enlarged without smoothing
+                nearest = (np.arange(tile) * side // tile).astype(int)
+                pixels = pixels[nearest][:, nearest]
+            images.append(pixels)
         rows.append(images)
     columns = max(len(r) for r in rows)
     width = columns * tile + (columns - 1) * gap
@@ -268,6 +284,15 @@ def render_views():
     floor = _setting("FLOOR", None)
     floor = preset == "CHARACTER" if floor is None else floor
     grid = _setting("GRID", None)
+    game_view = _setting("GAME_VIEW", None)
+    game_pixels = _setting("GAME_PIXELS", None)
+    if game_pixels and not game_view:
+        raise ValueError("GAME_PIXELS needs GAME_VIEW")
+    if game_view:
+        DIRECTIONS["game"] = _game_direction(game_view)
+        DIRECTIONS["game_on_screen"] = DIRECTIONS["game"]
+        ORTHOGRAPHIC.add("game_on_screen")
+        views = list(views) + ["game"] + (["game_on_screen"] if game_pixels else [])
 
     shading = scene.display.shading
     image = scene.render.image_settings
@@ -346,6 +371,8 @@ def render_views():
                 if len(frames) > 1:
                     label = f"{label}@{frame}"
                 path = os.path.join(tiles_dir, f"{len(paths):03d}.png")
+                pixels = int(game_pixels * 1.1) if view == "game_on_screen" and closeup is None else tile
+                scene.render.resolution_x = scene.render.resolution_y = pixels
                 _render_tile(scene, camera, camera_data, path, view, center, size, orthographic)
                 paths.append(path)
                 layout.append(label)

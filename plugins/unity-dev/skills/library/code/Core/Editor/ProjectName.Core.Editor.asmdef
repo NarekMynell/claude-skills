@@ -2,7 +2,9 @@
     "name": "ProjectName.Core.Editor",
     "rootNamespace": "ProjectName.Core.Editor",
     "references": [
-        "ProjectName.Core"
+        "ProjectName.Core",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [
         "Editor"

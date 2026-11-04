@@ -8,6 +8,17 @@ Run it as the game-assets guide's "Running the scripts" describes. Settings, all
     SINGLE_LAYER = True          a face covered by another part is a defect; False when outfits swap
     ALLOW_HIDDEN = ["Eyes", "Body<Hair"]  covered faces that are intended: a whole object, or "Object<Cover"
     SEE_THROUGH = ["HairCards"]  objects with transparent parts: they cover nothing
+    PART_GROUPS = {"hair": ["HairShort", "HairLong"], "hat": ["Cap", "SunHat"]}  interchangeable parts: variants of the
+                                 character. Parts of a group never appear together; parts of different groups do, so each
+                                 pair of them, and each against the rest of the character, must fit without cutting
+                                 into each other. They aren't checked against their own group
+    NEVER_TOGETHER = ["HairLong+Cap"]  pairs from different groups that the game never combines
+    COVERS_FROM_ABOVE = ["SunHat"]  parts nothing may show through from above: inside the part's outline, the first thing
+                                 a look straight down meets must be the part, and it has no hole above its rim. Default:
+                                 whatever sits on top of the head and covers its highest point. [] turns it off, for a
+                                 tiara or a visor
+    PROOF_DIR = "/abs/docs/proofs"  writes this report to inspect_character-<PROOF_NAME>.json there
+    PROOF_NAME = "visitor"       default: the first target's name
     SYMMETRIC = ["Body"]         objects that must mirror across X = 0
     LEGS_JOINED = False          True for a long robe or dress that joins the legs on purpose
     WAIST_BULGE = False          True for a body that is widest at the waist on purpose
@@ -19,6 +30,7 @@ Sets `result`: `passed`, `issues` (name -> count or detail), `examples` (name ->
 in metres) and `info` (measurements). The scene is left as it was.
 """
 
+import json
 import math
 import os
 import types
@@ -281,14 +293,183 @@ def _intersections(parts):
     return within, between, examples
 
 
-def _hidden_faces(parts, height, see_through, allowed):
+def _group_of(groups):
+    return {name: group for group, names in groups.items() for name in names}
+
+
+def _variant_clashes(between, groups, never_together):
+    """Splits intersecting pairs into those that matter and those that can't appear together in the game."""
+    group_of = _group_of(groups)
+    clashes, same_group = {}, []
+    for pair, count in between.items():
+        a, b = pair.split("/")
+        if group_of.get(a) and group_of.get(a) == group_of.get(b):
+            same_group.append(pair)
+        elif f"{a}+{b}" in never_together or f"{b}+{a}" in never_together:
+            same_group.append(pair)
+        elif a in group_of or b in group_of:
+            clashes[pair] = count
+    return clashes, same_group
+
+
+def _without_variants(parts, groups):
+    """The parts with one variant of each group, the first: the character as it appears."""
+    skipped = {name for names in groups.values() for name in names[1:]}
+    return [p for p in parts if p.name not in skipped]
+
+
+def _hull(points):
+    """Convex hull of (x, y) points, counter-clockwise."""
+    points = sorted(set(points))
+    if len(points) < 3:
+        return points
+
+    def half(items):
+        chain = []
+        for p in items:
+            while len(chain) >= 2 and (chain[-1][0] - chain[-2][0]) * (p[1] - chain[-2][1]) - (chain[-1][1] - chain[-2][1]) * (p[0] - chain[-2][0]) <= 0:
+                chain.pop()
+            chain.append(p)
+        return chain[:-1]
+
+    return half(points) + half(reversed(points))
+
+
+def _inside(hull, x, y):
+    return all((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) >= 0 for a, b in zip(hull, hull[1:] + hull[:1]))
+
+
+def _tops(parts, body):
+    """Whatever covers the top of the head: it reaches about as high, and the head's highest point is inside its outline.
+    By shape, not by name: a fedora, a crown or a helmet all count."""
+    named = _setting("COVERS_FROM_ABOVE", None)
+    if named is not None:
+        return [p for p in parts if p.name in named]
+    highest = max(body.bm.verts, key=lambda v: v.co.z).co
+    height = highest.z - min(v.co.z for v in body.bm.verts)
+    tops = []
+    for part in parts:
+        if part is body:
+            continue
+        if max(v.co.z for v in part.bm.verts) < highest.z - 0.03 * height:
+            continue
+        hull = _hull([(v.co.x, v.co.y) for v in part.bm.verts])
+        if len(hull) >= 3 and _inside(hull, highest.x, highest.y):
+            tops.append(part)
+    return tops
+
+
+def _is_hair(part, groups):
+    words = {"hair", "hairs", "wig", "bun", "ponytail", "braid", "fringe", "bangs", "mohawk", "afro"}
+    return bool(set(rig.words(part.name)) & words or set(rig.words(_group_of(groups).get(part.name, ""))) & words)
+
+
+def _open_parts(tops):
+    """Holes in what covers the head: open edges above its rim. An open underside is fine, a hole in the crown isn't, and it
+    shows from the side too, which looking down can't see."""
+    openings = {}
+    for part in tops:
+        boundary = [edge for edge in part.bm.edges if len(edge.link_faces) == 1]
+        if not boundary:
+            continue
+        low = min(v.co.z for v in part.bm.verts)
+        high = max(v.co.z for v in part.bm.verts)
+        rim = min(min(v.co.z for v in edge.verts) for edge in boundary)
+        limit = max(rim, low) + 0.25 * (high - low)
+        holes = [edge for edge in boundary if min(v.co.z for v in edge.verts) > limit]
+        if holes:
+            openings[part.name] = len(holes)
+    return openings
+
+
+def _shows_through(parts, tops, groups, never_together):
+    """Looking straight down inside each top part's outline: whatever is met before the part shows through it. It finds a
+    head out of an open crown and a hat swallowed by hair, which cut no surface. {"Hat<Hair": rays}, parts seen from inside
+    out, and examples."""
+    group_of = _group_of(groups)
+    counts, inside_out, examples = {}, {}, []
+    down = Vector((0.0, 0.0, -1.0))
+    for top in tops:
+        backs = fronts = 0
+        points = [(v.co.x, v.co.y) for v in top.bm.verts]
+        hull = _hull(points)
+        if len(hull) < 3:
+            continue
+        xs, ys = [p[0] for p in points], [p[1] for p in points]
+        ceiling = max(v.co.z for v in top.bm.verts) + 1.0
+        for other in parts:
+            if other is top or (group_of.get(other.name) and group_of.get(other.name) == group_of.get(top.name)):
+                continue
+            if f"{top.name}+{other.name}" in never_together or f"{other.name}+{top.name}" in never_together:
+                continue
+            # Hair may be under a hat, never the other way: for hair, only the body can show through.
+            if _is_hair(top, groups) and other.name in group_of:
+                continue
+            hits = 0
+            for i in range(25):
+                for j in range(25):
+                    # Slightly inside the outline's cells, so a ray doesn't run exactly along an edge.
+                    x = min(xs) + (max(xs) - min(xs)) * (i + 0.5) / 25
+                    y = min(ys) + (max(ys) - min(ys)) * (j + 0.5) / 25
+                    if not _inside(hull, x, y):
+                        continue
+                    origin = Vector((x, y, ceiling))
+                    other_hit = other.tree.ray_cast(origin, down, 10.0)
+                    if other_hit[0] is None:
+                        continue
+                    top_hit = top.tree.ray_cast(origin, down, 10.0)
+                    if top_hit[0] is None or other_hit[3] < top_hit[3] - 1e-4:
+                        hits += 1
+                        if len(examples) < MAX_EXAMPLES:
+                            examples.append({"objects": [top.name, other.name], "at": _round(other_hit[0])})
+            if hits:
+                counts[f"{top.name}<{other.name}"] = hits
+        # From above, a surface shows its outside. Seen from behind, backface culling would make it vanish.
+        for i in range(25):
+            for j in range(25):
+                x = min(xs) + (max(xs) - min(xs)) * (i + 0.5) / 25
+                y = min(ys) + (max(ys) - min(ys)) * (j + 0.5) / 25
+                hit = top.tree.ray_cast(Vector((x, y, ceiling)), down, 10.0)
+                if hit[0] is not None:
+                    if hit[1].dot(down) > 0.0:
+                        backs += 1
+                    else:
+                        fronts += 1
+        if backs > fronts:
+            inside_out[top.name] = backs
+    return counts, inside_out, examples
+
+
+def _variant_coverage(parts, groups, see_through, allowed, never_together):
+    """Each variant against each part it can appear with: a variant mostly hidden by another is lost inside it. It runs
+    beyond the first variants, which are the only ones the plain hidden-face check sees."""
+    group_of = _group_of(groups)
+    height = max(v.co.z for p in parts for v in p.bm.verts) - min(v.co.z for p in parts for v in p.bm.verts)
+    base = [p for p in parts if p.name not in group_of]
+    swallowed = {}
+    for part in parts:
+        if part.name not in group_of:
+            continue
+        for other in parts:
+            if other is part or group_of.get(other.name) == group_of[part.name]:
+                continue
+            if f"{part.name}+{other.name}" in never_together or f"{other.name}+{part.name}" in never_together:
+                continue
+            counts, _ = _hidden_faces(base + [q for q in (part, other) if q not in base], height, see_through, allowed, only=part)
+            hidden = counts.get((part.name, other.name), 0)
+            if f"{part.name}<{other.name}" not in allowed and hidden > 0.3 * len(part.bm.faces):
+                swallowed[f"{part.name}<{other.name}"] = hidden
+    return swallowed
+
+
+def _hidden_faces(parts, height, see_through, allowed, only=None):
     """Faces whose outward directions all run into the back of a surface: they sit inside or under it.
     Returns {(object, cover): count} and examples."""
     occluders = [p for p in parts if p.name not in see_through]
     reach = 0.2 * height
     counts, examples = {}, []
     for part in parts:
-        if part.name in allowed:
+        if part.name in allowed or (only is not None and part is not only):
             continue
         hidden = 0
         for face in part.bm.faces:
@@ -534,6 +715,11 @@ def _poses_report(objects, armature, roles, rest_lengths, rest_between):
 # --- Entry point -------------------------------------------------------------------------------------------------------
 
 
+def _is_attached(obj, armature):
+    """A rigid part parented to the armature or one of its bones, which the rigging reference allows."""
+    return armature is not None and obj.parent is armature
+
+
 def _targets():
     names = _setting("TARGETS", None)
     if names:
@@ -544,7 +730,7 @@ def _targets():
     armature_name = _setting("ARMATURE", None)
     if armature_name:
         armature = bpy.data.objects[armature_name]
-        return [o for o in bpy.context.scene.objects if o.type == "MESH" and rig.deforming_armature(o) is armature]
+        return [o for o in bpy.context.scene.objects if o.type == "MESH" and (rig.deforming_armature(o) is armature or _is_attached(o, armature))]
     selected = [o for o in bpy.context.selected_objects if o.type == "MESH"]
     return selected
 
@@ -596,14 +782,40 @@ def inspect():
             info.update(found[2])
 
         within, between, cut_examples = _intersections(parts)
+        groups = _setting("PART_GROUPS", {})
+        clashes, apart = _variant_clashes(between, groups, set(_setting("NEVER_TOGETHER", [])))
+        rest_between = dict(between)
+        between = {pair: count for pair, count in between.items() if pair not in apart and pair not in clashes}
+        cut_examples = [e for e in cut_examples if "/".join(e.get("objects", [])) not in apart]
         if within:
             issues["self_intersections"] = within
         if between:
             issues["parts_intersect"] = between
+        if clashes:
+            issues["variants_clash"] = clashes
         if cut_examples:
             examples["intersections"] = cut_examples[:MAX_EXAMPLES]
+        if groups:
+            info["variant_pairs_checked"] = sum(len(a) * len(b) for i, a in enumerate(groups.values()) for b in list(groups.values())[i + 1:])
+            swallowed = _variant_coverage(parts, groups, see_through, allowed, set(_setting("NEVER_TOGETHER", [])))
+            if swallowed:
+                issues["variant_swallowed"] = swallowed
+            info["variant_groups"] = groups
+            info["never_together"] = list(_setting("NEVER_TOGETHER", []))
+        tops = _tops(parts, body)
+        info["covers_from_above"] = [p.name for p in tops]
+        through, inside_out, through_examples = _shows_through(parts, tops, groups, set(_setting("NEVER_TOGETHER", [])))
+        if through:
+            issues["shows_through_from_above"] = through
+            examples["shows_through"] = through_examples
+        if inside_out:
+            issues["inside_out"] = inside_out
+        openings = _open_parts(tops)
+        if openings:
+            issues["open_part"] = openings
 
-        hidden, hidden_examples = _hidden_faces(parts, height, see_through, allowed)
+        # Variants can't cover each other: only what appears together can hide a face.
+        hidden, hidden_examples = _hidden_faces(_without_variants(parts, groups), height, see_through, allowed)
         inside = {f"{o}": n for (o, cover), n in hidden.items() if cover == o}
         sunk = {f"{o}<{cover}": n for (o, cover), n in hidden.items() if cover != o and cover == body_name}
         covered = {f"{o}<{cover}": n for (o, cover), n in hidden.items() if cover != o and cover != body_name}
@@ -633,13 +845,20 @@ def inspect():
         if not _applied(obj) and obj.parent is None:
             issues.setdefault("transforms_not_applied", []).append(obj.name)
 
+    # Whatever is on the rig is part of the character: a hat left out of TARGETS was never checked.
+    if armature:
+        left_out = [o.name for o in bpy.context.scene.objects if o.type == "MESH" and o not in objects
+                    and (rig.deforming_armature(o) is armature or _is_attached(o, armature))]
+        if left_out:
+            issues["parts_left_out"] = left_out
+
     if armature:
         found = _rig_report(armature, roles, height, _setting("FINGERS", 5))
         issues.update(found[0])
         examples.update(found[1])
         info.update(found[2])
         deformed = [o for o in objects if rig.deforming_armature(o) is armature]
-        not_deformed = [o.name for o in objects if o not in deformed]
+        not_deformed = [o.name for o in objects if o not in deformed and not _is_attached(o, armature)]
         if not_deformed:
             issues["not_skinned"] = not_deformed
         found = _weights_report(deformed, armature, height)
@@ -647,14 +866,22 @@ def inspect():
         examples.update(found[1])
         info.update(found[2])
         if _setting("POSES", True) and not [r for r in rig.REQUIRED if r not in roles]:
-            found = _poses_report(objects, armature, roles, rest_lengths, between)
+            found = _poses_report(objects, armature, roles, rest_lengths, rest_between)
             issues.update(found[0])
             examples.update(found[1])
             info.update(found[2])
     else:
         info["rig"] = "no armature deforms the targets: rig checks skipped"
 
-    return {"passed": not issues, "issues": issues, "examples": examples, "info": info}
+    report = {"passed": not issues, "issues": issues, "examples": examples, "info": info}
+    folder = _setting("PROOF_DIR", None)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+        name = _setting("PROOF_NAME", None) or objects[0].name
+        settings = {key: _setting(key, None) for key in ("TARGETS", "ALLOW_HIDDEN", "SEE_THROUGH", "COVERS_FROM_ABOVE", "NEVER_TOGETHER", "POSES", "LEGS_JOINED", "WAIST_BULGE", "SINGLE_LAYER") if key in globals()}
+        with open(os.path.join(folder, f"inspect_character-{name}.json"), "w") as out:
+            json.dump(dict(report, settings=settings), out, indent=1, default=str)
+    return report
 
 
 result = inspect()
