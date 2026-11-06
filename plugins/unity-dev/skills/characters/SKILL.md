@@ -15,7 +15,7 @@ Read [game assets](../game-assets/SKILL.md) first: its way of working, scripts, 
 
 ## Must
 
-- **Nothing pokes through anything.** No head through a hat, no hair through a hat, no skin through clothes, in any combination of variants the game can show, in any pose it uses, from any angle the camera reaches.
+- **Nothing pokes through anything,** as the player sees it. No head through a hat, no hair through a hat, no skin through clothes, no limb through the body, in any combination of variants the game can show, in any pose it uses, from any angle the camera reaches. Parts that overlap where they join don't poke: a leg that enters a torso and stays there is one way to build a body. An arm that comes out the other side is a poke.
 - **Every character passes** `validate_mesh.py` and `inspect_character.py`, with all its parts in `TARGETS` and all its variants in `PART_GROUPS`; its review finds nothing left to fix, including from the game's own camera; it deforms cleanly in the test poses and in its animations.
 - **The proof holds on any pipeline.** A character built by a custom script, merged into one mesh, or skinned in a shader goes through the same checks: build it as Blender objects with an armature, and run them. A check of your own counts only when it catches the same defects: a count of coplanar faces catches none of these. Run it with `PROOF_DIR` set to the project's `docs/proofs`, so each character leaves its receipt.
 - **The characters are the project's own.** A third-party character never ships as it came, unless the user asks for that model: a base is a starting point, changed until it is this project's design.
@@ -26,11 +26,13 @@ The method for each character is a guide: your choice, from this guide or outsid
 
 - Bodies built from primitives, metaballs or vertex moves in code, and sculpting through screenshots: fused legs, bloated waists, crooked hands, wrong faces, and tweaking didn't fix them. Use a method like that only with a concrete reason it will work this time, proven by the checks on an early blockout.
 - Variants in a real project: a sun hat whose crown was smaller than the hair under it, so the head came out through the top. It looked fine from the front. No check had run on it, the reviews never looked from above, and the game's camera looks from above.
+- A check that fails everything: a real project of 73 characters built from parts failed the earlier version of `inspect_character.py` on 71 of them, because it took any crossing for a poke. Failing every character, it couldn't show a real defect. When a check fails what looks right, read what it reports and say so, with what the player would see: a wrong check is reported and fixed, not ignored or worked around.
 
 Methods known to work:
 
 1. **Transform a professional base:** a body whose topology, proportions and rig are already right, changed through its own controls into the project's character ([section 3](#3-make-it-the-projects-own)).
 2. **Build from scratch, skeleton first:** a joint skeleton with a thickness at each joint becomes the surface ([build_body.py](../game-assets/scripts/build_body.py)), so limbs stay apart and the sides mirror; the design is added as parts modeled like props. Method and limits: [references/from-scratch.md](references/from-scratch.md).
+3. **Build from parts:** solid parts that overlap at the joints, modeled like props, for styles where the joints are meant to show. Recipe, cost and failures: [references/from-parts.md](references/from-parts.md).
 
 Other routes are open: another add-on or generator, a model the user bought, a tool the user owns, a retopologized scan. The same bar applies.
 
@@ -53,8 +55,9 @@ Starting points, not a closed list; the brief decides.
 | Realistic or semi-realistic human | Transform an MPFB body | Correct anatomy, faces and hands; clothes that hide the body under them; low-poly proxies for budgets |
 | Stylized human with a detailed face, low or mid poly | Transform a stylized base (Quaternius, Kenney), or an MPFB body with stylized proportions | Faces and hands are where scratch-built characters fail |
 | Cartoon or abstract humanoid with a simple face or none | From scratch, skeleton first | Proportions free: big heads, short legs, mitten hands |
-| Robot, blocky, toy-like, hard-surface creature | From scratch, parts modeled like props | Rigid parts weighted to one bone each |
-| Animal or creature | Skeleton first when its forms are simple; otherwise a professional base | |
+| Robot, blocky, toy-like, hard-surface creature | [From parts](references/from-parts.md) | Rigid parts weighted to one bone each |
+| Toy-like or low-poly people and animals, where a crease at each joint is part of the look | [From parts](references/from-parts.md) | Cheap to build and to vary. Reads as a toy: the art direction must want that |
+| Animal or creature | Skeleton first when its forms are simple; from parts when the look allows; otherwise a professional base | Checks and bends fit any skeleton: no human bones asked for |
 | Anime | VRoid Studio, run by the user, exported as VRM, then transformed | |
 | A character the user owns, bought or asks for by name | That model, as the user wants it | |
 
@@ -75,7 +78,7 @@ AI 3D generators (Meshy, Tripo, Rodin, Hunyuan3D, TRELLIS) are no base for main 
   - a hat is modeled around the largest hair it can sit on, or hair has a version for hats: the part under the hat is cut away, or replaced by a short cap;
   - list every interchangeable part in `PART_GROUPS`, and pairs the game never combines in `NEVER_TOGETHER`. An Edit Mode test holds the game's spawn table to the lists in the receipt (`variant_groups`, `never_together`), so the game can't combine what was never checked;
   - from above and from the game's camera, on every hat: nothing of the head or hair shows through. `shows_through_from_above` looks straight down inside the outline of whatever sits on the head, at every other part it can appear with, and finds what cuts no surface: a head out of an open crown, a hat lost in hair. `open_part` finds holes above a hat's rim, which a look from the game's camera would meet;
-  - a pipeline that merges a variant into one mesh runs the script on each merged result: `self_intersections` then reports the clash.
+  - a pipeline that merges a variant into one mesh runs the script on each merged result: each island is a surface, and `self_intersections` then reports the clash.
 - **Budget:** a lower-poly topology of the base, such as an MPFB proxy, or fewer subdivisions of a skeleton-first body, instead of decimating. Decimation destroys the edge loops joints need to bend. LODs: decimate a copy with symmetry on and UV seams kept, then check its deformation again.
 
 ## 4. Rig and skin
@@ -92,14 +95,16 @@ Unity's Humanoid system retargets any humanoid animation onto any humanoid chara
 All of the character's meshes together, every round:
 
 1. [validate_mesh.py](../game-assets/scripts/validate_mesh.py) with the triangle budget.
-2. [inspect_character.py](../game-assets/scripts/inspect_character.py), set for the design: `SINGLE_LAYER`, `ALLOW_HIDDEN` for eyes and mouth parts that animate, `SEE_THROUGH` for hair cards, `SYMMETRIC` for the body, `FINGERS`, `PART_GROUPS` for variants, and `LEGS_JOINED` or `WAIST_BULGE` only when the design asks for them. It checks:
-   - **anatomy:** legs separate up to the crotch, no waist wider than hips and chest, symmetry, feet on the ground;
-   - **surfaces:** faces hidden inside a mesh, parts sunk into the body (hair in the head), covered body faces, intersecting parts, variants that cut into each other or are lost in each other (`variants_clash`, `variant_swallowed`), what shows through a hat or holes in it (`shows_through_from_above`, `open_part`, `inside_out`, `COVERS_FROM_ABOVE`), and meshes on the rig left out of `TARGETS` (`parts_left_out`);
-   - **rig:** Humanoid bones, sides, facing, hierarchy, rest pose, thumbs in front, finger order;
+2. [inspect_character.py](../game-assets/scripts/inspect_character.py), set for the design: `SINGLE_LAYER`, `ALLOW_HIDDEN` for eyes and mouth parts that animate, `SEE_THROUGH` for hair cards, `TWO_SIDED` for what a two-sided material draws, `SYMMETRIC` for the body, `FINGERS`, `PART_GROUPS` for variants, and `LEGS_JOINED`, `WAIST_BULGE`, `ALLOW_CROSSING` or `ALLOW_FLOATING` only when the design asks for them. It works on connected surfaces, whatever the objects: one skin, separate parts or one merged mesh. It checks:
+   - **anatomy:** legs separate, on any number of them; for a person, up to the crotch, and no waist wider than hips and chest; symmetry; feet on the ground;
+   - **what shows wrong:** surfaces no joint connects cutting each other, a part out of the far side of what it enters, a surface that runs under another showing through it (`parts_intersect`, `self_intersections` in one mesh), variants that do the same or are lost in each other (`variants_clash`, `variant_swallowed`), what shows through a hat or holes in it (`shows_through_from_above`, `open_part`, `inside_out`, `top_not_on_head`; `COVERS_FROM_ABOVE` adds what covers the head, `OPEN_ON_TOP` takes away a tiara or a headband), openings that show a surface's inside (`see_inside`), parts hanging in the air (`floating_part`), and meshes on the rig left out of `TARGETS` (`parts_left_out`);
+   - **what stays hidden,** at rest and in every pose: faces inside a mesh, parts sunk into the body, covered body faces (`hidden_inside`, `sunk_into_body`, `covered_faces`);
+   - **feet:** on the ground, and each of them (`not_on_ground`, `foot_off_ground`; `GROUND = None` for what swims or flies);
+   - **rig:** for a person, Humanoid bones, sides, facing, hierarchy, rest pose, thumbs in front, finger order; for an animal or creature, sides and facing (`HUMANOID` overrides which: by default, enough Humanoid bones, standing upright);
    - **weights:** unweighted vertices, more than 4 influences, weight from the opposite side;
-   - **deformation** in test poses (arms down, up and forward, squat, stride, twist, fists): parts that poke through each other, stretched or collapsed edges.
+   - **deformation:** test poses for a person (arms down, up and forward, squat, stride, twist, fists), and for any other body its legs forward, back and folded, and its trunk, neck and tail to the side, up and down: what a pose brings through what (`poke_through_in_poses`), joints that come apart (`joint_opens_in_poses`), openings that show the inside (`see_inside_in_poses`), stretched or collapsed edges.
 
-   Each issue's `examples` give positions: fix the cause there.
+   Each issue's `examples` give positions, and for crossings the reason: fix the cause there. When a report seems wrong, render that spot before believing either side.
 3. **Contact sheets** with [render_views.py](../game-assets/scripts/render_views.py):
    - `PRESET="CHARACTER"`, with `GRID` set to the style's head count: front, back, both sides, two 3/4 views, top, and close-ups of the face, the top of the head, both hands from above, a palm and the feet, in one image;
    - `GAME_VIEW` set to the game camera's angle and `GAME_PIXELS` to the character's height on a phone, on every variant the player can see: this is what the player gets, and the only tile that decides whether a detail is worth its triangles;

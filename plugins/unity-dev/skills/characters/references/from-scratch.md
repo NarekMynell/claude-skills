@@ -2,7 +2,7 @@
 
 This reference can be wrong or out of date: verify what you rely on, as the [standards](../../standards/SKILL.md#verify-before-relying-on-them) require.
 
-For cartoon and abstract humanoids, simple creatures and robots: characters whose forms are simple by design. Detailed realistic faces and hands start from a base instead ([method table](../SKILL.md#2-choose-the-method)).
+For cartoon and abstract humanoids and simple animals: bodies whose forms are simple by design and read as one surface. Detailed realistic faces and hands start from a base instead; robots and toy-like figures, whose joints show, from [parts](from-parts.md) ([method table](../SKILL.md#2-choose-the-method)).
 
 ## The idea
 
@@ -30,7 +30,8 @@ BONES = [("hips", "pelvis", "chest", None), ("thigh.L", "hip.L", "knee.L", "hips
 Run it with `NAME`, `JOINTS`, `BONES` and `SUBDIVISIONS` (0 for low poly, 1 or 2 for mid poly), then `inspect_character.py`. Rules that come from running it:
 
 - **Facing −Y, left at +X**, feet at z = 0; the script puts the lowest point on the ground after smoothing, which shrinks the shape.
-- **Limbs start at the torso's surface,** not deep inside it, and each long limb has a joint near its root (below the hip, below the shoulder). Without those loops a squat or a raised arm collapses the crease: `stretched_in_poses` reports it.
+- **Limbs start outside the torso's joint:** the first joint of a limb sits farther from the torso joint than that joint's radius, and is thinner than it. Inside, the surface breaks where they branch: `non_manifold_edges` and `self_intersections` report it, on an animal with four legs and a tail most of all. On the test animal, with a pelvis of radius 0.11 m, a hip joint 0.13 m from it broke the surface and one 0.16 m from it didn't, until the two hips came within 0.12 m of each other. Check after every change of the table.
+- **Each long limb has a joint near its root** (below the hip, below the shoulder). Without those loops a squat or a raised arm collapses the crease: `stretched_in_poses` reports it.
 - **Thickness changes gradually** between neighboring joints; a joint much thicker than its neighbors makes a bulge, and two thick joints close together make a lump.
 - **Smooth before rigging:** the script applies the subdivision first, so the weights fit the final surface. A Subdivision modifier added after skinning lifts the feet off the ground and stretches the joints.
 - **Hands:** mittens (one tube, with finger bones as bone-only joints, `None` radius) or separate fingers from separate knuckle joints spaced more than twice the finger radius apart. Fingers branching from one point cut into each other: `self_intersections` reports it.
@@ -44,6 +45,6 @@ The body is a base: the design goes on top of it.
 - **Head and face:** the head's joints set its shape (a stack of joints with their own radii gives a jaw, a skull, a brow). Eyes, brows, nose, mouth and ears are parts modeled like props and fitted to the head, weighted to the head bone; eyes that move get their own bones.
 - **Hair, clothes and accessories:** parts modeled like props and fitted with 2–5 mm clearance, measured against the largest part they can sit over; where a garment covers the body, its body faces are deleted, as the characters guide describes. Variants go in `PART_GROUPS`.
 - **Colors** from the project's palette: a small palette texture or vertex colors, no noise.
-- **Rigid parts** (robot plates, armor, helmets) weighted fully to one bone each.
+- **Rigid parts** (armor, helmets) weighted fully to one bone each.
 
 Then the whole check and review loop of the characters guide, as for any character.

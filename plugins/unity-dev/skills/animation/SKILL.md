@@ -121,7 +121,8 @@ For what is keyed by hand: block the key poses (contacts and extremes), then the
    - robotic motion: `no_pelvis_motion`, `trunk_still`, `stiff_knees`, `arms_hang_still`, `linear_motion`, `everything_moves_together`, `secondary_still`, `frozen`. `NATURAL=False` turns these off for machines;
    - arms swinging with the same-side leg;
    - loop seams and joint pops;
-   - forearms and hands through the body, legs through each other;
+   - what the clip brings through what (`limbs_through_body`): surfaces with no joint between them, such as a hand in a hip or legs through each other, and layers on the same bones that didn't meet at rest, on any body and however it is built;
+   - joints of a body built from parts that come apart (`joint_opens`);
    - hands through props.
 
    Set `LOOP=False` for clips that don't loop and `GROUND=None` for clips without ground contact.

@@ -24,7 +24,7 @@ Two levels apply to all work for the rest of this session.
 | Optimization | Equal to beauty: as beautiful and as cheap as possible. Nothing is paid for that the player can't see: what stands still is static, light that doesn't change is baked, work off screen stops | `BudgetTests`, `OffScreenTests` green; `SceneCostAudit` clean |
 | Art | A current, beautiful look from references, one style throughout. One screen at final quality before mass production | `study_screenshot.py` on real game screenshots: no gaps against references; a written critique |
 | Models | No stacked or hidden faces, no artifacts, no visible facets on curves | `validate_mesh.py` passes; contact-sheet critique finds nothing |
-| Characters, animals | Nothing pokes through anything: in any variant, in any pose, from the game's camera | `inspect_character.py` over all variants; sheet with `GAME_VIEW` |
+| Characters, animals | Nothing visibly pokes through anything: in any variant, in any pose, from the game's camera. However built | `inspect_character.py` over all variants; sheet with `GAME_VIEW` |
 | Motion, behavior | Natural. Planted feet never slide, in the running game, at every speed; speed fits the body; weight and overlap, nothing robotic. Actors rest, have reasons, react, and don't walk through each other | `inspect_animation.py` per clip; `LocomotionTests` in Play Mode; frames of the running game reviewed |
 | UI | Designed for this game: no template or AI look, no capsule containers by default, one radius scale, nothing stretched, a small HUD | `UiAudit` clean against the project's tokens at each aspect ratio; device-size critique against references |
 | Balance | Calculated, every number justified; never boring, never a wall | A simulation of the real game logic per player type, from the first playable; `PacingAnalyzer` clean against targets stated first |
@@ -32,12 +32,12 @@ Two levels apply to all work for the rest of this session.
 How the work runs:
 
 - **The proof stands whatever the pipeline.** A custom format, shader skinning or UI built from code doesn't replace a check: bring the result to where the check can see it, or write an equal check and prove it catches the same defect.
-- **Receipts.** Checks write their results to `docs/proofs/` themselves, and a hook compares them with what changed. A must without a passing, current receipt is unproven: say so. What a project truly has no use for goes in `docs/proofs/not-applicable.txt`, as `family: reason`.
+- **Receipts.** Checks write their results to `docs/proofs/` themselves, and a hook compares them with what changed. A must without a passing, current receipt is unproven: say so. What a project truly has no use for goes in `docs/proofs/not-applicable.txt`, as `family: reason`; a failure the user accepted, as `receipt: their words`.
 - **Subagents know only their brief.** Each brief names the guide files, by full path, the checks and the bar.
 - **Fresh eyes.** At every milestone a new agent reviews the work against the guides: [how](references/fresh-review.md).
 - **Ask early.** What only the user can give (downloads, accounts, clips, fonts, references) is asked for at the start of a long task, all at once. Without it, go on with the best substitute, and report what stays unproven.
 - **Limits end work, not the bar.** Near a usage or time limit, stop and report what isn't proven. Never skip a check or a review round to finish.
-- **Honest reports.** Say what ran, with its numbers, and what didn't.
+- **Honest reports.** Say what ran, with its numbers, and what didn't. In plain words: what the player would see, not a check's name.
 
 ## Verify before relying on them
 
@@ -46,7 +46,7 @@ These standards, the guides and the code library can contain mistakes and outdat
 - **APIs, settings and versions.** Before using anything a guide names, confirm it for the project's exact versions (`ProjectSettings/ProjectVersion.txt`, `Packages/packages-lock.json`): in the official documentation, in the package source under `Library/PackageCache/`, or by running it.
 - **What ran beats what is written.** A test, a build or the package source outranks the documentation, which outranks a guide or memory. Report disagreements.
 - **Library code.** Review every file before it enters the project. It compiles there with no warnings, and its tests pass there.
-- **Advice.** When the documentation, a measurement or the project's needs contradict a guide, follow the evidence, and tell the user the guide needs the same fix. A wrong must is reported to the user, not dropped.
+- **Advice.** When the documentation, a measurement or the project's needs contradict a guide, follow the evidence, and tell the user the guide needs the same fix. A wrong must or check is reported to the user, not dropped.
 
 Links here are relative to `${CLAUDE_SKILL_DIR}`.
 
@@ -58,7 +58,7 @@ Before the first task, read the [code standards](../code-standards/SKILL.md) and
 
 The guides are this plugin's other skills. The Skill tool refuses them: read their files with the Read tool, as these standards intend.
 
-Read every guide that matches the task before the work it covers, with the references it links for that work, and read them again after the conversation is compacted: what was read before compaction is gone. A whole game touches nearly all of them: follow its [production order](../game-design/SKILL.md#production-order).
+Read every guide that matches the task before the work it covers, with the references it links for that work, and read them again after the conversation is compacted. A whole game touches nearly all of them: follow its [production order](../game-design/SKILL.md#production-order).
 
 | Work | Guide |
 |---|---|

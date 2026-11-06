@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # unity-dev Stop hook. When a turn ends in a project that turned the standards on, it compares what changed with the
 # receipts the checks write in docs/proofs/, and asks Claude once to deal with those that fail, are older than the change,
-# or don't exist. A family that doesn't apply to the project is listed, with its reason, in docs/proofs/not-applicable.txt.
-# It says nothing when the receipts are in order or nothing changed. Always exits 0.
+# or don't exist. A family that doesn't apply to the project is listed, with its reason, in docs/proofs/not-applicable.txt,
+# and so is a failing receipt the user accepted, with their words. A failure already told in this session isn't told again
+# until it changes: it stays in the receipt, for the report. It says nothing when the receipts are in order or nothing
+# changed. Always exits 0.
 
 root="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 . "$root/hooks/common.sh"
 
 input="$(cat)"
+session="$(printf '%s' "$input" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
 case "$input" in
   *'"stop_hook_active":true'* | *'"stop_hook_active": true'*) exit 0 ;;
 esac
@@ -117,10 +120,21 @@ check_family() { # family, file (empty: a deletion, compared with the last stop)
   for receipt in "$proofs/$1"*; do
     [ -f "$receipt" ] || continue
     found=1
+    name="$(basename "$receipt")"
     if grep -q -E '^passed: false|"passed": false' "$receipt" 2> /dev/null; then
-      failing="$(add_once "$failing" "$(basename "$receipt")")"
-    elif [ -n "$2" ] && [ "$project/$2" -nt "$receipt" ]; then
-      stale="$(add_once "$stale" "$(basename "$receipt")")"
+      if [ -f "$waivers" ] && grep -q "^${name%.*}:" "$waivers" 2> /dev/null; then
+        waived="$(add_once "$waived" "${name%.*}")"
+      else
+        failing="$(add_once "$failing" "$name")"
+        continue
+      fi
+    fi
+    # A check of the whole parts comes before the cut, so before the file is saved. The final check holds it to the character.
+    case "$name" in
+      *-parts.*) continue ;;
+    esac
+    if [ -n "$2" ] && [ "$project/$2" -nt "$receipt" ]; then
+      stale="$(add_once "$stale" "$name")"
     elif [ -z "$2" ] && { [ ! -f "$state" ] || [ "$state" -nt "$receipt" ]; }; then
       stale="$(add_once "$stale" "$(basename "$receipt")")"
     fi
@@ -149,15 +163,41 @@ check_kind() { # file, families...
 
 printf '%s\n' "$fingerprint" > "$state" 2> /dev/null
 
+# A failure told in this session stays quiet until it changes: new names or new contents.
+told="$state.failing"
+known=0
+if [ -n "$failing" ]; then
+  now="$session $( (printf '%s\n' "$failing"; cd "$proofs" && cat $failing) 2> /dev/null | cksum | cut -d ' ' -f 1,2)"
+  if [ -f "$told" ] && [ "$(cat "$told" 2> /dev/null)" = "$now" ]; then
+    set -- $failing
+    known=$#
+    failing=""
+  else
+    printf '%s\n' "$now" > "$told" 2> /dev/null
+  fi
+fi
+
 [ -n "$failing$stale$missing$other" ] || exit 0
 
+# The first names and a count: a hook's message has little room.
+named() {
+  set -- $1
+  total=$#
+  if [ "$total" -gt 5 ]; then
+    printf '%s %s %s %s %s and %s more' "$1" "$2" "$3" "$4" "$5" "$((total - 5))"
+  else
+    printf '%s' "$*"
+  fi
+}
+
 message="unity-dev standards: the proofs don't cover this state."
-[ -n "$failing" ] && message="$message Failing: $failing."
-[ -n "$stale" ] && message="$message Older than what changed: $stale."
+[ -n "$failing" ] && message="$message Failing: $(named "$failing"). Read each receipt's issues and examples; tell the user once, in plain words, what the player would see and what you propose; don't just name the check."
+[ "$known" -gt 0 ] && message="$message Still failing, already told: $known."
+[ -n "$stale" ] && message="$message Older than what changed: $(named "$stale")."
 [ -n "$missing" ] && message="$message No receipt yet: $missing."
 [ -n "$other" ] && message="$message Other assets changed: which proof covers them?"
-[ -n "$waived" ] && message="$message Listed as not applicable, is that still true? $waived."
-message="$message Each check writes its own receipt in docs/proofs/: run what applies, and fix what fails. A family this project has no use for, or doesn't have yet, goes in docs/proofs/not-applicable.txt as family: reason. Then report the numbers."
+[ -n "$waived" ] && message="$message Listed as not applicable, is that still true? $(named "$waived")."
+message="$message Each check writes its own receipt in docs/proofs/: run what applies, and fix what fails. A family this project has no use for, or doesn't have yet, goes in docs/proofs/not-applicable.txt as family: reason; a failing receipt the user accepted, as receipt-name: their words. Then report the numbers."
 
 printf '{"decision":"block","reason":"%s"}\n' "$message"
 exit 0

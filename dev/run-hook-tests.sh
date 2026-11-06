@@ -145,7 +145,31 @@ empty "with a newer passing receipt, nothing to say" "$(gates '{}')"
 
 newer "Assets/A.cs"
 receipt architecture.txt false
-check "a failing receipt is named" "Failing: architecture.txt" "$(gates '{}')"
+result="$(gates '{"session_id":"one"}')"
+check "a failing receipt is named" "Failing: architecture.txt" "$result"
+check "it asks for plain words" "what the player would see" "$result"
+newer "Assets/A.cs"
+empty "the same failure isn't told twice in a session" "$(gates '{"session_id":"one"}')"
+newer "Assets/A.cs"
+check "a new session is told again" "Failing: architecture.txt" "$(gates '{"session_id":"two"}')"
+printf 'passed: false\nissues: other\n' > "$project/docs/proofs/architecture.txt"
+sleep 1
+newer "Assets/A.cs"
+check "a failure that changed is told again" "Failing: architecture.txt" "$(gates '{"session_id":"two"}')"
+printf 'architecture: the user said to leave it for now\n' >> "$project/docs/proofs/not-applicable.txt"
+sleep 1
+receipt architecture.txt false
+printf 'x\n' >> "$project/README.md"
+empty "a failure the user accepted, with the receipt current, says nothing" "$(gates '{"session_id":"three"}')"
+newer "Assets/A.cs"
+result="$(gates '{"session_id":"three"}')"
+check "an accepted failure older than the change is asked about" "Older than what changed: architecture.txt" "$result"
+check "and whether it still holds" "is that still true? architecture" "$result"
+waive $ALL
+for k in 1 2 3 4 5 6 7; do printf 'passed: false\n' > "$project/docs/proofs/balance-$k.txt"; done
+newer "Assets/A.cs"
+check "many failures: the first names and a count" "and 3 more" "$(gates '{"session_id":"four"}')"
+rm "$project/docs/proofs/"balance-*.txt
 receipt architecture.txt
 gates '{}' > /dev/null
 
@@ -186,6 +210,18 @@ printf '{\n "passed": false\n}\n' > "$project/docs/proofs/inspect_character-hero
 newer "Tools/build_art.py"
 check "a failing Blender receipt is named" "Failing: inspect_character-hero.json" "$(gates '{}')"
 rm "$project/docs/proofs/inspect_character-hero.json"
+printf '{\n "passed": true\n}\n' > "$project/docs/proofs/inspect_character-hero-parts.json"
+printf '{\n "passed": true\n}\n' > "$project/docs/proofs/inspect_character-hero.json"
+receipt validate_mesh-hero.json
+sleep 1
+newer "Tools/build_art.py"
+result="$(gates '{}')"
+case "$result" in
+  *inspect_character-hero-parts*) echo "FAIL a whole-parts receipt comes before the cut, and isn't old for that: $result"; failed=1 ;;
+  *) echo "ok   a whole-parts receipt comes before the cut, and isn't old for that" ;;
+esac
+check "the final receipt still is" "inspect_character-hero.json" "$result"
+rm "$project/docs/proofs/inspect_character-hero.json" "$project/docs/proofs/inspect_character-hero-parts.json"
 
 receipt validate_mesh-hero.json
 gates '{}' > /dev/null

@@ -10,6 +10,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gait  # noqa: E402
 import mannequin  # noqa: E402
+import partsbody  # noqa: E402
 import quadruped  # noqa: E402
 
 script_path = sys.argv[sys.argv.index("--") + 1]
@@ -47,8 +48,6 @@ def case(label, expected, walk=None, check=None, props=None, keys=None, at_least
     ok = found == sorted(expected) and report["passed"] == (not expected)
     if at_least:
         ok = set(expected) <= set(found)
-    if parts:
-        ok = ok and any("Bag through the body" in label for label in entry["issues"].get("limbs_through_body", {}))
     detail = None
     if check:
         detail = check(entry["info"])
@@ -198,6 +197,68 @@ def parented_bag(rig):
 
 
 case("a bag parented to a bone, through the body", ["limbs_through_body"], walk={"arms_inward": (10, 13)}, at_least=True, parts=parented_bag)
+
+
+# Bodies built from parts: separate objects hold the feet, and joints are no collisions.
+def parts_walk(label, expected, merged=False, at_least=False, extra=None, **walk):
+    mannequin.clear()
+    armature = partsbody.person_rig()
+    parts = partsbody.person(armature)
+    if extra:
+        parts = extra(armature, {p.name: p for p in parts}) or parts
+    if merged:
+        partsbody.merge([o for o in bpy.context.scene.objects if o.type == "MESH"])
+    action = gait.key_walk(armature, rig_helpers=helpers, **walk)
+    report = run(ACTIONS=[action.name], ARMATURE=armature.name)
+    entry = report["actions"][action.name]
+    found = sorted(entry["issues"])
+    ok = set(expected) <= set(found) if at_least else found == sorted(expected)
+    cases.append({"case": f"{label} ({'one mesh' if merged else 'objects'})", "ok": ok, "expected": sorted(expected), "found": found, "issues": entry["issues"], "info": entry["info"], "check": None})
+
+
+def loose_hand(armature, parts):
+    # The arm's part follows the upper arm alone: when the elbow moves, the hand part leaves it.
+    bpy.data.objects.remove(parts["Arm.L"], do_unlink=True)
+    bones = armature.data.bones
+    partsbody.attach(partsbody.capsule("Arm.L", bones["upper_arm.L"].head_local, bones["forearm.L"].tail_local, 0.055, 0.035, segments=8), armature, ["upper_arm.L"])
+    partsbody.attach(partsbody.capsule("HandPart", bones["hand.L"].head_local, bones["hand.L"].tail_local, 0.04, 0.03, segments=8), armature, ["hand.L"])
+
+
+for merged in (False, True):
+    parts_walk("a clean walk of a body of parts", [], merged)
+    parts_walk("a body of parts sliding on both feet", ["foot_sliding"], merged, root=1.5)
+    parts_walk("hands into the body of parts", ["limbs_through_body"], merged, at_least=True, arms_inward=(10, 13))
+    parts_walk("a joint that comes apart in the clip", ["joint_opens"], merged, at_least=True, extra=loose_hand, arms_inward=(10, 13))
+
+
+def animal_walk(label, expected, merged=False, at_least=False, extra=None, **order):
+    mannequin.clear()
+    armature = partsbody.animal_rig()
+    parts = {p.name: p for p in partsbody.animal(armature)}
+    if extra:
+        extra(armature, parts)
+    if merged:
+        partsbody.merge([o for o in bpy.context.scene.objects if o.type == "MESH"])
+    action = quadruped.key_walk(armature, helpers, **order)
+    report = run(ACTIONS=[action.name], ARMATURE=armature.name, ROOT_BONE="hips", FEET=QUADRUPED_FEET)
+    entry = report["actions"][action.name]
+    found = sorted(entry["issues"])
+    ok = set(expected) <= set(found) if at_least else found == sorted(expected)
+    cases.append({"case": f"{label} ({'one mesh' if merged else 'objects'})", "ok": ok, "expected": sorted(expected), "found": found, "issues": entry["issues"], "info": entry["info"], "check": None})
+
+
+def low_tail(armature, parts):
+    # A tail that hangs into the hind legs: no joint connects them.
+    bpy.data.objects.remove(parts["Tail"], do_unlink=True)
+    partsbody.attach(partsbody.capsule("Tail", (0, 0.38, 0.48), (0, 0.27, 0.14), 0.04, 0.03, segments=6, rings=2), armature, ["tail.01", "tail.02"])
+    for side, x in (("L", 0.02), ("R", -0.02)):
+        partsbody.bump(parts[f"hindLeg.{side}"], (x, 0.26, 0.25), 0.09, (-x * 4.0, 0.0, 0.0))
+
+
+for merged in (False, True):
+    animal_walk("an animal of parts walks", [], merged)
+    animal_walk("an animal of parts, sliding", ["foot_sliding"], merged, at_least=True, root=1.3)
+    animal_walk("a tail through the hind legs", ["limbs_through_body"], merged, at_least=True, extra=low_tail)
 
 failed = [c for c in cases if not c["ok"]]
 for c in cases:

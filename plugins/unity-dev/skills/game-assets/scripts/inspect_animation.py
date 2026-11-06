@@ -1,12 +1,19 @@
-"""Checks a character's or animal's animation clips (Blender actions): foot contact and sliding, the speed the clip
-needs, the gait and footfall order, signs of robotic motion, arm swing, loop seams, joint pops, limbs passing through
-the body, and fingers passing through held props.
+"""Checks a character's or animal's animation clips (Blender actions), however the body is built: foot contact and sliding,
+the speed the clip needs, the gait and footfall order, signs of robotic motion, arm swing, loop seams, joint pops, what passes
+through what (surfaces no joint connects, layers that part at rest and meet in the clip), joints that come apart, and fingers
+passing through held props.
 
 Run it as the game-assets guide's "Running the scripts" describes. Settings:
     ARMATURE = "Rig"          required unless exactly one armature is selected
     ACTIONS = ["Walk"]        default: the armature's current action
     MESHES = ["Body", "Hair"]  skinned meshes; default: the meshes ARMATURE deforms, and those parented to it
-    BODY = "Body"             the mesh that holds the feet; default: the mesh weighted most to the foot bones
+    BODY = "Body"             the mesh that holds the feet; default: for each foot, the mesh weighted most to its bones
+    SEE_THROUGH = ["HairCards"]  objects with transparent parts: they hide nothing, and may cross what they grow from
+    PART_GROUPS = {"hat": ["Cap", "SunHat"]}  variants, as in inspect_character.py: only what appears together can cross
+    NEVER_TOGETHER = ["HairLong+Cap"]  pairs from different groups that the game never combines
+    ALLOW_CROSSING = ["Arrow+Head"]  pairs of objects that cross by design
+    TWO_SIDED = ["Cape"]      objects drawn with both sides of their faces: looking at their back is fine
+    LOWEST_VIEW = 0           degrees above the horizon: the lowest the camera looks from, for what an opening shows
     PROPS = ["Sword"]         held objects that fingers must touch without entering
     GROUND = 0.0              ground height in metres; None for clips without ground contact (swimming, falling)
     LOOP = True               the clip loops: its last frame must flow into its first
@@ -32,7 +39,6 @@ import math
 import os
 import types
 
-import bmesh
 import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
@@ -53,26 +59,18 @@ def _load_rig():
 rig = _load_rig()
 
 FINGER_ROLES = tuple(f + s for f in rig.FINGERS for s in rig.SEGMENTS)
-TRUNK_ROLES = ("Hips", "Spine", "Chest", "UpperChest", "Neck", "Head", "Shoulder")
-BODY_REGIONS = {"trunk", "L.thigh", "R.thigh", "L.leg", "R.leg"}
 
 
 def _regions(mesh_object, armature, roles):
-    """Each vertex's body region from its strongest bone: 'trunk', 'L.thigh', 'L.leg', 'L.arm', 'L.fingers'..."""
+    """Each vertex's hand region from its strongest bone: 'L.arm', 'L.fingers' and so on, or None for the rest of the body."""
     by_bone = {}
     for role, bone in roles.items():
         side = "L." if role.startswith("Left") else "R." if role.startswith("Right") else ""
         base = role[4:] if role.startswith("Left") else role[5:] if role.startswith("Right") else role
-        if base in TRUNK_ROLES:
-            by_bone[bone] = "trunk"
-        elif base in FINGER_ROLES:
+        if base in FINGER_ROLES:
             by_bone[bone] = side + "fingers"
         elif base in ("LowerArm", "Hand"):
             by_bone[bone] = side + "arm"
-        elif base == "UpperLeg":
-            by_bone[bone] = side + "thigh"
-        elif base in ("LowerLeg", "Foot", "Toes"):
-            by_bone[bone] = side + "leg"
     groups = {g.index: g.name for g in mesh_object.vertex_groups}
     vertex_region = []
     for vertex in mesh_object.data.vertices:
@@ -109,8 +107,7 @@ def _evaluated(mesh_object):
 
 
 def _tree(coords, polygons, vertex_region, wanted):
-    """BVH of the faces whose vertices are mostly in the wanted regions. Faces of different regions that share a
-    vertex are neighbors at a joint, which `_crossings` ignores."""
+    """BVH of the faces whose vertices are mostly in the wanted regions."""
     faces = []
     for polygon in polygons:
         regions = [vertex_region[v] for v in polygon]
@@ -119,16 +116,6 @@ def _tree(coords, polygons, vertex_region, wanted):
     if not faces:
         return None, []
     return BVHTree.FromPolygons(coords, faces), faces
-
-
-def _crossings(tree_a, faces_a, tree_b, faces_b):
-    if tree_a is None or tree_b is None:
-        return 0
-    count = 0
-    for a, b in tree_a.overlap(tree_b):
-        if not set(faces_a[a]) & set(faces_b[b]):
-            count += 1
-    return count
 
 
 def _angle(q1, q2):
@@ -381,29 +368,82 @@ def _check_action(armature, action, roles, meshes, props, ground, loop, step):
         armature.animation_data.action_slot = slots[0]
 
     body = meshes[0] if meshes else None
-    regions = _regions(body, armature, roles) if body else None
+    regions = {m.name: _regions(m, armature, roles) for m in meshes}
     feet = _feet(armature, roles)
-    soles = {label: _foot_soles(body, names) for label, names in feet.items()} if body else {}
+    # A body built from parts holds each foot in a part of its own.
+    holders = {label: (body if _setting("BODY", None) else max(meshes, key=lambda m: _foot_weight(m, names))) for label, names in feet.items()} if body else {}
+    soles = {label: _foot_soles(holders[label], names) for label, names in feet.items()} if body else {}
     hips = _setting("ROOT_BONE", None) or roles.get("Hips")
     track = {key: [] for key in ("hips", "LeftHand", "RightHand")}
     track.update({label: [] for label in feet})
     rotations = {pb.name: [] for pb in armature.pose.bones}
-    collisions, prop_hits = {}, {}
-    # Hair, hats and bags against the body, beyond what already touches in the rest pose.
-    others = [m for m in meshes[1:] if m is not body]
-    resting = {}
-    if body and others:
+    collisions, opened_joints, prop_hits = {}, {}, {}
+
+    # Each frame is judged as the rest pose is, by what its surfaces do now.
+    see_through = set(_setting("SEE_THROUGH", []))
+    groups = _setting("PART_GROUPS", {})
+    never_together = set(_setting("NEVER_TOGETHER", []))
+    allow_crossing = set(_setting("ALLOW_CROSSING", []))
+    group_of = {name: group for group, names in groups.items() for name in names}
+    two_sided = set(_setting("TWO_SIDED", []))
+    character = rig.Character(meshes, armature, see_through) if meshes else None
+    judge = None
+    apart_at_rest, rest_within, cut_pairs = set(), {}, set()
+    height = scale = 0.0
+
+    def skip(a, b):
+        if a.owner != b.owner and group_of.get(a.owner) and group_of.get(a.owner) == group_of.get(b.owner):
+            return True
+        together = (f"{a.owner}+{b.owner}", f"{b.owner}+{a.owner}")
+        return any(pair in never_together or pair in allow_crossing for pair in together)
+
+    def sight_of(surfaces):
+        shared = rig.Sight([p for p in surfaces if p.owner not in see_through and p.owner not in group_of], height)
+        built = {}
+
+        def sight_for(a, b):
+            owners = tuple(sorted({a.owner, b.owner} & set(group_of)))
+            if not owners:
+                return shared
+            if owners not in built:
+                built[owners] = rig.Sight([p for p in surfaces if p.owner not in see_through and (p.owner not in group_of or p.owner in owners)], height)
+            return built[owners]
+
+        return sight_for
+
+    if character:
         saved_position = armature.data.pose_position
         armature.data.pose_position = "REST"
         bpy.context.view_layer.update()
-        coords, polygons = _evaluated(body)
-        body_tree = BVHTree.FromPolygons(coords, polygons)
-        for other in others:
-            other_coords, other_polygons = _evaluated(other)
-            resting[other.name] = set(body_tree.overlap(BVHTree.FromPolygons(other_coords, other_polygons)))
+        surfaces = character.gather()
+        zs = [v.co.z for surface in surfaces for v in surface.bm.verts]
+        height = max(zs) - min(zs) if zs else 0.0
+        deform = [b for b in armature.data.bones if b.use_deform]
+        ends = [rig.head(armature, b.name).z for b in deform] + [rig.tail(armature, b.name).z for b in deform]
+        scale = min(height, max(max(ends) - min(ends), 0.2 * height)) if ends else height
+        joints = rig.Joints(armature, surfaces, roles)
+        judge = rig.Judge(joints, scale, see_through=see_through, skip=skip)
+        within, between = rig.crossings(surfaces)
+        sight_for = sight_of(surfaces)
+        # Cut where they cross: what could tell a poke there is gone, and inspect_character.py's receipt for the whole parts is the
+        # proof. An opening that shows in the clip is still found.
+        cut_pairs = {(surfaces[i].name, surfaces[j].name) for i, j in between
+                     if rig.open_edges_inside(surfaces[i], surfaces[j]) or rig.open_edges_inside(surfaces[j], surfaces[i])}
+        pair_names = {(surfaces[i].name, surfaces[j].name) for i, j in between}
+        apart_at_rest = {p.name for p in rig.apart_from_body([p for p in surfaces if p.owner not in see_through and (p.owner not in group_of or groups[group_of[p.owner]][0] == p.owner)], pair_names, scale)}
+        for i, pairs in within.items():
+            known = set()
+            for x, y in pairs:
+                points = rig.crossing_points(surfaces[i], x, surfaces[i], y)
+                ba, bb = surfaces[i].bone_at(x, points), surfaces[i].bone_at(y, points)
+                known.add((ba, bb) if (ba or "") <= (bb or "") else (bb, ba))
+            rest_within[surfaces[i].name] = known
+        rig.free(surfaces)
         armature.data.pose_position = saved_position
         bpy.context.view_layer.update()
 
+    lowest_view = _setting("LOWEST_VIEW", 0)
+    holes = {}
     for frame in frames:
         scene.frame_set(frame)
         world = armature.matrix_world
@@ -418,36 +458,44 @@ def _check_action(armature, action, roles, meshes, props, ground, loop, step):
             local = pose_bone.parent.matrix.inverted() @ matrix if pose_bone.parent else matrix
             rotations[pose_bone.name].append(local.to_quaternion())
         if body:
-            coords, polygons = _evaluated(body)
+            evaluated = {}
+
+            def posed(mesh):
+                if mesh.name not in evaluated:
+                    evaluated[mesh.name] = _evaluated(mesh)
+                return evaluated[mesh.name]
+
             for label in feet:
+                coords, _ = posed(holders[label])
                 points = [coords[i] for i in soles[label][0]]
                 if points:
                     center = sum(points, Vector()) / len(points)
                     track[label].append((center, min(p.z for p in points)))
-            trunk, trunk_faces = _tree(coords, polygons, regions, BODY_REGIONS)
-            for side in ("L", "R"):
-                arm, arm_faces = _tree(coords, polygons, regions, {f"{side}.arm", f"{side}.fingers"})
-                if _crossings(arm, arm_faces, trunk, trunk_faces):
-                    collisions.setdefault(f"{side} forearm or hand into the body", []).append(frame)
-            if others:
-                body_tree = BVHTree.FromPolygons(coords, polygons)
-                for other in others:
-                    other_coords, other_polygons = _evaluated(other)
-                    # Faces that touch at rest stay as they are; a part that moves into the body meets new ones.
-                    crossing = set(body_tree.overlap(BVHTree.FromPolygons(other_coords, other_polygons))) - resting.get(other.name, set())
-                    if len(crossing) > 4:
-                        collisions.setdefault(f"{other.name} through the body", []).append(frame)
-            left_leg, left_faces = _tree(coords, polygons, regions, {"L.leg"})
-            right_leg, right_faces = _tree(coords, polygons, regions, {"R.leg"})
-            if _crossings(left_leg, left_faces, right_leg, right_faces):
-                collisions.setdefault("legs through each other", []).append(frame)
+            surfaces = character.gather()
+            try:
+                pokes, _, between = rig.pose_pokes(surfaces, judge, sight_of(surfaces), cut_pairs, rest_within)
+                for poke in pokes:
+                    collisions.setdefault(poke["label"], []).append(frame)
+                shown = [p for p in surfaces if p.owner not in see_through and (p.owner not in group_of or groups[group_of[p.owner]][0] == p.owner)]
+                pair_names = {(surfaces[i].name, surfaces[j].name) for i, j in between}
+                for part in rig.apart_from_body(shown, pair_names, scale, enclosed=False):
+                    if part.name not in apart_at_rest:
+                        opened_joints.setdefault(part.name, []).append(frame)
+                sight = rig.Sight(shown, height)
+                for part in shown:
+                    if part.owner not in two_sided and rig.see_inside(part, sight, lowest_view):
+                        holes.setdefault(part.owner, []).append(frame)
+            finally:
+                rig.free(surfaces)
             for prop in props:
                 prop_coords, prop_polygons = _evaluated(prop)
                 prop_tree = BVHTree.FromPolygons(prop_coords, prop_polygons)
                 for side in ("L", "R"):
-                    fingers, finger_faces = _tree(coords, polygons, regions, {f"{side}.fingers", f"{side}.arm"})
-                    if fingers is not None and fingers.overlap(prop_tree):
-                        prop_hits.setdefault(f"{side} hand into {prop.name}", []).append(frame)
+                    for mesh in meshes:
+                        coords, polygons = posed(mesh)
+                        fingers, _ = _tree(coords, polygons, regions[mesh.name], {f"{side}.fingers", f"{side}.arm"})
+                        if fingers is not None and fingers.overlap(prop_tree):
+                            prop_hits.setdefault(f"{side} hand into {prop.name}", []).append(frame)
 
     issues, info = {}, {"frames": [start, end], "fps": round(fps, 2), "duration_s": round((end - start) / fps, 3)}
     dt = step / fps
@@ -612,6 +660,10 @@ def _check_action(armature, action, roles, meshes, props, ground, loop, step):
         issues["joint_pops"] = f"{len(jumps)} poses jump off the motion, {worst[1]} by {worst[0]:.0f} deg at frame {worst[2]}"
     for label, hit_frames in collisions.items():
         issues.setdefault("limbs_through_body", {})[label] = _frames_text(hit_frames)
+    for joint, open_frames in opened_joints.items():
+        issues.setdefault("joint_opens", {})[joint] = _frames_text(open_frames)
+    for owner, hole_frames in holes.items():
+        issues.setdefault("see_inside", {})[owner] = _frames_text(hole_frames)
     for label, hit_frames in prop_hits.items():
         issues.setdefault("hand_through_prop", {})[label] = _frames_text(hit_frames)
     return issues, info
@@ -654,7 +706,7 @@ def inspect():
                 folder = _setting("PROOF_DIR", None)
                 if folder:
                     os.makedirs(folder, exist_ok=True)
-                    settings = {key: _setting(key, None) for key in ("NATURAL", "GROUND", "LOOP", "STEP", "GAME_SPEED", "GAIT", "FEET", "BODY", "MAX_WALK_FROUDE", "MAX_PLAYBACK_CHANGE") if key in globals()}
+                    settings = {key: _setting(key, None) for key in ("NATURAL", "GROUND", "LOOP", "STEP", "GAME_SPEED", "GAIT", "FEET", "BODY", "SEE_THROUGH", "PART_GROUPS", "NEVER_TOGETHER", "ALLOW_CROSSING", "TWO_SIDED", "LOWEST_VIEW", "MAX_WALK_FROUDE", "MAX_PLAYBACK_CHANGE") if key in globals()}
                     with open(os.path.join(folder, f"inspect_animation-{_setting('PROOF_NAME', None) or armature.name}-{action.name}.json"), "w") as out:
                         json.dump({"passed": not issues, "issues": issues, "info": info, "settings": settings, "meshes": [m.name for m in meshes]}, out, indent=1, default=str)
         finally:

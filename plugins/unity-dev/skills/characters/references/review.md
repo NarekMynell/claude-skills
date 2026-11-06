@@ -49,12 +49,20 @@ Tiles: front, left, right, feet_front.
 - Knees and toes point forward, or slightly out.
 - Feet flat on the floor line: heels down, toes not under the floor, ankles not twisted. Shoes have soles of believable thickness.
 
+## Bodies built from parts
+
+Sheet with `COLOR="OBJECT"`.
+
+- Parts meet where a joint is, with the seam where the design wants it. No step or gap the design doesn't name.
+- A part's end shows nowhere it shouldn't: an arm's root doesn't come out of the back, a thigh's top doesn't stand out of the hip.
+- In the pose sheet, every joint stays closed: no opening at the shoulder with the arms up, no hip gap in the squat.
+
 ## Clothes and layers
 
 Every sheet, posed ones included.
 
 - No skin showing through clothes anywhere.
-- No gap between clothes and body at collars, cuffs and hems; clothes 2–5 mm off the body, never floating.
+- No gap between clothes and body at collars, cuffs and hems; on a smooth body, clothes 2–5 mm off it, never floating. On a body of parts, a cuff or a hem may bite into the limb that comes out of it.
 - Folds where fabric bends, not painted noise. Belts, straps and pouches sit on the surface.
 - One layer: no body left under clothes unless outfits swap.
 

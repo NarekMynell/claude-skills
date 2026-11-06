@@ -1,6 +1,7 @@
-"""Builds a character body from a joint skeleton: a Skin-modifier surface, smoothed, set on the ground, with an
-armature on the same joints, skinned and cleaned (no weight from the other side's bones, at most 4 influences,
-normalized). The surface follows the joints, so limbs stay apart and the body is symmetric when the joints are.
+"""Builds a character or animal body from a joint skeleton: a Skin-modifier surface, cleaned of what the modifier leaves
+(duplicate and loose vertices, faces with no area), smoothed, set on the ground, with an armature on the same joints, skinned
+and cleaned (no weight from the other side's bones, at most 4 influences, normalized). The surface follows the joints, so limbs
+stay apart and the body is symmetric when the joints are.
 
 Run it as the game-assets guide's "Running the scripts" describes. Settings:
     NAME = "Hero"              required: the mesh object's name; the armature is NAME + "Rig"
@@ -14,6 +15,7 @@ Run it as the game-assets guide's "Running the scripts" describes. Settings:
 Sets `result`: `mesh`, `armature`, `triangles`. Then run inspect_character.py on it.
 """
 
+import bmesh
 import bpy
 from mathutils import Vector
 
@@ -47,6 +49,13 @@ def build():
     body.select_set(True)
     view_layer.objects.active = body
     bpy.ops.object.modifier_apply(modifier="Skin")
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-4)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges[:], dist=1e-4)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    bm.to_mesh(mesh)
+    bm.free()
     levels = int(_setting("SUBDIVISIONS", 1))
     if levels:
         # Smoothed before rigging, so the weights fit the final surface.

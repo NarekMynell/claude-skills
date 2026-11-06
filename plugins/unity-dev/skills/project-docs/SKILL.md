@@ -39,7 +39,7 @@ Entry files stay small and act as indexes: read the index, then open only the fi
 
 ## Proofs
 
-`docs/proofs/` holds each check's receipt of its last run, written by the check itself: the architecture test, UI audits, asset checks, locomotion tests, balance reports. It lets a reader or a fresh review see what is proven, and a hook compare it with what changed. Committed with the code. Nobody edits these by hand, and a hook refuses it. The one exception is `docs/proofs/not-applicable.txt`: one line per check family the project has no use for, as `family: reason`.
+`docs/proofs/` holds each check's receipt of its last run, written by the check itself: the architecture test, UI audits, asset checks, locomotion tests, balance reports. It lets a reader or a fresh review see what is proven, and a hook compare it with what changed. Committed with the code. Nobody edits these by hand, and a hook refuses it. The one exception is `docs/proofs/not-applicable.txt`: one line per check family the project has no use for, as `family: reason`, and per failing receipt the user accepted, as `receipt-name: their words`.
 
 ## Rules files
 

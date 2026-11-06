@@ -17,7 +17,7 @@ IRREGULAR = {"hind.L": 0.0, "fore.L": 0.08, "hind.R": 0.2, "fore.R": 0.33}
 
 def build(name="Animal"):
     joints = {"pelvis": ((0, 0.28, 0.45), (0.11, 0.11), None), "belly": ((0, 0.05, 0.47), (0.12, 0.13), "pelvis"),
-              "chest": ((0, -0.2, 0.48), (0.12, 0.13), "belly"), "neck": ((0, -0.34, 0.58), (0.06, 0.06), "chest"),
+              "chest": ((0, -0.2, 0.48), (0.12, 0.12), "belly"), "neck": ((0, -0.34, 0.58), (0.06, 0.06), "chest"),
               "skull": ((0, -0.44, 0.66), (0.08, 0.08), "neck"), "nose": ((0, -0.55, 0.64), (0.04, 0.04), "skull"),
               "tail1": ((0, 0.43, 0.48), (0.03, 0.03), "pelvis"), "tail2": ((0, 0.55, 0.45), (0.02, 0.02), "tail1"),
               "tail3": ((0, 0.65, 0.40), (0.012, 0.012), "tail2")}
@@ -26,7 +26,7 @@ def build(name="Animal"):
     for end, y, parent, bone_parent in (("hind", 0.26, "pelvis", "hips"), ("fore", -0.2, "chest", "spine")):
         for side, x in (("L", 1), ("R", -1)):
             joints.update({
-                f"{end}_hip.{side}": ((0.09 * x, y, 0.36), (0.05, 0.05), parent),
+                f"{end}_hip.{side}": ((0.07 * x, y, 0.31), (0.04, 0.04), parent),
                 f"{end}_knee.{side}": ((0.09 * x, y, 0.2), (0.035, 0.035), f"{end}_hip.{side}"),
                 f"{end}_ankle.{side}": ((0.09 * x, y, 0.05), (0.028, 0.028), f"{end}_knee.{side}"),
                 f"{end}_toe.{side}": ((0.09 * x, y - 0.05, 0.028), (0.028, 0.028), f"{end}_ankle.{side}"),

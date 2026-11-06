@@ -1,8 +1,8 @@
-# Rigging and skinning for Unity Humanoid
+# Rigging and skinning
 
 This reference can be wrong or out of date: verify what you rely on, as the [standards](../../standards/SKILL.md#verify-before-relying-on-them) require.
 
-`inspect_character.py` checks most of the rules below; this page explains them and how to fix what it reports.
+`inspect_character.py` checks most of the rules below; this page explains them and how to fix what it reports. They are written for a Unity Humanoid. An animal or creature uses a Generic rig: the names, sides, facing, weights and test poses apply, and the rest of the Skeleton section doesn't.
 
 ## Skeleton
 
@@ -45,11 +45,11 @@ This reference can be wrong or out of date: verify what you rely on, as the [sta
   ```
   Then limit to 4, normalize, and check the test poses. Loose garments such as skirts and long coats transfer better with the free Robust Weight Transfer add-on (version 1.1.9 has Blender 5.0 and 5.1 builds; check 5.2 support before using it).
 - **Rigid parts** such as helmets, armor plates and holstered items are weighted fully to one bone, or parented to a bone.
-- **Clearance:** clothes and attachments sit 2–5 mm outside the body. Closer, the body pokes through when it bends; farther, the gap shows.
+- **Clearance:** on a smooth body, clothes and attachments sit 2–5 mm outside it. Closer, the body pokes through when it bends; farther, the gap shows.
 
 ## Test poses
 
-`inspect_character.py` bends the rig into arms down, arms up, arms forward, squat, stride, twist and fists, then reports parts that poke through each other (`poke_through_in_poses`) and edges stretched past twice or shrunk below a fifth of their rest length (`stretched_in_poses`, usually wrong weights). Render the same poses as a sheet and look at:
+`inspect_character.py` bends a person into arms down, arms up, arms forward with the elbows folded, squat, stride, twist and fists, and any other body with its legs forward, back and folded, and its trunk, neck and tail to the side, up and down. It reports what the pose brings through what (`poke_through_in_poses`): surfaces with no joint between them, and layers on the same bones that didn't meet at rest. Two surfaces at one joint pressing together aren't reported, and neither is what is hidden inside a third. Joints that come apart go in `joint_opens_in_poses`, openings that show a surface's inside in `see_inside_in_poses`, and edges stretched past twice or shrunk below a fifth of their rest length in `stretched_in_poses` (usually wrong weights). Render the same poses as a sheet and look at:
 
 - elbows and knees keeping their volume, with no collapse or candy wrapper;
 - shoulders with the arms up: no tearing or caving;

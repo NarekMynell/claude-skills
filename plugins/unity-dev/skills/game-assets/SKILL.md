@@ -25,7 +25,7 @@ Characters follow the [characters](../characters/SKILL.md) guide, and their moti
 The method for each asset is a guide: your choice, from this guide or outside it, whatever gives the best result for the project; tell the user the choice and why. The look comes from the [art direction](../art-direction/SKILL.md).
 
 - **Build with code, judge with checks and renders.** Create and edit geometry with `bpy` and `bmesh` through `execute_blender_code`: exact, repeatable, cheap to redo. Never model by clicking through the UI from screenshots: vision judges the result, it doesn't build it.
-- **Code builds what code describes well:** hard-surface props, architecture, modular kits, stylized low-poly shapes. It doesn't sculpt organic forms: a body, face, hand or animal made of primitives or moved vertices looks wrong however long it's tweaked. Those start from a professional base or a skeleton-first body, as the characters guide describes.
+- **Code builds what code describes well:** hard-surface props, architecture, modular kits, stylized low-poly shapes. It doesn't sculpt organic forms: a body, face, hand or animal meant to look alive, made of primitives or moved vertices, looks wrong however long it's tweaked. Those start from a professional base or a skeleton-first body, as the characters guide describes; a figure whose joints are meant to show can be built from parts.
 - **Small steps, each verified:** blockout, form, detail, UVs, materials, export. Check after each step and fix before the next; a defect found late costs a rebuild.
 - **The review loop**, after every significant change:
   1. **Checks.** [validate_mesh.py](scripts/validate_mesh.py), plus the character or animation checks for those assets. Numbers catch what eyes miss: stacked faces, bad weights, penetration. Fix until `passed` is true.
@@ -54,9 +54,10 @@ result = ns["result"]
 |---|---|---|
 | validate_mesh.py | Duplicate, overlapping and z-fighting faces, also between objects; non-manifold edges, loose geometry, normals, UVs, transforms, triangle budget, triangles wasted on flat areas. `examples` give each problem's position | After every geometry change, and before export |
 | render_views.py | One contact sheet: all sides, 3/4 views, close-ups, wireframe, proportion grid, floor, animation frames, the game camera's view and the on-screen size | Every review round |
-| build_body.py | A character body from a joint skeleton: surface, armature, cleaned weights | [Characters](../characters/SKILL.md) |
-| inspect_character.py | Anatomy, covered and intersecting surfaces, variants that clash, rig, weights, deformation in test poses | [Characters](../characters/SKILL.md) |
-| inspect_animation.py | Foot contact and sliding, speed against the body, gaits on any number of legs, robotic motion, loops, pops, limbs through the body or props | [Animation](../animation/SKILL.md) |
+| build_body.py | A character or animal body from a joint skeleton: surface, armature, cleaned weights | [Characters](../characters/SKILL.md) |
+| inspect_character.py | Any character or animal, however it is built: anatomy, what pokes through what, what stays hidden, variants that clash, openings, rig, weights, deformation in test poses | [Characters](../characters/SKILL.md) |
+| cut_hidden_faces.py | Deletes the faces nobody can see, at rest and in every pose, on a body built from parts | [From parts](../characters/references/from-parts.md) |
+| inspect_animation.py | Foot contact and sliding, speed against the body, gaits on any number of legs, robotic motion, loops, pops, what passes through what, joints that come apart, hands through props, on any body | [Animation](../animation/SKILL.md) |
 | study_screenshot.py | A game screenshot in gray and blurred, its palette and value structure, against references | [Art direction](../art-direction/SKILL.md), [UI](../ui-quality/SKILL.md) |
 | bake_light.py | Bakes the scene's light and shadow into vertex colors or a texture, with Cycles | [Performance](../performance/SKILL.md#light) |
 | export_fbx.py | Runs the checks, refuses a failing asset, exports with the Unity settings | Export |
