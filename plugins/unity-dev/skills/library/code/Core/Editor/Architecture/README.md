@@ -33,10 +33,11 @@ public void CodeFollowsTheArchitectureRules()
 | `stateful-asset` | A ScriptableObject with fields that aren't serialized, or that receives injection |
 | `frame-method` | A MonoBehaviour with `Update`, `LateUpdate` or `FixedUpdate` |
 | `dependency-direction`, `no-assembly` | Core referencing a domain, anything referencing App, any code in `Assembly-CSharp` |
+| `json-not-newtonsoft` | `JsonUtility` or `System.Text.Json` in source files under `SourceFolder`, `Editor` and `Tests` folders included. `EditorJsonUtility` is fine |
 | `loosened-limit`, `too-many-exceptions` | A limit set looser than its default, a check turned off, more than `MaxExceptions`. These need a reason like any other exception |
 | `nothing-audited` | No assembly named after the root namespace, or no source folder: a test that checks nothing can't pass |
 | `scene-search`, `string-messaging`, `coroutine`, `async-void`, `resources-load`, `creation-outside-factory` | Forbidden calls in source files under `SourceFolder`, outside `Editor` and `Tests` folders. Files named `*Factory`, `*Pool`, `*Installer`, `*LifetimeScope` and `*Registration` or `*RegistrationExtensions` may create objects |
 
 - **Installers and scopes** (classes deriving from `ScopeInstaller` or `LifetimeScope`) are the composition root and may name concrete types.
 - **An exception states its reason:** `Allow(rule, subject, reason)`, where the subject is the type, assembly or file the finding names. The report lists accepted exceptions, `IsClean` is false when an exception no longer matches anything, and more than `MaxExceptions` (10) is a finding of its own. Show the list to the user.
-- **What it can't see:** whether interfaces are well chosen. A class implementing a meaningless interface passes. That part stays with review.
+- **What it can't see:** whether interfaces are well chosen. A class implementing a meaningless interface passes. That part stays with review. Neither does it see source files outside `SourceFolder`, or JSON parsed by hand.

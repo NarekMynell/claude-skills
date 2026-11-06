@@ -4,6 +4,10 @@ This list can be wrong or out of date: verify what you rely on, as the [standard
 
 What each unity-dev release changed in the code library, so a project's copy can catch up, as [updating a copy](SKILL.md#updating-a-projects-copy) describes. **Fix** marks a defect that every copy of the module has: port it. **Change** alters an API or a behavior the project may rely on. **Added** is new code or tests.
 
+## 0.10.0
+
+- **Architecture.** Change: `ArchitectureAudit` reports `json-not-newtonsoft`, for `JsonUtility` or `System.Text.Json` in project code, `Editor` and `Tests` folders included. A project's code that uses them now fails `ProjectArchitectureTests`.
+
 ## 0.9.0
 
 - **Architecture.** Added: `ArchitectureAudit` and `ProjectArchitectureTests`, a test that fails on violations of the architecture rules.

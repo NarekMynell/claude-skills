@@ -14,6 +14,16 @@ Unity can't serialize a field whose type is an interface.
 
 - **`[SerializeReference]`** stores a plain C# object by its runtime type, for polymorphic data such as strategies or steps inside a config. Unity has no built-in type picker for it: add the library's `[SubclassSelector]`. Renaming or moving such a type breaks existing data unless it carries `[MovedFrom]`.
 
+## JSON
+
+**A must:** all JSON goes through Newtonsoft (`com.unity.nuget.newtonsoft-json`), never `JsonUtility`, whatever it is for: saves, configs, network, tools, tests. `ProjectArchitectureTests` fails on it (`json-not-newtonsoft`), with an exception only for a reason the user accepts. `EditorJsonUtility`, for an Editor object's serialized state, stays allowed.
+
+What differs from `JsonUtility`, tested on the package's 3.2.2:
+
+- A `[SerializeField] private` field isn't written. Mark it `[JsonProperty]`.
+- A `Vector3` throws `JsonSerializationException`, a loop through its `normalized` property. Store floats in a DTO, or write a `JsonConverter`.
+- An asmdef with `overrideReferences` lists `Newtonsoft.Json.dll` under `precompiledReferences`.
+
 ## Save data
 
 - **Its own domain.** Saving sits behind `ISaveService<T>` and `ISaveStorage`, registered in DI; the library's Persistence module implements both (`RegisterJsonSave<T>()`, `RegisterFileSaveStorage()`). Swapping the format or the storage doesn't touch callers.
@@ -23,7 +33,6 @@ Unity can't serialize a field whose type is an interface.
   |---|---|
   | Default: readable, debuggable, flexible | JSON through Newtonsoft (`com.unity.nuget.newtonsoft-json`) |
   | Large data, frequent saves, size or speed critical | MessagePack-CSharp, with AOT-generated formatters for IL2CPP |
-  | Small flat data at maximum speed, no dictionaries or polymorphism | `JsonUtility` |
 
 - **DTOs.** Save data is plain data types, mapped to and from runtime state by the persistence domain. Runtime objects are never serialized directly.
 - **Versioning.** Every save carries a schema version. Loading migrates older versions forward, one step per version.

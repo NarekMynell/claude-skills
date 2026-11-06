@@ -14,7 +14,7 @@ Claude reads the guides the task needs, from the new-project setup to game desig
 
 The standards have two levels:
 
-- **Musts** are the bar for the result, each with a proof that can fail: the architecture, optimization, the look, characters where nothing pokes through, natural motion, UI, balance. Only you change a must.
+- **Musts** are the bar for the result, each with a proof that can fail: the architecture, JSON through Newtonsoft, optimization, the look, characters where nothing pokes through, natural motion, UI, balance. Only you change a must.
 - **Guides** are everything else: methods known to work, failures already seen, strong defaults. The solution is Claude's to find for your project, inside the guides or outside them. It tells you why, and records it in the project's `CLAUDE.md`.
 
 The guides and the code library can contain mistakes or fall behind new Unity and package versions, and they say so. Claude checks every API, setting and library module it relies on against the official documentation or the package source for your project's exact versions, reviews library code before copying it, and tells you when a guide turns out wrong.

@@ -39,6 +39,10 @@ namespace ProjectName.Core.Editor.Architecture
                 "creates objects outside a factory, so they get no injection"),
         };
 
+        // JSON that doesn't go through Newtonsoft. Text in strings doesn't count, unless it is code in an interpolated one.
+        private static readonly Regex OtherJson = new Regex(@"\b(JsonUtility|System\.Text\.Json)\b");
+        private static readonly Regex Literals = new Regex(@"'(?:[^'\\]|\\.)'|\$@?""(?:[^""\\]|\\.)*""|@""(?:[^""]|"""")*""|""(?:[^""\\]|\\.)*""");
+
         public static ArchitectureReport Run(ArchitectureAuditOptions options)
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies().Where(a => IsAudited(a.GetName().Name, options.RootNamespace)).ToList();
@@ -231,6 +235,20 @@ namespace ProjectName.Core.Editor.Architecture
                 yield return new ArchitectureFinding("long-file", path, $"{count} lines (limit {options.MaxFileLines}): probably more than one responsibility");
         }
 
+        // Editor tools and tests included: their JSON goes the same way.
+        internal static IEnumerable<ArchitectureFinding> ScanJson(string path, IEnumerable<string> lines)
+        {
+            var count = 0;
+            var inBlockComment = false;
+            foreach (var raw in lines)
+            {
+                count++;
+                var code = Literals.Replace(StripComments(raw, ref inBlockComment), m => m.Value[0] == '$' ? m.Value : "\"\"");
+                if (OtherJson.IsMatch(code))
+                    yield return new ArchitectureFinding("json-not-newtonsoft", path, $"line {count}: JSON goes through Newtonsoft (com.unity.nuget.newtonsoft-json)");
+            }
+        }
+
         private static string StripComments(string line, ref bool inBlock)
         {
             var result = line;
@@ -266,8 +284,12 @@ namespace ProjectName.Core.Editor.Architecture
             if (!Directory.Exists(folder)) return Enumerable.Empty<ArchitectureFinding>();
             return Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories)
                 .Select(path => path.Replace('\\', '/'))
-                .Where(path => !path.Contains("/Editor/") && !path.Contains("/Tests/"))
-                .SelectMany(path => ScanSource(path, File.ReadLines(path), options, services));
+                .SelectMany(path =>
+                {
+                    var lines = File.ReadAllLines(path);
+                    var json = ScanJson(path, lines);
+                    return path.Contains("/Editor/") || path.Contains("/Tests/") ? json : json.Concat(ScanSource(path, lines, options, services));
+                });
         }
 
         // All code belongs to a domain's assembly. Unity's and the compiler's generated types don't count.

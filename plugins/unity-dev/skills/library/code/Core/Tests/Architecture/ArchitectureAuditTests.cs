@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using ProjectName.Core.Editor.Architecture;
@@ -633,6 +634,55 @@ namespace ProjectName.Core.Tests.Architecture
 
             Assert.That(ArchitectureAudit.ScanSource("Assets/Enemy.cs", comments, options), Is.Empty);
             Assert.That(ArchitectureAudit.ScanSource("Assets/EnemyFactory.cs", new[] { "var o = new GameObject(\"x\");" }, options), Is.Empty);
+        }
+
+        [TestCase("var s = JsonUtility.ToJson(data);")]
+        [TestCase("var d = UnityEngine.JsonUtility.FromJson<Data>(s);")]
+        [TestCase("using static UnityEngine.JsonUtility;")]
+        [TestCase("using Json = UnityEngine.JsonUtility;")]
+        [TestCase("var s = $\"{JsonUtility.ToJson(data)}\";")]
+        [TestCase("Log($\"saved: \" + JsonUtility.ToJson(data) + \"!\");")]
+        [TestCase("var q = '\"'; var s = JsonUtility.ToJson(data); var t = \"x\";")]
+        [TestCase("using System.Text.Json;")]
+        public void JsonOutsideNewtonsoft_IsReported(string line)
+        {
+            var findings = ArchitectureAudit.ScanJson("Assets/Save/Store.cs", new[] { line }).ToList();
+
+            Assert.That(findings.Select(f => f.Rule), Does.Contain("json-not-newtonsoft"));
+        }
+
+        [TestCase("using Newtonsoft.Json;")]
+        [TestCase("var s = JsonConvert.SerializeObject(data);")]
+        [TestCase("var s = EditorJsonUtility.ToJson(asset);")]
+        [TestCase("var s = MyJsonUtility.Read(data);")]
+        [TestCase("// JsonUtility.ToJson(data)")]
+        [TestCase("/* JsonUtility.ToJson(data) */")]
+        [TestCase("var s = \"JsonUtility\";")]
+        [TestCase("var s = @\"a\\JsonUtility\";")]
+        public void NewtonsoftAndMentions_AreNotReported(string line)
+        {
+            Assert.That(ArchitectureAudit.ScanJson("Assets/Save/Store.cs", new[] { line }), Is.Empty);
+        }
+
+        [TestCase("Combat")]
+        [TestCase("Combat/Editor")]
+        [TestCase("Combat/Tests")]
+        public void JsonOutsideNewtonsoft_IsReportedInEveryFolder(string subfolder)
+        {
+            var root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(root, subfolder));
+                File.WriteAllText(Path.Combine(root, subfolder, "Store.cs"), "class Store { string S(object o) => JsonUtility.ToJson(o); }");
+
+                var report = ArchitectureAudit.Run(new ArchitectureAuditOptions("NoSuchProject") { SourceFolder = root, CapabilityMapFile = null }.Allow("loosened-limit", "CapabilityMapFile", "Test."));
+
+                Assert.That(report.Findings.Select(f => f.Rule), Does.Contain("json-not-newtonsoft"), report.ToString());
+            }
+            finally
+            {
+                Directory.Delete(root, true);
+            }
         }
 
         [Test]

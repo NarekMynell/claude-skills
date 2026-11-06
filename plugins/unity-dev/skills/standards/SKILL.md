@@ -21,6 +21,7 @@ Two levels apply to all work for the rest of this session.
 | Area | The bar | Proof, before the work counts as done |
 |---|---|---|
 | Architecture | Modular, SOLID, interface-based, DI through VContainer. Each capability is an interface (such as `IMovable`, `IShooter`); an object with several implements them all; whoever uses an object sees only the capability it needs. Inheritance only for a true is-a; no singletons or mutable statics | `ProjectArchitectureTests` green, the capability map in `docs/architecture.md` included |
+| JSON | Through Newtonsoft (`com.unity.nuget.newtonsoft-json`), never `JsonUtility` | `ProjectArchitectureTests` green |
 | Optimization | Equal to beauty: as beautiful and as cheap as possible. Nothing is paid for that the player can't see: what stands still is static, light that doesn't change is baked, work off screen stops | `BudgetTests`, `OffScreenTests` green; `SceneCostAudit` clean |
 | Art | A current, beautiful look from references, one style throughout. One screen at final quality before mass production | `study_screenshot.py` on real game screenshots: no gaps against references; a written critique |
 | Models | No stacked or hidden faces, no artifacts, no visible facets on curves | `validate_mesh.py` passes; contact-sheet critique finds nothing |
