@@ -7,7 +7,7 @@ What each unity-dev release changed in the code library, so a project's copy can
 ## 0.11.0
 
 - **Architecture.** Change: what a script can't judge no longer fails. `few-interfaces`, `no-interfaces` and `json-not-newtonsoft` are gone, with `MinClassesForInterfaces` and `MinInterfaceShare`. `base-class`, and the size limits up to three times over, moved to `ArchitectureReport.Signals`, for the review, with the new `mirror-interface`. Port: `Allow` lines for those rules now report as unused, so remove them.
-- **CostChecks.** Added: `ColliderAudit`.
+- **CostChecks.** Added: `ColliderAudit`, `ColliderShapes`.
 
 ## 0.10.0
 

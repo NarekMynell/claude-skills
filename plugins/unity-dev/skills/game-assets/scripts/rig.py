@@ -1034,10 +1034,11 @@ def _along_edge(edge, spacing):
     return [start.lerp(end, (k + 0.5) / count) for k in range(count)]
 
 
-def see_inside(surface, sight, lowest_view=0.0):
+def see_inside(surface, sight, lowest_view=0.0, any_surface=False):
     """Open edges past which a look from outside meets the surface's own back: a hole into its inside, which backface culling
     shows as a gap. Up to where the camera can go: `lowest_view` is in degrees above the horizon. An edge low on the asset that opens
-    downward is the bottom a rock or a brick leaves off where the ground takes over, and only from below the ground would it show."""
+    downward is the bottom a rock or a brick leaves off where the ground takes over, and only from below the ground would it show.
+    `any_surface`: the back met may be another part's too, as in a shed of separate panels; on a body that is a look under a garment."""
     found = []
     nudge = 0.001 * sight.height
     floor = math.sin(math.radians(lowest_view))
@@ -1055,18 +1056,18 @@ def see_inside(surface, sight, lowest_view=0.0):
             outward = -outward
         if outward.z < -0.5 and lowest_view >= 0.0 and (edge.verts[0].co.z + edge.verts[1].co.z) / 2 < sight.bottom + 0.2 * sight.height:
             continue
-        if any(_shows_back(surface, point + outward * nudge, face.normal, views, sight) for point in _along_edge(edge, spacing)):
+        if any(_shows_back(surface, point + outward * nudge, face.normal, views, sight, any_surface) for point in _along_edge(edge, spacing)):
             found.append(edge.index)
     return found
 
 
-def _shows_back(surface, point, normal, views, sight):
+def _shows_back(surface, point, normal, views, sight, any_surface=False):
     for direction in views:
         if normal.dot(direction) < 0.34:
             continue  # along the surface, a sliver; from behind it, no look from outside
         hit = sight.tree.ray_cast(point + direction * sight.reach, -direction, 2.0 * sight.reach)
         # Past the edge, and on to its far wall: a look along the gap under a loose garment isn't a look inside.
-        if hit[0] is not None and hit[3] >= sight.reach + 0.03 * sight.height and hit[1].dot(-direction) > 0.0 and sight.owners[hit[2]] is surface:
+        if hit[0] is not None and hit[3] >= sight.reach + 0.03 * sight.height and hit[1].dot(-direction) > 0.0 and (any_surface or sight.owners[hit[2]] is surface):
             return True
     return False
 
@@ -1076,6 +1077,13 @@ def cone(normal):
     tangent = normal.orthogonal().normalized()
     bitangent = normal.cross(tangent)
     return [normal] + [(normal + axis * 0.84).normalized() for axis in (tangent, -tangent, bitangent, -bitangent)]
+
+
+def wide_cone(normal):
+    """The same, close to along the face."""
+    tangent = normal.orthogonal().normalized()
+    bitangent = normal.cross(tangent)
+    return [(normal + axis * 2.75).normalized() for axis in (tangent, -tangent, bitangent, -bitangent, (tangent + bitangent).normalized(), (tangent - bitangent).normalized(), (bitangent - tangent).normalized(), -(tangent + bitangent).normalized())]
 
 
 def _face_samples(face, spacing):
@@ -1096,10 +1104,10 @@ def _face_samples(face, spacing):
     return points
 
 
-def hidden_faces(surfaces, see_through, reach, allowed=(), among=None, spacing=None):
+def hidden_faces(surfaces, see_through, reach, allowed=(), among=None, spacing=None, wide=False):
     """Faces nobody can see: all over them, the outward directions run into the back of a surface. Returns {(surface name,
     face): cover surface name}, for all faces or those in `among`. `allowed` lists objects, and "Object<Cover" pairs, whose
-    hidden faces are intended."""
+    hidden faces are intended. `wide` looks from the side as well: under a roof a crate's top is in plain view."""
     coords, polygons, owners = [], [], []
     for surface in surfaces:
         if surface.owner in see_through:
@@ -1122,6 +1130,8 @@ def hidden_faces(surfaces, see_through, reach, allowed=(), among=None, spacing=N
             if (among is not None and key not in among) or face.normal.length < 0.5:
                 continue
             directions = cone(face.normal)
+            if wide:
+                directions = directions + wide_cone(face.normal)
             cover = None
             for point in _face_samples(face, spacing):
                 # Far from the origin a small step vanishes in single precision, and a face hits itself.

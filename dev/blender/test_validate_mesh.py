@@ -231,7 +231,8 @@ def collapsed_share(on_line=True, faces=3):
     def build():
         obj = unwrap(from_bmesh("Collapsed", _grid_on_a_box, uv=False))
         layer = obj.data.uv_layers.active
-        for poly in list(obj.data.polygons)[: len(obj.data.polygons) // faces]:
+        seen = [poly for poly in obj.data.polygons if poly.normal.z > -0.5]
+        for poly in seen[: len(obj.data.polygons) // faces]:
             start = layer.data[poly.loop_indices[0]].uv.copy()
             for k, loop_index in enumerate(poly.loop_indices):
                 layer.data[loop_index].uv = (start.x + (0.03 * k if on_line else 0.0), start.y)
@@ -800,6 +801,546 @@ def big_flat_grid():
 
 
 big_flat_grid()
+
+# ---- what an adversarial review found: faces read by where they are
+
+def split_crate(flip_top):
+    def build():
+        def body(bm):
+            _split_cube(bm)
+            if flip_top:
+                top = max(bm.faces, key=lambda f: f.calc_center_median().z)
+                bmesh.ops.reverse_faces(bm, faces=[top])
+        return from_bmesh("Crate", body, uv=False).name
+    return build
+
+
+case("a crate of split faces, its top inside out", ["inconsistent_normals"], split_crate(True), UV_KIND="NONE")
+case("the same, all faces looking out", [], split_crate(False), UV_KIND="NONE")
+
+
+def tall_open_box_inside_out():
+    def body(bm):
+        bmesh.ops.create_cube(bm, size=1.0, matrix=mathutils.Matrix.Diagonal((1.0, 1.0, 6.0, 1.0)))
+        top = max(bm.faces, key=lambda f: f.calc_center_median().z)
+        bmesh.ops.delete(bm, geom=[top], context="FACES_ONLY")
+        bmesh.ops.reverse_faces(bm, faces=bm.faces[:])
+    return from_bmesh("Trunk", body, uv=False).name
+
+
+case("an open box six times as tall as wide, inside out", ["inconsistent_normals"], tall_open_box_inside_out, UV_KIND="NONE")
+
+
+def thick_room(flip):
+    def body(bm):
+        bmesh.ops.create_cube(bm, size=1.0, matrix=mathutils.Matrix.Diagonal((6.0, 6.0, 3.0, 1.0)))
+        inner = bmesh.ops.create_cube(bm, size=1.0, matrix=mathutils.Matrix.Diagonal((5.0, 5.0, 2.0, 1.0)))
+        faces = list({face for vert in inner["verts"] for face in vert.link_faces})
+        bmesh.ops.reverse_faces(bm, faces=faces)
+        if flip:
+            floor = min(faces, key=lambda f: f.calc_center_median().z)
+            bmesh.ops.reverse_faces(bm, faces=[floor])
+    return body
+
+
+case("a hollow in a solid looks inward, and is sealed: hidden", ["hidden_faces"], lambda: from_bmesh("Room", thick_room(False), uv=False).name, UV_KIND="NONE")
+case("one face of the hollow turned the other way", ["inconsistent_normals"], lambda: from_bmesh("Room", thick_room(True), uv=False).name, UV_KIND="NONE")
+
+
+def floor_facing_down():
+    from_bmesh("Floor", lambda bm: quad(bm, 0.0, size=4.0, flip=True), uv=False)
+    return "Floor"
+
+
+case("a floor turned over: drawn by nothing from above", ["inconsistent_normals"], floor_facing_down, UV_KIND="NONE")
+case("the same, a camera that goes below it", [], floor_facing_down, UV_KIND="NONE", LOWEST_VIEW=-60)
+
+
+def sword():
+    section = [(0.03, 0.0), (0.018, 0.005), (0.008, 0.005), (0.0, 0.002), (-0.008, 0.005), (-0.018, 0.005), (-0.03, 0.0), (-0.018, -0.005), (-0.008, -0.005), (0.0, -0.002), (0.008, -0.005), (0.018, -0.005)]
+    def body(bm):
+        rows = [[bm.verts.new((x, y, z)) for x, y in section] for z in (0.0, 0.8)]
+        tip = bm.verts.new((0.0, 0.0, 0.95))
+        n = len(section)
+        for k in range(n):
+            m = (k + 1) % n
+            bm.faces.new((rows[0][k], rows[0][m], rows[1][m], rows[1][k]))
+            bm.faces.new((rows[1][k], rows[1][m], tip))
+        bm.faces.new(list(reversed(rows[0])))
+    return from_bmesh("Sword", body, uv=False).name
+
+
+case("a thin blade with a groove, looking out: Blender's guess at outward fails on it", [], sword, UV_KIND="NONE", FACETED=True)
+
+
+# ---- shading
+
+def smooth_boxes(*parts):
+    def build():
+        obj = from_bmesh("Part", boxes(*parts), uv=False)
+        for poly in obj.data.polygons:
+            poly.use_smooth = True
+        return obj.name
+    return build
+
+
+case("a door shaded smooth: its thin sides don't excuse its faces", ["smooth_across_corners"], smooth_boxes(((0, 0, 1), (1.0, 0.05, 2.0))), UV_KIND="NONE")
+case("forty boxes merged, each shaded smooth", ["smooth_across_corners"], smooth_boxes(*[((x * 1.2, y * 1.2, 0.5), (1.0, 1.0, 1.0)) for x in range(8) for y in range(5)]), UV_KIND="NONE", FLAT_DETAIL=True)
+case("a crate shaded smooth on a yard of one mesh", ["smooth_across_corners"], smooth_boxes(((0, 0, -0.05), (20.0, 20.0, 0.1)), ((0, 0, 0.5), (1.0, 1.0, 1.0))), UV_KIND="NONE", FLAT_DETAIL=True)
+
+
+def bevelled(segments, weighted=False):
+    def build():
+        obj = from_bmesh("Crate", cube, uv=False)
+        for poly in obj.data.polygons:
+            poly.use_smooth = True
+        modifier = obj.modifiers.new("Bevel", "BEVEL")
+        modifier.width = 0.02
+        modifier.segments = segments
+        if weighted:
+            normals = obj.modifiers.new("Weighted", "WEIGHTED_NORMAL")
+            normals.mode = "FACE_AREA"
+        return obj.name
+    return build
+
+
+case("a bevel shaded smooth: the large faces go dark to the corners", ["smooth_across_corners"], bevelled(3), UV_KIND="NONE", FLAT_DETAIL=True)
+case("the same with weighted normals", [], bevelled(3, weighted=True), UV_KIND="NONE", FLAT_DETAIL=True)
+
+
+def boulder():
+    def body(bm):
+        bmesh.ops.create_icosphere(bm, subdivisions=4, radius=1.0)
+        for vert in bm.verts:
+            vert.co.z = max(vert.co.z, -0.4)
+    obj = from_bmesh("Boulder", body, uv=False)
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    return obj.name
+
+
+case("a smooth boulder with a flat bottom, shaded across its rim: nobody looks there", [], boulder, UV_KIND="NONE", FLAT_DETAIL=True)
+
+
+def holding_loops():
+    def body(bm):
+        bmesh.ops.create_cube(bm, size=1.0)
+        result = bmesh.ops.bevel(bm, geom=bm.verts[:] + bm.edges[:], offset=0.02, segments=3, affect="EDGES", profile=0.5)
+    obj = from_bmesh("Box", body, uv=False)
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    obj.modifiers.new("Weighted", "WEIGHTED_NORMAL")
+    return obj.name
+
+
+def chamfered_plinth():
+    def body(bm):
+        ring = lambda r, z: [bm.verts.new((r * math.cos(k * math.pi / 4.0), r * math.sin(k * math.pi / 4.0), z)) for k in range(8)]
+        bottom, top, inner = ring(1.0, 0.0), ring(1.0, 0.5), ring(0.9, 0.55)
+        for k in range(8):
+            m = (k + 1) % 8
+            bm.faces.new((bottom[k], bottom[m], top[m], top[k]))
+            bm.faces.new((top[k], top[m], inner[m], inner[k]))
+        bm.faces.new(inner)
+        bm.faces.new(list(reversed(bottom)))
+    return from_bmesh("Plinth", body, uv=False).name
+
+
+case("an octagonal plinth with a chamfer, shaded flat: nothing curves", [], chamfered_plinth, UV_KIND="NONE")
+
+
+def flat_ball_split():
+    def body(bm):
+        bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=0.5)
+        bmesh.ops.split_edges(bm, edges=bm.edges[:])
+    return from_bmesh("Ball", body, uv=False).name
+
+
+case("a ball of faces that share no vertex, shaded flat", ["flat_shaded_curves"], flat_ball_split, UV_KIND="NONE", FLAT_DETAIL=True)
+
+
+# ---- what hides, what flickers
+
+def rug(size):
+    def build():
+        def body(bm):
+            quad(bm, 0.0, size=12.0)
+            quad(bm, 0.0002, size=size, shift=2.0)
+        return from_bmesh("Room", body, uv=False).name
+    return build
+
+
+case("a rug 90 cm wide, 0.2 mm over a floor of one mesh", ["z_fighting"], rug(0.9), UV_KIND="NONE")
+
+
+def mirrored_on_floor():
+    from_bmesh("Floor", boxes(((0, 0, -0.05), (10.0, 10.0, 0.1))), uv=False)
+    crate = from_bmesh("Crate", boxes(((0, 0, 0.5), (1.0, 1.0, 1.0))), uv=False)
+    crate.scale = (-1.0, 1.0, 1.0)
+    return ["Floor", "Crate"]
+
+
+def mirrored_floor_over_floor():
+    from_bmesh("FloorA", lambda bm: quad(bm, 0.0, size=10.0), uv=False)
+    other = from_bmesh("FloorB", lambda bm: quad(bm, 0.0005, size=10.0, shift=-9.0), uv=False)
+    other.data.update()
+    # One mesh placed again, mirrored: it can't be applied, and needn't be.
+    from_bmesh("FloorB_Original", lambda bm: quad(bm, 50.0, size=1.0), uv=False)
+    other.scale = (1.0, -1.0, 1.0)
+    other.location.y = 10.0
+    return ["FloorA", "FloorB"]
+
+
+scene_case("a mirrored floor over a floor faces the same way", {"FloorA": ["z_fighting"], "FloorB": ["transforms_not_applied", "z_fighting"]}, mirrored_floor_over_floor, UV_KIND="NONE")
+scene_case("a mirrored crate on a floor: back to back, as any crate", {"Floor": [], "Crate": ["transforms_not_applied"]}, mirrored_on_floor, UV_KIND="NONE")
+
+
+def split_floors():
+    def tiles(z, shift):
+        def body(bm):
+            for x in range(5):
+                for y in range(5):
+                    verts = [bm.verts.new((shift + x + dx, y + dy, z)) for dx, dy in ((0, 0), (1, 0), (1, 1), (0, 1))]
+                    bm.faces.new(verts)
+        return body
+    from_bmesh("TileA", tiles(0.0, 0.0), uv=False)
+    from_bmesh("TileB", tiles(0.0005, 3.0), uv=False)
+    return ["TileA", "TileB"]
+
+
+scene_case("tiles of quads sharing no vertex over each other, 0.5 mm apart: one patch", {"TileA": ["hidden_faces", "z_fighting"], "TileB": ["z_fighting"]}, split_floors, UV_KIND="NONE", FLAT_DETAIL=True)
+
+
+def banner():
+    from_bmesh("Wall", boxes(((0, 0, 2), (6.0, 0.2, 4.0))), uv=False)
+    def body(bm):
+        verts = [bm.verts.new(p) for p in ((-1, -0.1003, 1), (1, -0.1003, 1), (1, -0.1003, 3), (-1, -0.1003, 3))]
+        bm.faces.new(list(reversed(verts)))
+    from_bmesh("Banner", body, uv=False)
+    return ["Wall", "Banner"]
+
+
+scene_case("a banner drawn both sides, 0.3 mm off a wall", {"Wall": ["z_fighting"], "Banner": ["z_fighting"]}, banner, UV_KIND="NONE", TWO_SIDED=["Banner"])
+
+
+def rivets():
+    def body(bm):
+        for x in range(20):
+            for y in range(20):
+                verts = [bm.verts.new((x * 0.1 + dx, y * 0.1 + dy, 0.0005)) for dx, dy in ((0, 0), (0.02, 0), (0.02, 0.02), (0, 0.02))]
+                bm.faces.new(verts)
+    from_bmesh("Rivets", body, uv=False)
+    from_bmesh("Hull", lambda bm: quad(bm, 0.0, size=3.0, shift=-0.5), uv=False)
+    return ["Rivets", "Hull"]
+
+
+scene_case("400 rivets of 2 cm, 0.5 mm off a plate: each gone before its gap gives out", {"Rivets": [], "Hull": []}, rivets, UV_KIND="NONE", FLAT_DETAIL=True)
+
+
+def crates_under_a_roof():
+    from_bmesh("Crates", boxes(((0, 0, 0.5), (1.0, 1.0, 1.0)), ((2.5, 0, 0.5), (1.0, 1.0, 1.0))), uv=False)
+    from_bmesh("Roof", lambda bm: quad(bm, 2.0, size=10.0, shift=-4.0), uv=False)
+    bpy.data.objects["Roof"].location.y = -5.0
+    return ["Crates", "Roof"]
+
+
+scene_case("crates under a roof: their tops are in plain view from the side", {"Crates": [], "Roof": []}, crates_under_a_roof, UV_KIND="NONE", FLAT_DETAIL=True)
+
+
+# ---- openings
+
+def box_without(*names):
+    def body(bm):
+        bmesh.ops.create_cube(bm, size=1.0, matrix=mathutils.Matrix.Translation((0, 0, 0.5)))
+        doomed = [f for f in bm.faces if any(f.normal.dot(direction) > 0.9 for direction in names)]
+        bmesh.ops.delete(bm, geom=doomed, context="FACES_ONLY")
+    return body
+
+
+FRONT = mathutils.Vector((0, -1, 0))
+BACK = mathutils.Vector((0, 1, 0))
+LEFT = mathutils.Vector((-1, 0, 0))
+RIGHT = mathutils.Vector((1, 0, 0))
+DOWN = mathutils.Vector((0, 0, -1))
+UP = mathutils.Vector((0, 0, 1))
+case("a crate without its front: it nearly closes, so that is a hole", ["see_inside"], lambda: from_bmesh("Crate", box_without(FRONT), uv=False).name, UV_KIND="NONE")
+case("the same, a kit piece a neighbor covers", [], lambda: from_bmesh("Crate", box_without(FRONT), uv=False).name, UV_KIND="NONE", KIT=True, notes=["see_inside"])
+case("a shell with most of it left open, as the back of a kit's wall: a note", [], lambda: from_bmesh("Wall", box_without(BACK, UP, DOWN), uv=False).name, UV_KIND="NONE", notes=["open_side"])
+case("a pipe, open at both ends: holes unless a neighbor covers them", ["see_inside"], lambda: from_bmesh("Pipe", box_without(UP, DOWN), uv=False).name, UV_KIND="NONE")
+case("the same in a kit", [], lambda: from_bmesh("Pipe", box_without(UP, DOWN), uv=False).name, UV_KIND="NONE", KIT=["Pipe"], notes=["see_inside"])
+
+
+def house_with_hole(hole):
+    def body(bm):
+        bmesh.ops.create_grid(bm, x_segments=int(10.0 / hole), y_segments=int(3.0 / hole), size=0.5, matrix=mathutils.Matrix.Translation((0, -3.0, 1.5)) @ mathutils.Matrix.Rotation(math.radians(90.0), 4, "X") @ mathutils.Matrix.Diagonal((10.0, 3.0, 1.0, 1.0)))
+        bmesh.ops.create_cube(bm, size=1.0, matrix=mathutils.Matrix.Translation((0, 0, 1.5)) @ mathutils.Matrix.Diagonal((10.0, 6.0, 3.0, 1.0)))
+        wall = [f for f in bm.faces if abs(f.calc_center_median().y + 3.0) < 1e-3 and f.calc_area() > 20.0]
+        bmesh.ops.delete(bm, geom=wall, context="FACES_ONLY")
+        grid = [f for f in bm.faces if abs(f.calc_center_median().y + 3.0) < 1e-3]
+        target = min(grid, key=lambda f: (f.calc_center_median() - mathutils.Vector((1.0, -3.0, 1.5))).length)
+        bmesh.ops.delete(bm, geom=[target], context="FACES_ONLY")
+    return body
+
+
+case("a hole of 28 cm in a 10 m house", ["see_inside"], lambda: from_bmesh("House", house_with_hole(0.28), uv=False).name, UV_KIND="NONE", FLAT_DETAIL=True)
+
+
+def thin_panels_shed():
+    def panel(bm, corners):
+        verts = [bm.verts.new(c) for c in corners]
+        bm.faces.new(verts)
+    def body(bm):
+        panel(bm, ((-2, -2, 0), (-2, -2, 3), (-2, 2, 3), (-2, 2, 0)))
+        panel(bm, ((2, -2, 0), (2, 2, 0), (2, 2, 3), (2, -2, 3)))
+        panel(bm, ((-2, 2, 0), (-2, 2, 3), (2, 2, 3), (2, 2, 0)))
+        panel(bm, ((-2, -2, 3), (2, -2, 3), (2, 2, 3), (-2, 2, 3)))
+        panel(bm, ((-2, -2, 0), (-2, 2, 0), (2, 2, 0), (2, -2, 0)))
+    return from_bmesh("Shed", body, uv=False).name
+
+
+case("a shed of separate panels, its front wall missing", ["see_inside"], thin_panels_shed, UV_KIND="NONE")
+
+
+def ground_with_hole():
+    def body(bm):
+        bmesh.ops.create_grid(bm, x_segments=20, y_segments=20, size=10.0)
+        for vert in bm.verts:
+            vert.co.z = 0.3 * math.sin(vert.co.x) * math.cos(vert.co.y)
+        doomed = [f for f in bm.faces if (f.calc_center_median().x ** 2 + f.calc_center_median().y ** 2) < 2.0]
+        bmesh.ops.delete(bm, geom=doomed, context="FACES_ONLY")
+    obj = from_bmesh("Ground", body, uv=False)
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    return obj.name
+
+
+case("hilly ground with a hole in it: right where something stands on it, so a note", [], ground_with_hole, UV_KIND="NONE", notes=["opening_in_sheet"])
+
+
+def room_with_hole():
+    def body(bm):
+        bmesh.ops.create_cube(bm, size=1.0, matrix=mathutils.Matrix.Translation((0, 0, 2)) @ mathutils.Matrix.Diagonal((6.0, 6.0, 4.0, 1.0)))
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=4, use_grid_fill=True)
+        bmesh.ops.reverse_faces(bm, faces=bm.faces[:])
+        target = min(bm.faces, key=lambda f: (f.calc_center_median() - mathutils.Vector((3.0, 0.0, 2.0))).length)
+        bmesh.ops.delete(bm, geom=[target], context="FACES_ONLY")
+    return from_bmesh("Room", body, uv=False).name
+
+
+case("a room seen from inside with a hole in its wall", ["see_inside"], room_with_hole, UV_KIND="NONE", SEEN_FROM_INSIDE=["Room"], FLAT_DETAIL=True)
+
+
+# ---- UVs
+
+def vertex_scramble():
+    import random
+    generator = random.Random(3)
+    def body(bm):
+        bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=0.5)
+    obj = from_bmesh("Noise", body, uv=False)
+    layer = obj.data.uv_layers.new(name="UVMap")
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    uvs = {v.index: (generator.random(), generator.random()) for v in obj.data.vertices}
+    for loop in obj.data.loops:
+        layer.data[loop.index].uv = uvs[loop.vertex_index]
+    return obj.name
+
+
+case("every vertex a UV at random: the edges run on and the faces fold", ["uv_scrambled"], vertex_scramble)
+
+
+def mostly_blurred():
+    obj = unwrap(from_bmesh("Blurred", cube, uv=False))
+    layer = obj.data.uv_layers.active
+    for poly in obj.data.polygons:
+        if abs(poly.normal.z) > 0.9:
+            continue
+        uvs = [layer.data[i].uv.copy() for i in poly.loop_indices]
+        center = sum(uvs, mathutils.Vector((0.0, 0.0))) / len(uvs)
+        for loop_index, uv in zip(poly.loop_indices, uvs):
+            layer.data[loop_index].uv = center + (uv - center) / 25.0
+    return obj.name
+
+
+case("a box blurred on its four sides: most of it sets no measure", ["uv_uneven_density"], mostly_blurred, UV_KIND="UNIQUE")
+case("the same, nobody sees those sides", [], mostly_blurred, UV_KIND="UNIQUE", BLUR_OK=["Blurred"])
+
+
+def in_a_node_group():
+    obj = plank(False)()
+    image = bpy.data.images.new("Art", 1024, 64)
+    group = bpy.data.node_groups.new("Look", "ShaderNodeTree")
+    node = group.nodes.new("ShaderNodeTexImage")
+    node.image = image
+    group.interface.new_socket("Color", in_out="OUTPUT", socket_type="NodeSocketColor")
+    outputs = group.nodes.new("NodeGroupOutput")
+    group.links.new(node.outputs[0], outputs.inputs[0])
+    material = bpy.data.materials.new("Art")
+    material.use_nodes = True
+    holder = material.node_tree.nodes.new("ShaderNodeGroup")
+    holder.node_tree = group
+    material.node_tree.links.new(holder.outputs[0], material.node_tree.nodes["Principled BSDF"].inputs[0])
+    bpy.data.objects[obj].data.materials.append(material)
+    return obj
+
+
+case("UV_KIND NONE, the texture inside a node group", ["uv_kind_none_with_texture"], in_a_node_group, UV_KIND="NONE")
+case("a plank on a strip whose image the check can't read: said to be shared, a note", [], plank(False), UV_KIND="SHARED", notes=["uv_stretched"])
+
+
+# ---- collision meshes
+
+def turned(build, degrees):
+    def scene():
+        names = build()
+        rotation = mathutils.Matrix.Rotation(math.radians(degrees), 4, "Z")
+        for name in names:
+            obj = bpy.data.objects[name]
+            obj.data.transform(rotation)
+            obj.data.update()
+        return names
+    return scene
+
+
+for angle in (15, 30, 45, 70):
+    scene_case(f"an arch closed by its collision mesh, turned {angle} degrees", {"Arch": [], "Arch_COL": ["collision_closes_opening"]},
+               turned(model_and_collider("Arch", ARCH, (((0, 0, 1.5), (3.0, 0.5, 3.0)),)), angle), **SETTINGS)
+
+
+GATE = (((-1.5, 0, 1.1), (0.1, 0.1, 2.2)), ((1.5, 0, 1.1), (0.1, 0.1, 2.2)), ((0, 0, 2.2), (3.1, 0.1, 0.1)))
+scene_case("a gate 3 m wide between thin posts, closed by a thin box", {"Gate": [], "Gate_COL": ["collision_closes_opening"]}, model_and_collider("Gate", GATE, (((0, 0, 1.15), (3.1, 0.4, 2.3)),)), **SETTINGS)
+GARDEN = (((-6, 0, 0.6), (6.0, 0.3, 1.2)), ((6, 0, 0.6), (6.0, 0.3, 1.2)))
+scene_case("a garden wall with a 6 m gap, under one low box", {"Garden": [], "Garden_COL": ["collision_closes_opening"]}, model_and_collider("Garden", GARDEN, (((0, 0, 0.6), (18.0, 0.3, 1.2)),)), **SETTINGS)
+LONG_WALL = (((-30.6, 0, 1.5), (60.0, 0.2, 3.0)), ((30.6, 0, 1.5), (60.0, 0.2, 3.0)))
+scene_case("a 120 m wall with a 1.2 m gate, under one box", {"Wall": [], "Wall_COL": ["collision_closes_opening"]}, model_and_collider("Wall", LONG_WALL, (((0, 0, 1.5), (121.2, 0.2, 3.0)),)), **SETTINGS)
+SLAB = ARCH + (((0, 0, 1.25), (2.0, 0.05, 2.5)),)
+scene_case("an arch with a box per part, and a 5 cm slab across the way", {"Arch": [], "Arch_COL": ["collision_closes_opening"]}, model_and_collider("Arch", ARCH, SLAB), **SETTINGS)
+WINDOW = (((0, 0, 0.45), (6.0, 0.3, 0.9)), ((0, 0, 2.75), (6.0, 0.3, 0.5)), ((-2.5, 0, 1.7), (1.0, 0.3, 1.6)), ((2.5, 0, 1.7), (1.0, 0.3, 1.6)))
+scene_case("a window over a sill under one box: he can't walk through a window", {"Wall": [], "Wall_COL": []}, model_and_collider("Wall", WINDOW, (((0, 0, 1.5), (6.0, 0.3, 3.0)),)), **SETTINGS)
+POSTS = tuple(((x * 0.4 - 3.0, 0, 1.1), (0.1, 0.1, 2.2)) for x in range(16))
+scene_case("a palisade whose gaps no person fits, under one box", {"Fence": ["hidden_faces", "overlapping_coplanar_faces"], "Fence_COL": []}, model_and_collider("Fence", POSTS + (((0, 0, 2.2), (6.1, 0.1, 0.1)),), (((0, 0, 1.15), (6.2, 0.2, 2.3)),)), **SETTINGS)
+L_SHAPE = (((0, -3, 1.5), (12.0, 6.0, 3.0)), ((-3, 3, 1.5), (6.0, 6.0, 3.0)))
+scene_case("an L-shaped building under one box: he stops in its corner", {"Block": [], "Block_COL": ["collision_fills_space"]}, model_and_collider("Block", L_SHAPE, (((0, 0, 1.5), (12.0, 12.0, 3.0)),)), **SETTINGS)
+
+
+def house_with_room():
+    def body(bm):
+        # Walls of 30 cm with a doorway, a slab under them, no roof to keep the scene plain: what counts is that a person walks in.
+        for part in (((-3, 0, 1.5), (0.3, 6.0, 3.0)), ((3, 0, 1.5), (0.3, 6.0, 3.0)), ((0, 3, 1.5), (6.3, 0.3, 3.0)), ((-2, -3, 1.5), (2.3, 0.3, 3.0)), ((2, -3, 1.5), (2.3, 0.3, 3.0)), ((0, -3, 2.6), (1.7, 0.3, 0.8)), ((0, 0, 3.05), (6.3, 6.3, 0.1))):
+            bmesh.ops.create_cube(bm, size=1.0, matrix=mathutils.Matrix.Translation(part[0]) @ mathutils.Matrix.Diagonal((*part[1], 1.0)))
+    from_bmesh("House", body, uv=False)
+    from_bmesh("House_COL", boxes(((0, 0, 1.55), (6.3, 6.3, 3.1))), uv=False)
+    return ["House", "House_COL"]
+
+
+scene_case("a room behind a door, under one solid box: he stops in the doorway", {"House": ["hidden_faces", "overlapping_coplanar_faces"], "House_COL": ["collision_fills_space"]}, house_with_room, **SETTINGS)
+
+
+def box_over_fence():
+    from_bmesh("Fence", boxes(((0, 0, 1), (20.0, 0.2, 2.0))), uv=False)
+    from_bmesh("Fence_COL", boxes(((0, 0, 1), (20.0, 3.8, 2.0))), uv=False)
+    return ["Fence", "Fence_COL"]
+
+
+scene_case("a fence 20 cm thick with a collision box 3.8 m thick", {"Fence": [], "Fence_COL": ["collision_doesnt_fit"]}, box_over_fence, **SETTINGS)
+
+
+def house_and_roof():
+    from_bmesh("House", boxes(((0, 0, 1.5), (6.0, 6.0, 3.0))), uv=False)
+    from_bmesh("Roof", boxes(((0, 0, 3.5), (6.0, 6.0, 1.0))), uv=False)
+    from_bmesh("House_COL", boxes(((0, 0, 2.0), (6.0, 6.0, 4.0))), uv=False)
+    return ["House", "Roof", "House_COL"]
+
+
+scene_case("one collision mesh for a house and its roof", {"House": [], "Roof": [], "House_COL": []}, house_and_roof, **SETTINGS)
+
+
+def open_box_collider():
+    from_bmesh("Wall", boxes(((0, 0, 1.5), (20.0, 2.0, 3.0))), uv=False)
+    def body(bm):
+        bmesh.ops.create_cube(bm, size=1.0, matrix=mathutils.Matrix.Translation((0, 0, 1.5)) @ mathutils.Matrix.Diagonal((20.0, 2.0, 3.0, 1.0)))
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.normal.y < -0.9], context="FACES_ONLY")
+    from_bmesh("Wall_COL", body, uv=False)
+    return ["Wall", "Wall_COL"]
+
+
+scene_case("a long wall's collision mesh missing its front face", {"Wall": [], "Wall_COL": ["collision_not_closed"]}, open_box_collider, **SETTINGS)
+
+
+def mirrored_arch():
+    def scene():
+        names = model_and_collider("Arch", ARCH, ARCH)()
+        for name in names:
+            bpy.data.objects[name].scale = (-1.0, 1.0, 1.0)
+        return names
+    return scene
+
+
+scene_case("a mirrored arch with a box per part: the normals still look out", {"Arch": ["transforms_not_applied"], "Arch_COL": ["transforms_not_applied"]}, mirrored_arch(), **SETTINGS)
+
+
+# ---- numbers
+
+def far_vertex(distance):
+    def build():
+        def body(bm):
+            bmesh.ops.create_cube(bm, size=1.0)
+            bm.verts.ensure_lookup_table()
+            bm.verts[0].co.x = distance
+        return from_bmesh("Crate", body, uv=False).name
+    return build
+
+
+case("a vertex at 1e25 m: told, not a crash", ["vertices_not_numbers"], far_vertex(1e25), UV_KIND="NONE")
+case("a vertex at 1e8 m", ["vertices_not_numbers"], far_vertex(1e8), UV_KIND="NONE")
+
+
+# ---- flat areas
+
+def flat_grid_with(setup):
+    def build():
+        def body(bm):
+            bmesh.ops.create_grid(bm, x_segments=60, y_segments=60, size=4.0)
+        obj = from_bmesh("Floor", body, uv=False)
+        setup(obj)
+        return obj.name
+    return build
+
+
+def leftover_color(obj):
+    attribute = obj.data.color_attributes.new(name="Col", type="FLOAT_COLOR", domain="POINT")
+    for item in attribute.data:
+        item.color = (1.0, 1.0, 1.0, 1.0)
+
+
+def painted_color(obj):
+    attribute = obj.data.color_attributes.new(name="Col", type="FLOAT_COLOR", domain="POINT")
+    for k, item in enumerate(attribute.data):
+        item.color = (k % 7 / 7.0, 0.5, 0.5, 1.0)
+
+
+def all_sharp(obj):
+    for edge in obj.data.edges:
+        edge.use_edge_sharp = True
+
+
+case("a flat floor of thousands of faces with a color attribute left at white", ["over_tessellated_flat_areas"], flat_grid_with(leftover_color), UV_KIND="NONE")
+case("the same, its colors painted", [], flat_grid_with(painted_color), UV_KIND="NONE")
+case("the same floor, every edge marked sharp", ["over_tessellated_flat_areas"], flat_grid_with(all_sharp), UV_KIND="NONE")
+
+
+def facade_with_windows():
+    """Holes need the vertices around them: each costs what a dissolve leaves."""
+    def body(bm):
+        bmesh.ops.create_grid(bm, x_segments=18, y_segments=3, size=1.0, matrix=mathutils.Matrix.Diagonal((9.0, 1.5, 1.0, 1.0)))
+        windows = [f for f in bm.faces if abs(f.calc_center_median().y) < 0.4 and int((f.calc_center_median().x + 9.0) / 1.0) % 2 == 1]
+        bmesh.ops.delete(bm, geom=windows, context="FACES_ONLY")
+    return from_bmesh("Facade", body, uv=False).name
+
+
+case("a facade of a row of windows: flat, and every vertex needed", [], facade_with_windows, UV_KIND="NONE", TWO_SIDED=["Facade"])
+
 
 cut_path = script_path.replace("validate_mesh.py", "cut_hidden_faces.py")
 

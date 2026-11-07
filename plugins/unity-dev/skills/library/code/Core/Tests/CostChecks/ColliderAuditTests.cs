@@ -383,6 +383,7 @@ namespace ProjectName.Core.Tests.CostChecks
             var type = System.Type.GetType("UnityEngine.AI.NavMeshAgent, UnityEngine.AIModule");
             Assume.That(type, Is.Not.Null);
             var actor = Child("Actor", _root.transform);
+            actor.AddComponent<Animator>();
             var agent = actor.AddComponent(type);
             using (var write = new SerializedObject(agent))
             {
@@ -402,7 +403,7 @@ namespace ProjectName.Core.Tests.CostChecks
         public void AnAnimalOnACapsuleAlongItsBack_IsJudgedByItsFeet()
         {
             var animal = Child("Animal", _root.transform);
-            animal.AddComponent<Rigidbody>();
+            animal.AddComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             animal.AddComponent<Animator>();
             var capsule = animal.AddComponent<CapsuleCollider>();
             capsule.direction = 2;
@@ -479,6 +480,295 @@ namespace ProjectName.Core.Tests.CostChecks
             box.size = new Vector3(2f, 0.75f, 1f);
 
             Assert.That(Rules(), Is.Empty);
+        }
+
+        [Test]
+        public void AControllerLeftAtItsDefaultCenter_LeavesTheBodyFloating()
+        {
+            var actor = Child("Actor", _root.transform);
+            var controller = actor.AddComponent<CharacterController>();
+            controller.height = 1.8f;
+            controller.center = Vector3.zero;
+            Part("Body", actor.transform, new Vector3(0f, 0.9f, 0f), new Vector3(0.5f, 1.8f, 0.3f));
+
+            Assert.That(Rules(), Does.Contain("feet-off-ground"));
+        }
+
+        [Test]
+        public void AControllerWiderThanTall_IsAsTallAsItsTwoRoundEnds()
+        {
+            var slime = Child("Slime", _root.transform);
+            var controller = slime.AddComponent<CharacterController>();
+            controller.radius = 0.5f;
+            controller.height = 0.5f;
+            controller.center = new Vector3(0f, 0.5f, 0f);
+            controller.skinWidth = 0.001f;
+            Part("Body", slime.transform, new Vector3(0f, 0.5f, 0f), Vector3.one);
+
+            Assert.That(Rules(), Is.Empty);
+        }
+
+        [Test]
+        public void AControllerBesideItsModel_IsJudgedByThatModel()
+        {
+            var actor = Child("Actor", _root.transform);
+            var mover = Child("Mover", actor.transform).AddComponent<CharacterController>();
+            mover.height = 1.8f;
+            mover.center = new Vector3(0f, -0.5f, 0f);
+            Part("Body", actor.transform, new Vector3(0f, 0.9f, 0f), new Vector3(0.5f, 1.8f, 0.3f));
+
+            Assert.That(Rules(), Does.Contain("feet-off-ground"));
+        }
+
+        [Test]
+        public void ACarWithASkinnedDriver_IsMeasuredByTheCar()
+        {
+            var car = Cube("Car", Vector3.up, new Vector3(2f, 1.2f, 4.5f));
+            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var skin = Child("Driver", car.transform).AddComponent<SkinnedMeshRenderer>();
+            skin.sharedMesh = cube.GetComponent<MeshFilter>().sharedMesh;
+            Object.DestroyImmediate(cube);
+            skin.localBounds = new Bounds(Vector3.zero, new Vector3(0.1f, 0.3f, 0.1f));
+
+            Assert.That(Rules(), Is.Empty);
+        }
+
+        [Test]
+        public void ADoorOnARigidbodyWithAnAnimator_DoesntStandOnItsBox()
+        {
+            var door = Cube("Door", new Vector3(0f, 1.1f, 0f), new Vector3(1f, 2f, 0.1f));
+            door.AddComponent<Rigidbody>().isKinematic = true;
+            door.AddComponent<Animator>();
+
+            Assert.That(Rules(), Is.Empty);
+        }
+
+        [Test]
+        public void AFlatFloorQuad_IsWhatItsColliderIsMeasuredBy()
+        {
+            var floor = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Object.DestroyImmediate(floor.GetComponent<MeshCollider>());
+            floor.transform.SetParent(_root.transform);
+            floor.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            floor.transform.localScale = new Vector3(10f, 10f, 1f);
+            var box = floor.AddComponent<BoxCollider>();
+            box.size = new Vector3(1f, 1f, 0.01f);
+            box.center = new Vector3(3f, 0f, 0f);
+
+            Assert.That(Rules(), Does.Contain("collider-off-model"));
+        }
+
+        [Test]
+        public void AYardWithAStatue_IsMeasuredByTheYardToo()
+        {
+            var yard = Child("Yard", _root.transform);
+            Part("Ground", yard.transform, new Vector3(0f, -0.05f, 0f), new Vector3(20f, 0.1f, 20f));
+            Part("Statue", yard.transform, new Vector3(0f, 1f, 0f), new Vector3(1f, 2f, 1f));
+            var box = Child("Box", yard.transform).AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, -0.05f, 0f);
+            box.size = new Vector3(20f, 0.1f, 20f);
+            var statue = Child("StatueBox", yard.transform).AddComponent<BoxCollider>();
+            statue.center = Vector3.up;
+            statue.size = new Vector3(1f, 2f, 1f);
+
+            Assert.That(Rules(), Does.Not.Contain("collider-beyond-model"));
+        }
+
+        [Test]
+        public void ARotatedChildUnderAStretchedParent_CantBeFollowedByItsCollider()
+        {
+            var stretched = Child("Stretched", _root.transform);
+            stretched.transform.localScale = new Vector3(10f, 1f, 1f);
+            var child = Cube("Bar", Vector3.zero, Vector3.one);
+            child.transform.SetParent(stretched.transform, false);
+            child.transform.localRotation = Quaternion.Euler(0f, 45f, 0f);
+
+            Assert.That(Rules(), Does.Contain("sheared-collider"));
+        }
+
+        [Test]
+        public void ARockWithASphereWellInsideIt_IsCovered()
+        {
+            var rock = Part("Rock", _root.transform, Vector3.up, new Vector3(2f, 2f, 2f));
+            rock.AddComponent<SphereCollider>().radius = 0.35f;
+
+            Assert.That(Rules("Root/Rock"), Is.Empty);
+        }
+
+        [Test]
+        public void AnInvisibleBoundaryBesideABushWithNoCollider_IsNoStray()
+        {
+            var yard = Child("Yard", _root.transform);
+            Part("Bush", yard.transform, new Vector3(5f, 0.5f, 5f), Vector3.one);
+            var edge = Child("Edge", yard.transform).AddComponent<BoxCollider>();
+            edge.center = new Vector3(5f, 0.2f, 0f);
+            edge.size = new Vector3(0.2f, 0.4f, 8f);
+
+            Assert.That(Rules(), Does.Not.Contain("collider-off-model"));
+        }
+
+        [Test]
+        public void ASmallBoxOnALongWall_IsNotSolidWhereTheProjectSaysWallsAre()
+        {
+            var wall = Cube("Wall", new Vector3(0f, 1.5f, 0f), new Vector3(10f, 3f, 0.2f));
+            wall.GetComponent<BoxCollider>().size = new Vector3(0.1f, 1f, 1f);
+
+            Assert.That(Rules(), Is.Empty);
+            Assert.That(Rules("Root/Wall"), Does.Contain("solid-without-collider"));
+        }
+
+        [Test]
+        public void ABoxOnAPartitionOnlyAtItsEnd_DoesntMakeItSolid()
+        {
+            Part("Partition", _root.transform, new Vector3(0f, 1.5f, 0f), new Vector3(3f, 3f, 0.1f));
+            var neighbor = Child("Neighbor", _root.transform).AddComponent<BoxCollider>();
+            neighbor.center = new Vector3(-1.55f, 1.5f, 0f);
+            neighbor.size = new Vector3(0.1f, 3f, 3f);
+
+            Assert.That(Rules("Root/Partition"), Does.Contain("solid-without-collider"));
+        }
+
+        [Test]
+        public void AnArchTurnedAboutTheVertical_IsStillClosedByOneBox()
+        {
+            foreach (var angle in new[] { 15f, 30f, 45f, 70f })
+            {
+                var parent = Child("Turned" + angle, _root.transform);
+                parent.transform.rotation = Quaternion.Euler(0f, angle, 0f);
+                Part("Left", parent.transform, parent.transform.rotation * new Vector3(-1.25f, 1.25f, 0f), new Vector3(0.5f, 2.5f, 0.5f)).transform.localRotation = Quaternion.identity;
+                Part("Right", parent.transform, parent.transform.rotation * new Vector3(1.25f, 1.25f, 0f), new Vector3(0.5f, 2.5f, 0.5f)).transform.localRotation = Quaternion.identity;
+                Part("Top", parent.transform, parent.transform.rotation * new Vector3(0f, 2.75f, 0f), new Vector3(3f, 0.5f, 0.5f)).transform.localRotation = Quaternion.identity;
+                var box = Child("Box", parent.transform).AddComponent<BoxCollider>();
+                box.transform.localRotation = Quaternion.identity;
+                box.transform.localPosition = Vector3.zero;
+                box.center = new Vector3(0f, 1.5f, 0f);
+                box.size = new Vector3(3f, 3f, 0.5f);
+
+                Assert.That(Rules(), Does.Contain("collider-closes-opening"), angle.ToString());
+                Object.DestroyImmediate(parent);
+            }
+        }
+
+        [Test]
+        public void AGateInALongThinWall_IsFoundUnderOneBox()
+        {
+            var wall = Child("Wall", _root.transform);
+            Part("West", wall.transform, new Vector3(-15.6f, 1.5f, 0f), new Vector3(30f, 3f, 0.2f));
+            Part("East", wall.transform, new Vector3(15.6f, 1.5f, 0f), new Vector3(30f, 3f, 0.2f));
+            var box = Child("Box", wall.transform).AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 1.5f, 0f);
+            box.size = new Vector3(61.2f, 3f, 0.2f);
+
+            Assert.That(Rules(), Does.Contain("collider-closes-opening"));
+        }
+
+        [Test]
+        public void AGapInALowGardenWall_IsFoundUnderALowBox()
+        {
+            var wall = Child("Garden", _root.transform);
+            Part("West", wall.transform, new Vector3(-6f, 0.6f, 0f), new Vector3(6f, 1.2f, 0.3f));
+            Part("East", wall.transform, new Vector3(6f, 0.6f, 0f), new Vector3(6f, 1.2f, 0.3f));
+            var box = Child("Box", wall.transform).AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 0.6f, 0f);
+            box.size = new Vector3(18f, 1.2f, 0.3f);
+
+            Assert.That(Rules(), Does.Contain("collider-closes-opening"));
+        }
+
+        [Test]
+        public void AWindowOverASill_IsNoWayThrough()
+        {
+            var wall = Child("Wall", _root.transform);
+            Part("Sill", wall.transform, new Vector3(0f, 0.45f, 0f), new Vector3(6f, 0.9f, 0.3f));
+            Part("Head", wall.transform, new Vector3(0f, 2.75f, 0f), new Vector3(6f, 0.5f, 0.3f));
+            Part("West", wall.transform, new Vector3(-2.5f, 1.7f, 0f), new Vector3(1f, 1.6f, 0.3f));
+            Part("East", wall.transform, new Vector3(2.5f, 1.7f, 0f), new Vector3(1f, 1.6f, 0.3f));
+            var box = Child("Box", wall.transform).AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 1.5f, 0f);
+            box.size = new Vector3(6f, 3f, 0.3f);
+
+            Assert.That(Rules(), Does.Not.Contain("collider-closes-opening"));
+        }
+
+        [Test]
+        public void APalisadeWhoseGapsNoPersonFits_IsClosedAnyway()
+        {
+            var fence = Child("Palisade", _root.transform);
+            for (var x = -3f; x <= 3f; x += 0.4f) Part("Post", fence.transform, new Vector3(x, 1.1f, 0f), new Vector3(0.1f, 2.2f, 0.1f));
+            var box = Child("Box", fence.transform).AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 1.1f, 0f);
+            box.size = new Vector3(6.1f, 2.2f, 0.2f);
+
+            Assert.That(Rules(), Does.Not.Contain("collider-closes-opening"));
+        }
+
+        [Test]
+        public void AGateShutAsAnObjectOfItsOwn_LeavesNoWayThrough()
+        {
+            Arch((new Vector3(0f, 1.5f, 0f), new Vector3(3f, 3f, 0.5f)));
+            Part("Gate", _root.transform, new Vector3(0f, 1.25f, 0f), new Vector3(2f, 2.5f, 0.1f));
+
+            Assert.That(Rules(), Does.Not.Contain("collider-closes-opening"));
+        }
+
+        [Test]
+        public void AnLShapedBuildingUnderOneBox_StopsThePlayerInItsCorner()
+        {
+            var block = Child("Block", _root.transform);
+            Part("Long", block.transform, new Vector3(0f, 1.5f, -3f), new Vector3(12f, 3f, 6f));
+            Part("Wing", block.transform, new Vector3(-3f, 1.5f, 3f), new Vector3(6f, 3f, 6f));
+            var box = Child("Box", block.transform).AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 1.5f, 0f);
+            box.size = new Vector3(12f, 3f, 12f);
+
+            Assert.That(Rules(), Does.Contain("collider-fills-space"));
+        }
+
+        [Test]
+        public void AWallThatOnlyHasAFront_ClosesNoSpaceBehindIt()
+        {
+            var front = Child("Front", _root.transform);
+            var face = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Object.DestroyImmediate(face.GetComponent<MeshCollider>());
+            face.transform.SetParent(front.transform);
+            face.transform.position = new Vector3(0f, 1.5f, 1f);
+            face.transform.localScale = new Vector3(8f, 3f, 1f);
+            var box = Child("Box", front.transform).AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 1.5f, 0f);
+            box.size = new Vector3(8f, 3f, 2f);
+
+            Assert.That(Rules(), Does.Not.Contain("collider-closes-opening"));
+        }
+
+        [Test]
+        public void TheFarLevelOfALodGroup_IsNotInTheArch()
+        {
+            Arch((new Vector3(0f, 1.5f, 0f), new Vector3(3f, 3f, 0.5f)));
+            var arch = _root.transform.Find("Arch");
+            var card = Part("Card", arch, new Vector3(0f, 1.5f, 0f), new Vector3(3f, 3f, 0.05f)).GetComponent<Renderer>();
+            var lods = arch.gameObject.AddComponent<LODGroup>();
+            lods.SetLODs(new[]
+            {
+                new LOD(0.5f, arch.GetComponentsInChildren<Renderer>().Where(r => r != card).ToArray()),
+                new LOD(0.1f, new[] { card }),
+            });
+
+            Assert.That(Rules(), Does.Contain("collider-closes-opening"));
+        }
+
+        [Test]
+        public void AVeryLargeLevel_IsReadInSeconds()
+        {
+            var level = Child("Level", _root.transform);
+            for (var i = 0; i < 800; i++)
+            {
+                var wall = Cube("Wall", new Vector3(i % 40 * 12f, 1.5f, i / 40 * 12f), new Vector3(10f, 3f, 0.2f));
+                wall.transform.SetParent(level.transform);
+            }
+
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            Assert.That(Rules("Root/Level"), Is.Empty);
+            Assert.That(watch.Elapsed.TotalSeconds, Is.LessThan(20d));
         }
 
         [Test]
