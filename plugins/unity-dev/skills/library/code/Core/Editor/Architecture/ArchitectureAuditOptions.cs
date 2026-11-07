@@ -23,6 +23,7 @@ namespace ProjectName.Core.Editor.Architecture
         // The document whose table lists capabilities, with a column named Interface. Null skips the comparison.
         public string CapabilityMapFile { get; set; } = "docs/architecture.md";
 
+        // Past these limits a class is a signal for the review; three times past them, a finding.
         public int MaxConstructorDependencies { get; set; } = 6;
 
         public int MaxInterfaceMembers { get; set; } = 8;
@@ -32,12 +33,6 @@ namespace ProjectName.Core.Editor.Architecture
         public int MaxFields { get; set; } = 25;
 
         public int MaxFileLines { get; set; } = 400;
-
-        // An assembly with this many classes that do work needs interfaces of its own.
-        public int MinClassesForInterfaces { get; set; } = 3;
-
-        // The share of interfaces per class with behavior, in an assembly outside Core.
-        public double MinInterfaceShare { get; set; } = 0.2d;
 
         // Exceptions are for what the rules didn't foresee. Many of them mean the rules aren't being followed.
         public int MaxExceptions { get; set; } = 10;

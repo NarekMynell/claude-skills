@@ -16,7 +16,7 @@ Unity can't serialize a field whose type is an interface.
 
 ## JSON
 
-**A must:** all JSON goes through Newtonsoft (`com.unity.nuget.newtonsoft-json`), never `JsonUtility`, whatever it is for: saves, configs, network, tools, tests. `ProjectArchitectureTests` fails on it (`json-not-newtonsoft`), with an exception only for a reason the user accepts. `EditorJsonUtility`, for an Editor object's serialized state, stays allowed.
+**A must:** all JSON goes through Newtonsoft (`com.unity.nuget.newtonsoft-json`), never `JsonUtility`, whatever it is for: saves, configs, network, tools, tests. It is a plain rule, kept by reviews: no test watches it. `EditorJsonUtility`, for an Editor object's serialized state, stays allowed.
 
 What differs from `JsonUtility`, tested on the package's 3.2.2:
 

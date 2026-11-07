@@ -9,11 +9,13 @@ namespace ProjectName.Core.Editor.Architecture
             IReadOnlyList<ArchitectureFinding> findings,
             IReadOnlyList<ArchitectureFinding> excepted,
             IReadOnlyList<ArchitectureFinding> unusedExceptions,
+            IReadOnlyList<ArchitectureFinding> signals,
             IReadOnlyList<string> assemblyStats)
         {
             Findings = findings;
             Excepted = excepted;
             UnusedExceptions = unusedExceptions;
+            Signals = signals;
             AssemblyStats = assemblyStats;
         }
 
@@ -23,6 +25,9 @@ namespace ProjectName.Core.Editor.Architecture
 
         // Exceptions that no longer match anything: remove them, so they can't hide a later violation.
         public IReadOnlyList<ArchitectureFinding> UnusedExceptions { get; }
+
+        // Where a review should look: a number can point at a class, and can't say it's wrong. They don't fail.
+        public IReadOnlyList<ArchitectureFinding> Signals { get; }
 
         public IReadOnlyList<string> AssemblyStats { get; }
 
@@ -34,6 +39,7 @@ namespace ProjectName.Core.Editor.Architecture
             Append(text, "Findings", Findings);
             Append(text, "Unused exceptions", UnusedExceptions);
             Append(text, "Accepted exceptions", Excepted);
+            Append(text, "For the review, not failures", Signals);
             text.AppendLine("Assemblies:");
             foreach (var line in AssemblyStats) text.Append("  ").AppendLine(line);
             return text.ToString();

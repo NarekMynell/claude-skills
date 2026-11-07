@@ -9,15 +9,17 @@ using UnityEngine;
 
 namespace ProjectName.Core.Editor.Architecture
 {
-    // Checks compiled project code against the architecture rules of the code standards: capabilities and services
-    // behind interfaces, composition over inheritance, single responsibility, no mutable static state, one-way
-    // assembly references. It sees what the compiler sees, so a passing audit doesn't depend on anyone's reading.
+    // Checks compiled project code against what a script can tell of the architecture rules: services behind interfaces, no mutable
+    // static state, one-way assembly references. Green is the floor, not a good design: whether the interfaces are real capabilities and
+    // whether the next feature fits is for a review, and the signals in the report point it where to look.
     public static class ArchitectureAudit
     {
         private const BindingFlags Declared = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
                                               BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
 
         private const int MaxHelperMethods = 8;
+        private const int FailAtTimesLimit = 3;
+        private const string SignalPrefix = "signal:";
 
         private static readonly string[] CompositionRoots = { "LifetimeScope", "ScopeInstaller" };
         private static readonly string[] FrameMethods = { "Update", "LateUpdate", "FixedUpdate" };
@@ -38,10 +40,6 @@ namespace ProjectName.Core.Editor.Architecture
             ("creation-outside-factory", new Regex(@"(\bnew\s+GameObject\b|\.AddComponent\s*[<(]|\b(Object|GameObject)\.Instantiate\s*[<(]|(?<![\w.])Instantiate\s*[<(])"),
                 "creates objects outside a factory, so they get no injection"),
         };
-
-        // JSON that doesn't go through Newtonsoft. Text in strings doesn't count, unless it is code in an interpolated one.
-        private static readonly Regex OtherJson = new Regex(@"\b(JsonUtility|System\.Text\.Json)\b");
-        private static readonly Regex Literals = new Regex(@"'(?:[^'\\]|\\.)'|\$@?""(?:[^""\\]|\\.)*""|@""(?:[^""]|"""")*""|""(?:[^""\\]|\\.)*""");
 
         public static ArchitectureReport Run(ArchitectureAuditOptions options)
         {
@@ -80,8 +78,6 @@ namespace ProjectName.Core.Editor.Architecture
             if (options.MaxMethods > defaults.MaxMethods) yield return Loosened(nameof(options.MaxMethods), $"{options.MaxMethods}, default {defaults.MaxMethods}");
             if (options.MaxFields > defaults.MaxFields) yield return Loosened(nameof(options.MaxFields), $"{options.MaxFields}, default {defaults.MaxFields}");
             if (options.MaxFileLines > defaults.MaxFileLines) yield return Loosened(nameof(options.MaxFileLines), $"{options.MaxFileLines}, default {defaults.MaxFileLines}");
-            if (options.MinClassesForInterfaces > defaults.MinClassesForInterfaces) yield return Loosened(nameof(options.MinClassesForInterfaces), $"{options.MinClassesForInterfaces}, default {defaults.MinClassesForInterfaces}");
-            if (options.MinInterfaceShare < defaults.MinInterfaceShare) yield return Loosened(nameof(options.MinInterfaceShare), $"{options.MinInterfaceShare}, default {defaults.MinInterfaceShare}");
             if (options.MaxExceptions > defaults.MaxExceptions) yield return Loosened(nameof(options.MaxExceptions), $"{options.MaxExceptions}, default {defaults.MaxExceptions}");
         }
 
@@ -154,8 +150,28 @@ namespace ProjectName.Core.Editor.Architecture
 
             foreach (var type in audited) CheckType(type, known, options, findings);
 
-            var stats = CheckInterfacesExist(audited, options, findings);
-            return Filter(findings, stats, options);
+            var signals = findings.Where(f => f.Rule.StartsWith(SignalPrefix, StringComparison.Ordinal)).Select(f => new ArchitectureFinding(f.Rule.Substring(SignalPrefix.Length), f.Subject, f.Detail)).ToList();
+            signals.AddRange(MirrorInterfaces(audited, options));
+            findings.RemoveAll(f => f.Rule.StartsWith(SignalPrefix, StringComparison.Ordinal));
+            return Filter(findings, signals, Stats(audited), options);
+        }
+
+        // A number can't say a class does too much, only where to look: past the limit it's a signal for the review. Far past it, nothing
+        // that size has one job, and it fails.
+        private static string Size(int value, int limit, string rule) => value > limit * FailAtTimesLimit ? rule : SignalPrefix + rule;
+
+        // An interface that is one class's public methods under its name, used to pass the rules: real capabilities are named for what they
+        // let others do. For the review, because a service's own interface can be right.
+        private static IEnumerable<ArchitectureFinding> MirrorInterfaces(List<Type> audited, ArchitectureAuditOptions options)
+        {
+            foreach (var type in audited.Where(t => t.IsClass && !t.IsAbstract && !IsCoreAssembly(t, options.RootNamespace)))
+            {
+                var mirror = type.GetInterfaces().FirstOrDefault(i => PlainName(i) == "I" + PlainName(type));
+                if (mirror == null) continue;
+                var own = type.GetMethods(Declared).Where(m => m.IsPublic && IsOwnMethod(m)).Select(m => m.Name).ToList();
+                if (own.Count == 0 || own.Except(mirror.GetMethods().Select(m => m.Name)).Any()) continue;
+                yield return new ArchitectureFinding("mirror-interface", mirror.FullName, $"all of {type.Name}'s public methods under its own name: a capability, or a copy of one class?");
+            }
         }
 
         private static void CheckType(Type type, HashSet<Type> known, ArchitectureAuditOptions options, List<ArchitectureFinding> findings)
@@ -232,21 +248,7 @@ namespace ProjectName.Core.Editor.Architecture
             }
 
             if (count > options.MaxFileLines)
-                yield return new ArchitectureFinding("long-file", path, $"{count} lines (limit {options.MaxFileLines}): probably more than one responsibility");
-        }
-
-        // Editor tools and tests included: their JSON goes the same way.
-        internal static IEnumerable<ArchitectureFinding> ScanJson(string path, IEnumerable<string> lines)
-        {
-            var count = 0;
-            var inBlockComment = false;
-            foreach (var raw in lines)
-            {
-                count++;
-                var code = Literals.Replace(StripComments(raw, ref inBlockComment), m => m.Value[0] == '$' ? m.Value : "\"\"");
-                if (OtherJson.IsMatch(code))
-                    yield return new ArchitectureFinding("json-not-newtonsoft", path, $"line {count}: JSON goes through Newtonsoft (com.unity.nuget.newtonsoft-json)");
-            }
+                yield return new ArchitectureFinding(Size(count, options.MaxFileLines, "long-file"), path, $"{count} lines (limit {options.MaxFileLines}): probably more than one responsibility");
         }
 
         private static string StripComments(string line, ref bool inBlock)
@@ -284,12 +286,8 @@ namespace ProjectName.Core.Editor.Architecture
             if (!Directory.Exists(folder)) return Enumerable.Empty<ArchitectureFinding>();
             return Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories)
                 .Select(path => path.Replace('\\', '/'))
-                .SelectMany(path =>
-                {
-                    var lines = File.ReadAllLines(path);
-                    var json = ScanJson(path, lines);
-                    return path.Contains("/Editor/") || path.Contains("/Tests/") ? json : json.Concat(ScanSource(path, lines, options, services));
-                });
+                .Where(path => !path.Contains("/Editor/") && !path.Contains("/Tests/"))
+                .SelectMany(path => ScanSource(path, File.ReadAllLines(path), options, services));
         }
 
         // All code belongs to a domain's assembly. Unity's and the compiler's generated types don't count.
@@ -308,7 +306,7 @@ namespace ProjectName.Core.Editor.Architecture
         {
             var members = type.GetMethods(Declared).Count(m => !m.IsSpecialName) + type.GetProperties(Declared).Length + type.GetEvents(Declared).Length;
             if (members > options.MaxInterfaceMembers)
-                findings.Add(new ArchitectureFinding("fat-interface", type.FullName, $"{members} members (limit {options.MaxInterfaceMembers}): split it by role"));
+                findings.Add(new ArchitectureFinding(Size(members, options.MaxInterfaceMembers, "fat-interface"), type.FullName, $"{members} members (limit {options.MaxInterfaceMembers}): split it by role"));
         }
 
         private static void CheckStatics(Type type, HashSet<Type> known, List<ArchitectureFinding> findings)
@@ -372,7 +370,7 @@ namespace ProjectName.Core.Editor.Architecture
             else if (!parent.IsAbstract)
                 findings.Add(new ArchitectureFinding("concrete-base", type.FullName, $"inherits the concrete class {parent.Name}: compose it, or extract an abstract base with a reason"));
             else if (!IsCoreAssembly(parent, options.RootNamespace) && !IsCompositionRoot(type))
-                findings.Add(new ArchitectureFinding("base-class", parent.FullName, "a base class of the project's own: a true is-a with shared behavior? Say why with an exception, or give it capabilities by composition"));
+                findings.Add(new ArchitectureFinding(SignalPrefix + "base-class", parent.FullName, "a base class of the project's own: a true is-a with shared behavior, or capabilities by composition?"));
         }
 
         private static void CheckDependencies(Type type, HashSet<Type> known, ArchitectureAuditOptions options, List<ArchitectureFinding> findings)
@@ -383,7 +381,7 @@ namespace ProjectName.Core.Editor.Architecture
             foreach (var parameters in constructors.Cast<MethodBase>().Concat(injected).Select(m => m.GetParameters()))
             {
                 if (parameters.Length > options.MaxConstructorDependencies)
-                    findings.Add(new ArchitectureFinding("too-many-dependencies", type.FullName, $"{parameters.Length} dependencies (limit {options.MaxConstructorDependencies}): it does too much"));
+                    findings.Add(new ArchitectureFinding(Size(parameters.Length, options.MaxConstructorDependencies, "too-many-dependencies"), type.FullName, $"{parameters.Length} dependencies (limit {options.MaxConstructorDependencies}): it does too much"));
                 foreach (var parameter in parameters)
                 {
                     var dependency = Unwrap(parameter.ParameterType);
@@ -471,13 +469,13 @@ namespace ProjectName.Core.Editor.Architecture
         {
             var methods = type.GetMethods(Declared).Count(IsOwnMethod);
             if (methods > options.MaxMethods)
-                findings.Add(new ArchitectureFinding("large-class", type.FullName, $"{methods} methods (limit {options.MaxMethods}): more than one responsibility"));
+                findings.Add(new ArchitectureFinding(Size(methods, options.MaxMethods, "large-class"), type.FullName, $"{methods} methods (limit {options.MaxMethods}): more than one responsibility"));
             var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length;
             if (fields > options.MaxFields && DoesWork(type))
-                findings.Add(new ArchitectureFinding("large-class", type.FullName, $"{fields} fields (limit {options.MaxFields}): more than one responsibility"));
+                findings.Add(new ArchitectureFinding(Size(fields, options.MaxFields, "large-class"), type.FullName, $"{fields} fields (limit {options.MaxFields}): more than one responsibility"));
         }
 
-        private static List<string> CheckInterfacesExist(List<Type> audited, ArchitectureAuditOptions options, List<ArchitectureFinding> findings)
+        private static List<string> Stats(List<Type> audited)
         {
             var stats = new List<string>();
             foreach (var group in audited.GroupBy(t => t.Assembly.GetName().Name).OrderBy(g => g.Key))
@@ -485,17 +483,12 @@ namespace ProjectName.Core.Editor.Architecture
                 var interfaces = group.Count(t => t.IsInterface);
                 var classes = group.Count(t => t.IsClass && !IsStatic(t) && !IsDelegate(t) && !IsCompositionRoot(t) && DoesWork(t));
                 stats.Add($"{group.Key}: {interfaces} interfaces, {classes} classes with behavior");
-                if (classes < options.MinClassesForInterfaces) continue;
-                if (interfaces == 0)
-                    findings.Add(new ArchitectureFinding("no-interfaces", group.Key, $"{classes} classes with behavior and no interface: capabilities need contracts"));
-                else if (!IsCoreAssembly(group.First(), options.RootNamespace) && interfaces < classes * options.MinInterfaceShare)
-                    findings.Add(new ArchitectureFinding("few-interfaces", group.Key, $"{interfaces} interfaces for {classes} classes with behavior, below {options.MinInterfaceShare:P0}: capabilities need contracts"));
             }
 
             return stats;
         }
 
-        private static ArchitectureReport Filter(List<ArchitectureFinding> findings, List<string> stats, ArchitectureAuditOptions options)
+        private static ArchitectureReport Filter(List<ArchitectureFinding> findings, List<ArchitectureFinding> signals, List<string> stats, ArchitectureAuditOptions options)
         {
             var open = new List<ArchitectureFinding>();
             var excepted = new List<ArchitectureFinding>();
@@ -518,7 +511,7 @@ namespace ProjectName.Core.Editor.Architecture
 
             var unused = options.Exceptions.Where(e => !used.Contains(e.Key))
                 .Select(e => new ArchitectureFinding(e.Key.Rule, e.Key.Subject, $"nothing matches this exception any more: {e.Value}")).ToList();
-            return new ArchitectureReport(open, excepted, unused, stats);
+            return new ArchitectureReport(open, excepted, unused, signals, stats);
         }
 
         // Reflection fails on a type whose members name a type from an assembly that isn't loaded.

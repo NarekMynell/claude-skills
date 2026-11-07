@@ -1,6 +1,6 @@
 {
   "name": "unity-dev",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Professional Unity development: SOLID interface-based architecture and C# standards (VContainer, MessagePipe, UniTask) with automated audits, project setup, game design and proven balance, art direction, UI, performance, audio, VFX, Blender 3D models, characters, animation and NPC behavior, docs, a tested code library and a toolchain check",
   "author": {
     "name": "Narek"

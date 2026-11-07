@@ -4,8 +4,8 @@ using ProjectName.Core.Proofs;
 
 namespace ProjectName.Core.Tests.Architecture
 {
-    // The project's own code against the architecture rules: this test is the gate. A new exception needs a reason the
-    // user would accept, and it shows in the report.
+    // The project's own code against what a script can tell of the architecture rules. Green is the floor: the design itself is judged
+    // by a review, which the report's signals point. A new exception needs a reason the user would accept, and it shows in the report.
     public sealed class ProjectArchitectureTests
     {
         [Test]

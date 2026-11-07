@@ -16,7 +16,7 @@ Generic building blocks named below (`IsAlive()`, Providers, pools, installers, 
 
 ## Architecture
 
-This section is a **must**: it holds in every project, under every schedule, and only the user can change it. The rest of this guide is strong defaults. The proof is a test: the library's [Architecture module](../library/code/Core/Editor/Architecture/README.md) brings `ProjectArchitectureTests`, which fails on a violation, from the first commit on. An exception states its reason in that test, and the user sees it.
+This section is a **must**: it holds in every project, under every schedule, and only the user can change it. The rest of this guide is strong defaults. No script can tell a good design: a [fresh review](../standards/references/fresh-review.md) judges it at every milestone. What a script can tell it fails on its own: the library's [Architecture module](../library/code/Core/Editor/Architecture/README.md) brings `ProjectArchitectureTests`, from the first commit on, for services without interfaces, statics, wrong references and forbidden calls. An exception states its reason in that test, and the user sees it. Its report also lists signals for the review: classes past a size limit, base classes, interfaces that copy one class.
 
 - **Capabilities are interfaces.** What an object can do is a small interface named for that capability: what moves is `IMovable`, what shoots `IShooter`, what flies `IFlying`, what can be hit `IDamageable` (the names are examples). An object with several capabilities implements them all. Code that uses an object asks only for the capability it needs: a turret targets `IDamageable`, and can't tell a drone from a tank. Input arrives through Unity's EventSystem interfaces and the Input System; role interfaces such as `IClickable` say what it means in the game. Worked examples, including crowds kept in arrays: [references/capabilities.md](references/capabilities.md).
 - **SOLID, all of it.**
@@ -30,7 +30,7 @@ This section is a **must**: it holds in every project, under every schedule, and
 - **Dependency injection through VContainer**, details below. No singletons, no service locators, no mutable static state. Static is allowed only for stateless code: extension methods, pure helpers, constants, cached IDs (`static readonly int SpeedId = Animator.StringToHash("Speed")`). This also keeps Enter Play Mode without domain reload safe.
 - **Modular.** One domain per feature area, each its own assembly, with one-way dependencies, as the next section describes.
 - **Logic in plain C#, Unity at the edges.** Game logic lives in plain C# classes registered in DI. MonoBehaviours are thin views and adapters: they display state, forward input and hold scene references.
-- **JSON through Newtonsoft** (`com.unity.nuget.newtonsoft-json`), never `JsonUtility`: in game code, tools and tests. What changes when moving from `JsonUtility`: [serialization](references/serialization.md#json).
+- **JSON through Newtonsoft** (`com.unity.nuget.newtonsoft-json`), never `JsonUtility`: in game code, tools and tests. A plain rule, so no test watches it: reviews do. What changes when moving from `JsonUtility`: [serialization](references/serialization.md#json).
 - **Designed first.** Before a domain's code, write its capabilities in the capability map in `docs/architecture.md`: capability, interface, who implements it, who uses it. A design that can't fill the table isn't ready.
 
 Strong defaults for the same code:

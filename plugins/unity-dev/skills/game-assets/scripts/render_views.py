@@ -18,7 +18,9 @@ Run it as the game-assets guide's "Running the scripts" describes. Settings:
     TILE = 384                 pixels per tile side
     COLUMNS = 4                tiles per row
     COLOR = "TEXTURE"          "TEXTURE" (image textures, else base color), "MATERIAL", "VERTEX", "OBJECT" (a
-                               random color per object: shows which part is which), "SINGLE" (clay)
+                               random color per object: shows which part is which), "SINGLE" (clay), "CHECKER" (a grid
+                               on the UVs: long cells are stretched texture, cell sizes that differ are uneven density, the
+                               same letter in two places is an overlap)
     LIGHT = "STUDIO"           "STUDIO", or "MATCAP" for a clay look that shows dents, bumps and shading errors
     WIREFRAME = False          draws the edges over the surface: topology and density
     FLOOR = None               a floor at z = 0; default: on for CHARACTER
@@ -147,6 +149,45 @@ def _show_base_colors(objects):
             saved[material.name] = tuple(material.diffuse_color)
             material.diffuse_color = tuple(bsdf.inputs["Base Color"].default_value)
     return saved
+
+
+def _show_checker(objects, created):
+    """Puts a lettered grid on every target's UVs, and returns what it replaced."""
+    image = bpy.data.images.new("ValidationChecker", 1024, 1024)
+    image.generated_type = "COLOR_GRID"
+    material = bpy.data.materials.new("ValidationChecker")
+    if bpy.app.version < (5, 0, 0):
+        material.use_nodes = True
+    node = material.node_tree.nodes.new("ShaderNodeTexImage")
+    node.image = image
+    material.node_tree.nodes.active = node
+    created["materials"].append(material)
+    created["images"].append(image)
+    replaced = []
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        if not obj.material_slots:
+            obj.data.materials.append(material)
+            replaced.append((obj, None, None, None))
+            continue
+        for index, slot in enumerate(obj.material_slots):
+            replaced.append((obj, index, slot.link, slot.material))
+            slot.link = "OBJECT"
+            slot.material = material
+    return replaced
+
+
+def _restore_materials(replaced):
+    for obj, index, link, material in replaced:
+        if index is None:
+            obj.data.materials.pop()
+        else:
+            slot = obj.material_slots[index]
+            slot.material = None
+            slot.link = link
+            if link == "OBJECT":
+                slot.material = material
 
 
 def _add_helpers(objects, low, high, floor, grid, wire, created):
@@ -304,8 +345,9 @@ def render_views():
         "color_type": shading.color_type, "cavity": shading.show_cavity,
         "hidden": {o.name: o.hide_render for o in scene.objects},
     }
-    created = {"objects": [], "meshes": [], "materials": []}
+    created = {"objects": [], "meshes": [], "materials": [], "images": []}
     material_colors = {}
+    replaced = []
     camera_data = bpy.data.cameras.new("ValidationCamera")
     camera = bpy.data.objects.new("ValidationCamera", camera_data)
     scene.collection.objects.link(camera)
@@ -332,14 +374,16 @@ def render_views():
         image.file_format = "PNG"
         image.color_mode = "RGB"
         # Clay ("SINGLE") is drawn as material colors, so the helpers keep theirs.
-        shading.color_type = {"SINGLE": "MATERIAL", "OBJECT": "RANDOM"}.get(color, color)
+        shading.color_type = {"SINGLE": "MATERIAL", "OBJECT": "RANDOM", "CHECKER": "TEXTURE"}.get(color, color)
         shading.show_cavity = True
         if _setting("LIGHT", "STUDIO") == "MATCAP":
             shading.light = "MATCAP"
             shading.studio_light = "clay_studio.exr" if "clay_studio.exr" in [s.name for s in bpy.context.preferences.studio_lights] else shading.studio_light
         else:
             shading.light = "STUDIO"
-        if color in ("TEXTURE", "MATERIAL"):
+        if color == "CHECKER":
+            replaced = _show_checker(objects, created)
+        elif color in ("TEXTURE", "MATERIAL"):
             material_colors = _show_base_colors(objects)
         elif color == "SINGLE":
             for obj in objects:
@@ -381,6 +425,7 @@ def render_views():
         output = os.path.join(output_dir, _setting("NAME", "sheet") + ".png")
         size = _compose(rows, tile, output)
     finally:
+        _restore_materials(replaced)
         for name, diffuse in material_colors.items():
             bpy.data.materials[name].diffuse_color = diffuse
         for obj in created["objects"]:
@@ -389,6 +434,8 @@ def render_views():
             bpy.data.meshes.remove(mesh)
         for material in created["materials"]:
             bpy.data.materials.remove(material)
+        for picture in created["images"]:
+            bpy.data.images.remove(picture)
         shading.light = saved["light"]
         try:
             shading.studio_light = saved["studio_light"]

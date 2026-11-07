@@ -24,7 +24,7 @@ Core modules share one assembly, `ProjectName.Core`, which references VContainer
 | Proofs | `Core/Proofs/` | `ProofReceipt`: a check records its last run in `docs/proofs/` | — |
 | Architecture | `Core/Editor/Architecture/`, `Core/Tests/Architecture/` | `ArchitectureAudit` and `ProjectArchitectureTests`: fails the test run on violations of the architecture rules. In every project | Proofs |
 | UiChecks | `Core/Editor/UiChecks/` | `UiAudit`, `UiAuditSettings`, `UssTokenAudit`: capsules, stretched sprites, the project's radius and type scales, overflow, touch targets. In every project with UGUI | Proofs, UI; `UnityEngine.UI`, `Unity.TextMeshPro` |
-| CostChecks | `Core/Editor/CostChecks/` | `SceneCostAudit`, `NeverMovedProbe`: realtime light, missing static flags, work off screen | Proofs, Culling |
+| CostChecks | `Core/Editor/CostChecks/` | `SceneCostAudit`, `NeverMovedProbe`: realtime light, missing static flags, work off screen. `ColliderAudit`: colliders past or away from the model or closing what it leaves open, a character off its feet, walls that stop nothing | Proofs, Culling |
 | UI | `Core/UI/` | `SafeArea`, `IUiShape` | — |
 | Persistence | `Persistence/` | `ISaveService<T>`, `ISaveStorage`, `SaveSchema<T>`, `ISaveMigration`; `RegisterJsonSave<T>()` and `RegisterFileSaveStorage()` for versioned JSON saves in crash-safe files | Newtonsoft JSON, UniTask; VContainer |
 | Audio | `Audio/` | `AudioCue`, `IAudioService` with `RegisterAudio()`, `AudioVolume` | Pooling, DI, Extensions, Logging; VContainer |

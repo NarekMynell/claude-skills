@@ -10,7 +10,10 @@ Run it as the game-assets guide's "Running the scripts" describes. Settings, all
     ARMATURE = "Rig"             default: the armature deforming the targets
     SEE_THROUGH = ["HairCards"]  objects with transparent parts: they hide nothing
     KEEP = ["Eyes"]              objects that keep all their faces
-    PART_GROUPS = {"hat": ["Cap", "SunHat"]}  variants, as in inspect_character.py: only what appears together can hide a face
+    MOVES = ["Piston"]           parts that move on their own in the game, besides those with keys of their own: they keep their
+                                 faces, and hide nothing, because they don't stay where they are at rest. What the rig moves is posed
+    PART_GROUPS = {"hat": ["Cap", "SunHat"]}  variants, as in inspect_character.py: only what appears together can hide a face,
+                                 and a variant hides nothing of the rest, because it can come off
     NEVER_TOGETHER = ["HairLong+Cap"]  as in inspect_character.py
     ACTIONS = ["Walk", "Sit"]    clips whose frames count too; they matter when they bend further than the test poses
     STEP = 2                     check every Nth frame of the clips
@@ -51,10 +54,25 @@ def _targets(armature):
     return [o for o in bpy.context.selected_objects if o.type == "MESH"]
 
 
+def _moves(obj):
+    """Whether a part moves on its own: keys on it or on what carries it, short of a rig, whose motion the poses and clips cover."""
+    current = obj
+    while current is not None and current.type != "ARMATURE":
+        if current.name in _setting("MOVES", ()) or (current.animation_data and current.animation_data.action):
+            return True
+        current = current.parent
+    return False
+
+
 def _hidden(surfaces, see_through, reach, groups, never_together, among=None):
     """The faces hidden now, among those in question, in every set of parts that can be on screen with them."""
     hidden = set(among) if among is not None else None
-    for together in rig.appearing_together(surfaces, groups, never_together):
+    sets = rig.appearing_together(surfaces, groups, never_together)
+    # A hat comes off: what only a variant hides stays, or a character without one has a hole in it.
+    if groups:
+        worn = {name for names in groups.values() for name in names}
+        sets = sets + [[p for p in surfaces if p.owner not in worn]]
+    for together in sets:
         names = {p.name for p in together}
         found = set(rig.hidden_faces(together, see_through, reach))
         if hidden is None:
@@ -125,12 +143,15 @@ def cut():
         changing = [m.name for m in obj.modifiers if m.type != "ARMATURE"]
         if changing:
             raise ValueError(f"{obj.name} has modifiers that may change its faces, {changing}: apply them first")
-    see_through = set(_setting("SEE_THROUGH", []))
-    keep = set(_setting("KEEP", []))
+    moving = {o.name for o in objects if _moves(o)}
+    see_through = set(_setting("SEE_THROUGH", [])) | moving
+    keep = set(_setting("KEEP", [])) | moving
     groups = _setting("PART_GROUPS", {})
     never_together = set(_setting("NEVER_TOGETHER", []))
     before = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in objects)
     deleted = {}
+    # What is cut here was these parts: inspect_character.py compares this with what its receipt of the whole parts checked.
+    whole = rig.geometry_key(objects)
     # What is deleted can uncover what it hid behind it from a look outward: again until nothing more goes.
     for _ in range(6):
         doomed = {}
@@ -149,6 +170,8 @@ def cut():
                 bm.free()
                 obj.data.update()
                 deleted[obj.name] = deleted.get(obj.name, 0) + len(doomed[obj.name])
+                if "cut_hidden_faces" not in obj:
+                    obj["cut_hidden_faces"] = whole
         bpy.context.view_layer.update()
     return {"deleted": deleted, "triangles_before": before, "triangles_after": sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in objects)}
 

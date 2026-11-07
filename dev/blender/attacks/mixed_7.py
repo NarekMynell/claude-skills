@@ -169,6 +169,7 @@ def _():
             names = [g.name for g in o.vertex_groups]
             for n in names:
                 o.vertex_groups.new(name=n.replace(".L", ".R"))
+            o.data.update()  # the modifier reads the new groups on its next evaluation
         return {"WHOLE_PARTS": True}
     return person(extra)
 

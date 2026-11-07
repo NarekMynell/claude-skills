@@ -1,0 +1,59 @@
+# What the checks say about the professional models and clips inside Unity. Most of what's listed is real, and read against renders with backface culling:
+# low-poly packs shaded flat on purpose, which a project says with FACETED (flat_shaded_curves); merged kits with stacked faces and faces inside out (the Agora
+# houses); meshes made for a shader with no use for a texture (the water and FX samples: over_tessellated_flat_areas, uv_stretched, no_uv_map); glass shells
+# that read as hidden until SEE_THROUGH is set; cards drawn from both sides until TWO_SIDED is set (see_inside on leaves and vines); the gap around the
+# teapot's lid, which is really there; hair through a helmet from above, and armor 0.5 mm over the body (Soldier). Pebbles are modelled lying on their side, so
+# their open bottom shows.
+# Mocap on another body than it was shot on really does go through it now and then.
+com.unity.adaptiveperformance/Samples~/Environment/Vegetation/Models/VegetationLarge03.fbx	mesh	see_inside
+com.unity.adaptiveperformance/Samples~/Environment/Vegetation/Models/VegetationMedium01.fbx	mesh	see_inside
+com.unity.entities/Unity.Scenes.Editor.Tests/Assets/Smoke.fbx	mesh	no_uv_map
+com.unity.physics/Samples~/AdvancedGamePhysics-ChainAndGears/Models/Stonework/StairsWide01.fbx	mesh	see_inside
+com.unity.physics/Samples~/AdvancedGamePhysics-ChainAndGears/Models/Stonework/StairsWideBroken01.fbx	mesh	see_inside
+com.unity.physics/Samples~/AdvancedGamePhysics-ChainAndGears/Models/VegetationSmall/HangingVine.fbx	mesh	see_inside
+com.unity.physics/Tests/PlayModeTests/HullGeneration/Meshes/teapot.fbx	mesh	no_uv_map see_inside
+com.unity.render-pipelines.core/Runtime/Debug/ProbeSamplingDebugMesh.fbx	mesh	overlapping_coplanar_faces uv_collapsed
+com.unity.render-pipelines.core/Runtime/RenderPipelineResources/Mesh/BackgroundMesh.fbx	mesh	inconsistent_normals uv_stretched
+com.unity.render-pipelines.core/Runtime/RenderPipelineResources/Mesh/UnityMaterialBall.fbx	mesh	hidden_faces inconsistent_normals
+com.unity.render-pipelines.core/Samples~/Common/Models/Backdrop.fbx	mesh	over_tessellated_flat_areas
+com.unity.render-pipelines.core/Samples~/Common/Models/BackgroundMesh.fbx	mesh	inconsistent_normals uv_stretched
+com.unity.render-pipelines.core/Samples~/Common/Models/CubePanel.fbx	mesh	hidden_faces
+com.unity.render-pipelines.core/Samples~/Common/Models/InfosStand.fbx	mesh	hidden_faces
+com.unity.render-pipelines.core/Samples~/Common/Models/UnityMaterialBall.fbx	mesh	hidden_faces inconsistent_normals
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Agora/SM_Bld_Preset_House_02_A_Optimized.fbx	mesh	inconsistent_normals overlapping_coplanar_faces
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Agora/SM_Bld_Preset_House_03_Optimized.fbx	mesh	inconsistent_normals overlapping_coplanar_faces
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Agora/SM_Bld_Preset_House_05_Optimized.fbx	mesh	inconsistent_normals overlapping_coplanar_faces z_fighting
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Agora/SM_Bld_Preset_House_06_Optimized.fbx	mesh	inconsistent_normals overlapping_coplanar_faces see_inside z_fighting
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Agora/SM_Bld_Preset_House_07_Optimized.fbx	mesh	inconsistent_normals overlapping_coplanar_faces see_inside z_fighting
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Agora/SM_Bld_Preset_House_08_Optimized.fbx	mesh	inconsistent_normals overlapping_coplanar_faces
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Agora/SM_Prop_Cooking_Block_03.fbx	mesh	flat_shaded_curves
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Soldier.fbx	character	hidden_inside self_intersections shows_through_from_above stretched_in_poses
+com.unity.render-pipelines.core/Samples~/RendererShaderUserValue_Common/Models/Soldier.fbx	mesh	z_fighting
+com.unity.render-pipelines.high-definition/Runtime/RenderPipelineResources/Mesh/Cylinder.fbx	mesh	flat_shaded_curves no_uv_map
+com.unity.render-pipelines.high-definition/Samples~/LensFlareSamples/Models/CeilingLamp_Lamp_01.fbx	mesh	inconsistent_normals
+com.unity.render-pipelines.high-definition/Samples~/MaterialSamples/Meshes/Leaf.fbx	mesh	inconsistent_normals see_inside
+com.unity.render-pipelines.high-definition/Samples~/TransparentSamples/Meshes/GummyBear.fbx	mesh	hidden_faces
+com.unity.render-pipelines.high-definition/Samples~/WaterSamples/Models/Glacier.fbx	mesh	overlapping_coplanar_faces uv_collapsed uv_stretched
+com.unity.render-pipelines.high-definition/Samples~/WaterSamples/Models/Iceberg.fbx	mesh	uv_collapsed uv_stretched
+com.unity.render-pipelines.high-definition/Samples~/WaterSamples/Models/Pool.fbx	mesh	hidden_faces over_tessellated_flat_areas uv_collapsed uv_stretched
+com.unity.render-pipelines.high-definition/Samples~/WaterSamples/Models/chest.fbx	mesh	flat_shaded_curves
+com.unity.render-pipelines.high-definition/Samples~/WaterSamples/VFX/Models/ST_Alga.fbx	mesh	overlapping_coplanar_faces
+com.unity.render-pipelines.universal/Samples~/URPPackageSamples/RendererFeatures/TrailEffect/SandBoxModel.fbx	mesh	flat_shaded_curves over_tessellated_flat_areas uv_collapsed
+com.unity.shadergraph/Samples~/Common/Meshes/Particles/ParticleStack100.fbx	mesh	hidden_faces
+com.unity.shadergraph/Samples~/Common/Meshes/flag.fbx	mesh	over_tessellated_flat_areas
+com.unity.shadergraph/Samples~/Common/Meshes/grass_bladeNoLOD10.fbx	mesh	no_uv_map
+com.unity.shadergraph/Samples~/Common/Meshes/teapot.fbx	mesh	see_inside
+com.unity.shadergraph/Samples~/Common/Meshes/waterPlane2x2.fbx	mesh	over_tessellated_flat_areas
+com.unity.shadergraph/Samples~/ProductionReady/Environment/Details/Grass/grass_bladeNoLOD10.fbx	mesh	no_uv_map
+com.unity.shadergraph/Samples~/ProductionReady/Environment/Details/Grass/grass_bladeNoLOD15.fbx	mesh	no_uv_map
+com.unity.shadergraph/Samples~/ProductionReady/Environment/Details/Grass/grass_bladeNoLOD30.fbx	mesh	no_uv_map
+com.unity.shadergraph/Samples~/ProductionReady/Environment/Details/Pebbles/pebbles.fbx	mesh	see_inside
+com.unity.shadergraph/Samples~/ProductionReady/Environment/Water/WaterPlane.fbx	mesh	over_tessellated_flat_areas
+com.unity.shadergraph/Samples~/ProductionReady/Environment/Water/waterFall2.fbx	mesh	uv_stretched
+com.unity.timeline/Samples~/GameplaySequenceDemo/Animation/Nav-Turn_on_Spot.fbx	clip	limbs_through_body
+com.unity.timeline/Samples~/GameplaySequenceDemo/Animation/RunSideFlip.fbx	clip	limbs_through_body
+com.unity.timeline/Samples~/GameplaySequenceDemo/Animation/Victory-anim1.fbx	clip	feet_below_ground foot_sliding limbs_through_body
+com.unity.visualeffectgraph/Samples~/VFXLearningTemplates/Meshes/Hoodie.fbx	mesh	inconsistent_normals
+com.unity.visualeffectgraph/Samples~/VFXLearningTemplates/Meshes/ST_FXBase_Cone.fbx	mesh	over_tessellated_flat_areas
+com.unity.visualeffectgraph/Samples~/VFXLearningTemplates/Meshes/ST_Tube.fbx	mesh	inconsistent_normals over_tessellated_flat_areas
+com.unity.visualeffectgraph/Samples~/VFXLearningTemplates/Meshes/ST_Vase.fbx	mesh	see_inside

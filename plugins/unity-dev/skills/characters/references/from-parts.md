@@ -24,7 +24,7 @@ The ends inside other parts cost triangles the player never sees. On the test fi
 2. Run [cut_hidden_faces.py](../../game-assets/scripts/cut_hidden_faces.py): it deletes only faces hidden at rest, in every test pose and in the clips listed in `ACTIONS`, with each set of `PART_GROUPS` variants. List every clip that bends further than the test poses: a clip left out can open what was cut, and the clip check doesn't always see that.
 3. Run `inspect_character.py` on the result, with the same `PROOF_DIR` and `PROOF_NAME`.
 
-The order matters: a cut removes what tells a poke from a bump. After it, a knee that came through trousers is only a small patch on them, like a button. So the check asks for the first receipt wherever open edges sit inside another part (`parts_not_checked_before_cut`).
+The order matters: a cut removes what tells a poke from a bump. After it, a knee that came through trousers is only a small patch on them, like a button. So the tool marks what it cut with what those parts were, and the check asks for a receipt of those very parts (`parts_not_checked_before_cut`). A model that came cut from its maker has no whole parts to check, and isn't asked.
 
 **What has failed:**
 

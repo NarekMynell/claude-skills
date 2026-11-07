@@ -4,9 +4,14 @@ This list can be wrong or out of date: verify what you rely on, as the [standard
 
 What each unity-dev release changed in the code library, so a project's copy can catch up, as [updating a copy](SKILL.md#updating-a-projects-copy) describes. **Fix** marks a defect that every copy of the module has: port it. **Change** alters an API or a behavior the project may rely on. **Added** is new code or tests.
 
+## 0.11.0
+
+- **Architecture.** Change: what a script can't judge no longer fails. `few-interfaces`, `no-interfaces` and `json-not-newtonsoft` are gone, with `MinClassesForInterfaces` and `MinInterfaceShare`. `base-class`, and the size limits up to three times over, moved to `ArchitectureReport.Signals`, for the review, with the new `mirror-interface`. Port: `Allow` lines for those rules now report as unused, so remove them.
+- **CostChecks.** Added: `ColliderAudit`.
+
 ## 0.10.0
 
-- **Architecture.** Change: `ArchitectureAudit` reports `json-not-newtonsoft`, for `JsonUtility` or `System.Text.Json` in project code, `Editor` and `Tests` folders included. A project's code that uses them now fails `ProjectArchitectureTests`.
+- **Architecture.** Change (undone in 0.11.0): `ArchitectureAudit` reports `json-not-newtonsoft`, for `JsonUtility` or `System.Text.Json` in project code, `Editor` and `Tests` folders included. A project's code that uses them now fails `ProjectArchitectureTests`.
 
 ## 0.9.0
 

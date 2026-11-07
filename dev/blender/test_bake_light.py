@@ -74,6 +74,21 @@ try:
 except ValueError:
     pass
 
+# A layout whose faces share texels bakes one face's light onto another.
+try:
+    bpy.ops.mesh.primitive_cube_add(location=(20, 0, 0))
+    stacked = bpy.context.active_object
+    stacked.name = "Stacked"
+    stacked.data.materials.append(material)
+    layer = stacked.data.uv_layers.active or stacked.data.uv_layers.new()
+    for poly in stacked.data.polygons:
+        for k, loop_index in enumerate(poly.loop_indices):
+            layer.data[loop_index].uv = [(0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.1, 0.9)][k]
+    run(TARGETS=["Stacked"], INTO="TEXTURE", SIZE=64, SAMPLES=1, OUTPUT_DIR=output_dir)
+    expect(False, "faces sharing texels were baked")
+except ValueError as error:
+    expect("own texels" in str(error), f"another refusal: {error}")
+
 print("BAKE", json.dumps({"problems": problems}))
 if problems:
     raise AssertionError("; ".join(problems))

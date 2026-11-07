@@ -36,7 +36,7 @@ def pipeline(settings, proof, after_cut=None, **cut_settings):
     return whole, done, final
 
 
-@case("cut_opens_midriff_long_quads", "fail", "a low-poly torso of long quads, trousers to above its middle, a crop top below its top: a visible belly band between them. Each quad's center and corners are covered, so the cut removes the belly: daylight through the character")
+@case("cut_opens_midriff_long_quads", "pass", "a low-poly torso of long quads, trousers to above its middle, a crop top below its top: a visible belly band between them. Each quad's center and corners are covered: the cut has to keep the belly, and the render shows it does: daylight through the character")
 def _():
     def extra(rig, parts):
         tr = lathe("Trousers", [(0.0, 0.78), (0.17, 0.80), (0.175, 1.0), (0.172, 1.175), (0.0, 1.178)], segments=16)

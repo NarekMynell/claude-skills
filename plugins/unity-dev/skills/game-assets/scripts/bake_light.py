@@ -23,6 +23,16 @@ import time
 import bpy
 
 
+def _layout_issues(obj):
+    """What validate_mesh.py finds wrong with the object's UV map for a baked texture."""
+    path = os.path.join(os.path.dirname(globals()["__file__"]), "validate_mesh.py")
+    namespace = {"__file__": path, "TARGETS": [obj.name], "UV_KIND": "UNIQUE"}
+    with open(path) as source:
+        exec(compile(source.read(), path, "exec"), namespace)
+    issues = namespace["result"]["objects"][0]["issues"]
+    return [str(issues[key]) for key in ("uv_overlap", "uv_stacked_islands", "uv_collapsed", "uv_outside_0_1") if key in issues]
+
+
 def _setting(name, default=None):
     return globals().get(name, default)
 
@@ -69,6 +79,10 @@ def bake():
             raise ValueError(f"{obj.name}: baking needs a UV map, also for vertex colors")
         if not obj.material_slots or not any(slot.material for slot in obj.material_slots):
             raise ValueError(f"{obj.name}: baking needs a material")
+        if into == "TEXTURE":
+            wrong = _layout_issues(obj)
+            if wrong:
+                raise ValueError(f"{obj.name}: each face needs its own texels to bake into. {'; '.join(wrong)}")
 
     scene = bpy.context.scene
     settings = scene.render.bake

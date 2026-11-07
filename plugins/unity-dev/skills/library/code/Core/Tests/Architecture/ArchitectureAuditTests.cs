@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using ProjectName.Core.Editor.Architecture;
@@ -177,9 +176,11 @@ namespace ProjectName.Core.Tests.Architecture
         internal sealed class ServiceC { public void C() { } }
 
         [Test]
-        public void AnAssemblyWithClassesAndNoInterface_IsReported()
+        public void ManyClassesThatDependOnEachOther_FailOnTheirMissingContracts()
         {
-            Assert.That(Rules(Audit(typeof(ServiceA), typeof(ServiceB), typeof(ServiceC))), Does.Contain("no-interfaces"));
+            var report = Audit(typeof(Engine), typeof(CarWithConcreteEngine));
+
+            Assert.That(Rules(report), Does.Contain("concrete-dependency"), report.ToString());
         }
 
         internal class ConcreteAnimal { public void Eat() { } }
@@ -197,13 +198,12 @@ namespace ProjectName.Core.Tests.Architecture
         internal sealed class Circle : Shape { public override float Area() => 1f; }
 
         [Test]
-        public void AnAbstractBase_NeedsItsReason()
+        public void AnAbstractBase_IsForTheReview()
         {
             var report = Audit(typeof(Shape), typeof(Circle));
-            Assert.That(report.Findings.Single(f => f.Rule == "base-class").Subject, Is.EqualTo(typeof(Shape).FullName));
 
-            var options = Options().Allow("base-class", typeof(Shape).FullName, "Every shape shares the same outline code.");
-            Assert.That(Rules(ArchitectureAudit.Analyze(new[] { typeof(Shape), typeof(Circle) }, options)), Does.Not.Contain("base-class"));
+            Assert.That(report.Signals.Single(f => f.Rule == "base-class").Subject, Is.EqualTo(typeof(Shape).FullName));
+            Assert.That(Rules(report), Does.Not.Contain("base-class"));
         }
 
         internal abstract class MiddleShape : Shape { }
@@ -371,9 +371,38 @@ namespace ProjectName.Core.Tests.Architecture
         }
 
         [Test]
-        public void TooManyDependencies_AreReported()
+        public void TooManyDependencies_AreForTheReview()
         {
-            Assert.That(Rules(Audit(typeof(Crowded))), Does.Contain("too-many-dependencies"));
+            var report = Audit(typeof(Crowded));
+
+            Assert.That(report.Signals.Select(f => f.Rule), Does.Contain("too-many-dependencies"));
+            Assert.That(Rules(report), Does.Not.Contain("too-many-dependencies"));
+        }
+
+        [Test]
+        public void FarTooManyDependencies_Fail()
+        {
+            var options = Options();
+            options.MaxConstructorDependencies = 1;
+
+            Assert.That(Rules(ArchitectureAudit.Analyze(new[] { typeof(Crowded) }, options)), Does.Contain("too-many-dependencies"));
+        }
+
+        public interface IMirrored { void Run(); }
+
+        internal sealed class Mirrored : IMirrored
+        {
+            public void Run() { }
+        }
+
+        [Test]
+        public void AnInterfaceThatCopiesOneClass_IsForTheReview()
+        {
+            var report = Audit(typeof(IMirrored), typeof(Mirrored));
+
+            Assert.That(report.IsClean, report.ToString());
+            Assert.That(report.Signals.Select(f => f.Rule), Does.Contain("mirror-interface"));
+            Assert.That(report.ToString(), Does.Contain("For the review"));
         }
 
         public interface IEverything
@@ -390,9 +419,9 @@ namespace ProjectName.Core.Tests.Architecture
         }
 
         [Test]
-        public void FatInterface_IsReported()
+        public void FatInterface_IsForTheReview()
         {
-            Assert.That(Rules(Audit(typeof(IEverything))), Does.Contain("fat-interface"));
+            Assert.That(Audit(typeof(IEverything)).Signals.Select(f => f.Rule), Does.Contain("fat-interface"));
         }
 
         [Test]
@@ -424,7 +453,7 @@ namespace ProjectName.Core.Tests.Architecture
             var options = Options();
             options.MaxExceptions = 1;
             options.Allow("concrete-dependency", typeof(CarWithConcreteEngine).FullName, "One.");
-            options.Allow("no-interfaces", "Some.Assembly", "Two.");
+            options.Allow("no-contract", "Some.Type", "Two.");
 
             var report = ArchitectureAudit.Analyze(new[] { typeof(Engine), typeof(CarWithConcreteEngine) }, options);
 
@@ -540,14 +569,6 @@ namespace ProjectName.Core.Tests.Architecture
         }
 
         [Test]
-        public void OneInterfaceAmongManyClasses_IsTooFew()
-        {
-            var report = Audit(typeof(IShooter), typeof(ServiceA), typeof(ServiceB), typeof(ServiceC), typeof(Engine), typeof(Cooldown), typeof(Ticking));
-
-            Assert.That(Rules(report), Does.Contain("few-interfaces"), report.ToString());
-        }
-
-        [Test]
         public void TheCapabilityMap_IsComparedWithTheCode()
         {
             string[] map =
@@ -636,64 +657,18 @@ namespace ProjectName.Core.Tests.Architecture
             Assert.That(ArchitectureAudit.ScanSource("Assets/EnemyFactory.cs", new[] { "var o = new GameObject(\"x\");" }, options), Is.Empty);
         }
 
-        [TestCase("var s = JsonUtility.ToJson(data);")]
-        [TestCase("var d = UnityEngine.JsonUtility.FromJson<Data>(s);")]
-        [TestCase("using static UnityEngine.JsonUtility;")]
-        [TestCase("using Json = UnityEngine.JsonUtility;")]
-        [TestCase("var s = $\"{JsonUtility.ToJson(data)}\";")]
-        [TestCase("Log($\"saved: \" + JsonUtility.ToJson(data) + \"!\");")]
-        [TestCase("var q = '\"'; var s = JsonUtility.ToJson(data); var t = \"x\";")]
-        [TestCase("using System.Text.Json;")]
-        public void JsonOutsideNewtonsoft_IsReported(string line)
-        {
-            var findings = ArchitectureAudit.ScanJson("Assets/Save/Store.cs", new[] { line }).ToList();
-
-            Assert.That(findings.Select(f => f.Rule), Does.Contain("json-not-newtonsoft"));
-        }
-
-        [TestCase("using Newtonsoft.Json;")]
-        [TestCase("var s = JsonConvert.SerializeObject(data);")]
-        [TestCase("var s = EditorJsonUtility.ToJson(asset);")]
-        [TestCase("var s = MyJsonUtility.Read(data);")]
-        [TestCase("// JsonUtility.ToJson(data)")]
-        [TestCase("/* JsonUtility.ToJson(data) */")]
-        [TestCase("var s = \"JsonUtility\";")]
-        [TestCase("var s = @\"a\\JsonUtility\";")]
-        public void NewtonsoftAndMentions_AreNotReported(string line)
-        {
-            Assert.That(ArchitectureAudit.ScanJson("Assets/Save/Store.cs", new[] { line }), Is.Empty);
-        }
-
-        [TestCase("Combat")]
-        [TestCase("Combat/Editor")]
-        [TestCase("Combat/Tests")]
-        public void JsonOutsideNewtonsoft_IsReportedInEveryFolder(string subfolder)
-        {
-            var root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-            try
-            {
-                Directory.CreateDirectory(Path.Combine(root, subfolder));
-                File.WriteAllText(Path.Combine(root, subfolder, "Store.cs"), "class Store { string S(object o) => JsonUtility.ToJson(o); }");
-
-                var report = ArchitectureAudit.Run(new ArchitectureAuditOptions("NoSuchProject") { SourceFolder = root, CapabilityMapFile = null }.Allow("loosened-limit", "CapabilityMapFile", "Test."));
-
-                Assert.That(report.Findings.Select(f => f.Rule), Does.Contain("json-not-newtonsoft"), report.ToString());
-            }
-            finally
-            {
-                Directory.Delete(root, true);
-            }
-        }
-
         [Test]
-        public void ALongFile_IsReported()
+        public void ALongFile_IsForTheReview_AndAVeryLongOneFails()
         {
             var options = Options();
             options.MaxFileLines = 2;
 
-            var findings = ArchitectureAudit.ScanSource("Assets/Big.cs", new[] { "a", "b", "c" }, options);
+            var longFile = ArchitectureAudit.Analyze(new Type[0], options, ArchitectureAudit.ScanSource("Assets/Big.cs", new[] { "a", "b", "c" }, options));
+            var veryLong = ArchitectureAudit.Analyze(new Type[0], options, ArchitectureAudit.ScanSource("Assets/Big.cs", Enumerable.Repeat("a", 7), options));
 
-            Assert.That(findings.Select(f => f.Rule), Does.Contain("long-file"));
+            Assert.That(longFile.Signals.Select(f => f.Rule), Does.Contain("long-file"));
+            Assert.That(longFile.Findings.Select(f => f.Rule), Does.Not.Contain("long-file"));
+            Assert.That(veryLong.Findings.Select(f => f.Rule), Does.Contain("long-file"));
         }
     }
 }

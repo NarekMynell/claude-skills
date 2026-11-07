@@ -46,6 +46,16 @@ namespace LibraryTests.AnimationClaims
         public void RemoveAssets() => AssetDatabase.DeleteAsset(Folder);
 
         [Test]
+        public void AModelImportedWithoutReadWrite_CanStillBeReadByEditorChecks()
+        {
+            Mesh mesh = AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<Mesh>().First();
+
+            Assert.That(((ModelImporter)AssetImporter.GetAtPath(ModelPath)).isReadable, Is.False);
+            Assert.That(mesh.vertices.Length, Is.GreaterThan(0), $"isReadable says {mesh.isReadable}");
+            Assert.That(mesh.triangles.Length, Is.GreaterThan(0));
+        }
+
+        [Test]
         public void BlenderSideMarkersMapToTheSameSidesInUnity()
         {
             Avatar avatar = AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<Avatar>().Single();

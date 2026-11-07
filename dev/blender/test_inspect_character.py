@@ -7,6 +7,7 @@ import types
 
 import bmesh
 import bpy
+import mathutils
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -102,6 +103,57 @@ case("clean mannequin", [], clean, SYMMETRIC=["Body"])
 case("clean, Mixamo bone names", [], lambda: rename_bones(mannequin.build()[1], MIXAMO))
 case("clean, Unreal bone names", [], lambda: rename_bones(mannequin.build()[1], UNREAL))
 case("no armature: rig checks skipped", [], lambda: mannequin.build(rigged=False) and None)
+
+
+def _tails_anywhere():
+    """As an imported FBX has it: the file stores joints, so a bone's tail says nothing about where it goes."""
+    _, rig = mannequin.build()
+    bpy.context.view_layer.objects.active = rig
+    bpy.ops.object.mode_set(mode="EDIT")
+    for k, bone in enumerate(rig.data.edit_bones):
+        bone.use_connect = False
+    for k, bone in enumerate(rig.data.edit_bones):
+        bone.tail = bone.head + mathutils.Vector((0.0, 0.0, 0.1) if k % 2 else (0.1, 0.0, 0.0))
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
+case("clean, with bones as an imported file has them", [], _tails_anywhere)
+case("clean, with a namespace on the bones", [], lambda: rename_bones(mannequin.build()[1], {b: "Hero:" + b for b in [x for x in MIXAMO]}))
+
+
+def _unit_scale():
+    """As a file in centimetres imports: everything under an empty at a hundredth, and the numbers in the bones a hundred times larger."""
+    body, rig = mannequin.build()
+    root = bpy.data.objects.new("Skeleton", None)
+    bpy.context.scene.collection.objects.link(root)
+    rig.parent = root
+    root.scale = (0.01, 0.01, 0.01)
+    rig.scale = (100.0, 100.0, 100.0)
+    bpy.context.view_layer.update()
+
+
+case("clean, under a file's unit scale", [], _unit_scale)
+
+
+def _collar_and_shoulder():
+    """Synty's names: the collar is the clavicle, the joint of the arm is the shoulder, the next the elbow."""
+    _, rig = mannequin.build()
+    renames = {}
+    for side in ("L", "R"):
+        renames.update({f"shoulder.{side}": f"Clavicle_{side}", f"upper_arm.{side}": f"Shoulder_{side}", f"forearm.{side}": f"Elbow_{side}"})
+    rename_bones(rig, renames)
+
+
+case("clean, with a clavicle and a shoulder", [], _collar_and_shoulder)
+
+
+def _uneven_armature():
+    _, rig = mannequin.build()
+    rig.scale = (1.0, 1.2, 1.0)
+    bpy.context.view_layer.update()
+
+
+case("an armature scaled unevenly", ["armature_scale_uneven"], _uneven_armature, at_least=True)
 # The Skin modifier's hull also cuts into itself where the single leg meets the pelvis.
 case("legs are one surface", ["fused_legs"], lambda: mannequin.build(variant="one_leg") and None, at_least=True)
 case("swollen waist", ["waist_bulge"], lambda: mannequin.build(variant="waist") and None)
@@ -120,7 +172,7 @@ def _swap():
 
 
 # The bones named for the left hand sit in the right hand, which is the left hand's mirror image.
-case("left and right bone names swapped", ["left_hand_mirrored", "left_right_swapped", "opposite_side_weights", "right_hand_mirrored"], _swap, at_least=True)
+case("left and right bone names swapped", ["left_hand_mirrored", "left_right_swapped", "poke_through_in_poses", "right_hand_mirrored"], _swap, at_least=True)
 
 
 def facing_back():
@@ -135,7 +187,7 @@ def facing_back():
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
 
 
-case("model faces +Y", ["left_right_swapped", "not_facing_minus_y", "opposite_side_weights"], facing_back, at_least=True)
+case("model faces +Y", ["left_right_swapped", "not_facing_minus_y"], facing_back, at_least=True)
 
 
 def hair_in_head():
@@ -145,7 +197,7 @@ def hair_in_head():
 
 
 # A cap that sits in the head and pokes nothing: what it costs is what the player never sees.
-case("hair sunk into the head", ["sunk_into_body"], hair_in_head, at_least=True)
+case("hair sunk into the head", ["parts_intersect", "shows_through_from_above"], hair_in_head, at_least=True)
 
 
 def layered_shirt(offset, low=1.05):

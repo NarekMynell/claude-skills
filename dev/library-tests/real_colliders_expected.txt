@@ -1,0 +1,13 @@
+# What ColliderAudit says about the prefabs and scenes in Unity's built-in package samples. Each line was read against the sample: the sample's own
+# compromises, none a false alarm so far as a look tells. A capsule on a squashed cylinder (GlitchObjects) and a chest's box (TreasureChestRig) really
+# reach past the model; the Gallows platform has a way under it behind one box, and the stair extension a hollow a person fits. Environment's box is
+# a boundary around a smaller model. Update with UPDATE=1 dev/run-real-colliders.sh, and say why here.
+com.unity.animation.rigging/Samples/ConstraintSamples/Scenes/ChainIK.unity	collider-beyond-model	root/model/rootM/body1
+com.unity.cinemachine/Samples/3D Samples/Cutscene.unity	collider-beyond-model	TreasureChestRig/Treasure Chest/Chest/Box/Bottom
+com.unity.physics/Samples/AdvancedGamePhysics-ChainAndGears/Prefabs/Structures/StairsWide1x2.prefab	collider-closes-opening	StairsWide1x2/StairsExtension
+com.unity.render-pipelines.high-definition/Samples/RendererShaderUserValueSamples/Scenes/Agora.unity	collider-closes-opening	Geometry/Props/SM_Prop_Gallows_Platform_01
+com.unity.render-pipelines.high-definition/Samples/WaterSamples/Prefabs/Island.prefab	heavy-mesh-collider	Island/Geometry/Island
+com.unity.render-pipelines.high-definition/Samples/WaterSamples/Scenes/Island.unity	heavy-mesh-collider	Island/Geometry/Island
+com.unity.render-pipelines.universal/Samples/RendererShaderUserValueSamples/Scenes/Agora.unity	collider-closes-opening	Geometry/Props/SM_Prop_Gallows_Platform_01
+com.unity.render-pipelines.universal/Samples/URPPackageSamples/RendererFeatures/GlitchEffect/GlitchEffect.unity	collider-beyond-model	GlitchObjects/Cylinder1
+com.unity.shadergraph/Samples/ProductionReady/Prefabs/Environment.prefab	collider-beyond-model	Environment

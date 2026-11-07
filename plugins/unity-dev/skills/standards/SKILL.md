@@ -20,11 +20,12 @@ Two levels apply to all work for the rest of this session.
 
 | Area | The bar | Proof, before the work counts as done |
 |---|---|---|
-| Architecture | Modular, SOLID, interface-based, DI through VContainer. Each capability is an interface (such as `IMovable`, `IShooter`); an object with several implements them all; whoever uses an object sees only the capability it needs. Inheritance only for a true is-a; no singletons or mutable statics | `ProjectArchitectureTests` green, the capability map in `docs/architecture.md` included |
-| JSON | Through Newtonsoft (`com.unity.nuget.newtonsoft-json`), never `JsonUtility` | `ProjectArchitectureTests` green |
+| Architecture | Modular, SOLID, interface-based, DI through VContainer. Each capability is an interface (such as `IMovable`, `IShooter`); an object with several implements them all; whoever uses an object sees only the capability it needs. Inheritance only for a true is-a; no singletons or mutable statics | `ProjectArchitectureTests` green, the capability map in `docs/architecture.md` included: that is the floor. A [fresh review](references/fresh-review.md) judges the design |
+| JSON | Through Newtonsoft (`com.unity.nuget.newtonsoft-json`), never `JsonUtility` | Code review |
 | Optimization | Equal to beauty: as beautiful and as cheap as possible. Nothing is paid for that the player can't see: what stands still is static, light that doesn't change is baked, work off screen stops | `BudgetTests`, `OffScreenTests` green; `SceneCostAudit` clean |
 | Art | A current, beautiful look from references, one style throughout. One screen at final quality before mass production | `study_screenshot.py` on real game screenshots: no gaps against references; a written critique |
-| Models | No stacked or hidden faces, no artifacts, no visible facets on curves | `validate_mesh.py` passes; contact-sheet critique finds nothing |
+| Models | No stacked or hidden faces, no artifacts, no visible facets on curves, no smeared or stretched texture | `validate_mesh.py` passes; contact-sheet critique finds nothing |
+| Colliders | What looks solid stops the player, nothing else does, and characters stand on the ground | `ColliderAudit` clean |
 | Characters, animals | Nothing visibly pokes through anything: in any variant, in any pose, from the game's camera. However built | `inspect_character.py` over all variants; sheet with `GAME_VIEW` |
 | Motion, behavior | Natural. Planted feet never slide, in the running game, at every speed; speed fits the body; weight and overlap, nothing robotic. Actors rest, have reasons, react, and don't walk through each other | `inspect_animation.py` per clip; `LocomotionTests` in Play Mode; frames of the running game reviewed |
 | UI | Designed for this game: no template or AI look, no capsule containers by default, one radius scale, nothing stretched, a small HUD | `UiAudit` clean against the project's tokens at each aspect ratio; device-size critique against references |
@@ -33,10 +34,10 @@ Two levels apply to all work for the rest of this session.
 How the work runs:
 
 - **The proof stands whatever the pipeline.** A custom format, shader skinning or UI built from code doesn't replace a check: bring the result to where the check can see it, or write an equal check and prove it catches the same defect.
-- **Receipts.** Checks write their results to `docs/proofs/` themselves, and a hook compares them with what changed. A must without a passing, current receipt is unproven: say so. What a project truly has no use for goes in `docs/proofs/not-applicable.txt`, as `family: reason`; a failure the user accepted, as `receipt: their words`.
+- **Receipts.** Checks write their results to `docs/proofs/` themselves, and a hook compares them with what changed. Run what the change can have broken, not everything. A must without a passing, current receipt is unproven: say so. What a project has no use for goes in `docs/proofs/not-applicable.txt`, as `family: reason`; a failure the user accepted, as `receipt: their words`.
 - **Subagents know only their brief.** Each brief names the guide files, by full path, the checks and the bar.
 - **Fresh eyes.** At every milestone a new agent reviews the work against the guides: [how](references/fresh-review.md).
-- **Ask early.** What only the user can give (downloads, accounts, clips, fonts, references) is asked for at the start of a long task, all at once. Without it, go on with the best substitute, and report what stays unproven.
+- **Ask early.** What only the user can give (downloads, accounts, clips, fonts, references) is asked for at the start, all at once. Without it, use the best substitute, and report what stays unproven.
 - **Limits end work, not the bar.** Near a usage or time limit, stop and report what isn't proven. Never skip a check or a review round to finish.
 - **Honest reports.** Say what ran, with its numbers, and what didn't. In plain words: what the player would see, not a check's name.
 
@@ -53,35 +54,35 @@ Links here are relative to `${CLAUDE_SKILL_DIR}`.
 
 ## Start
 
-Before the first task, read the [code standards](../code-standards/SKILL.md) and the [library catalog](../library/CATALOG.md).
+Before the first C#, read the [code standards](../code-standards/SKILL.md) and the [library catalog](../library/CATALOG.md).
 
 ## Guides
 
 The guides are this plugin's other skills. The Skill tool refuses them: read their files with the Read tool, as these standards intend.
 
-Read every guide that matches the task before the work it covers, with the references it links for that work, and read them again after the conversation is compacted. A whole game touches nearly all of them: follow its [production order](../game-design/SKILL.md#production-order).
+Read every guide that matches the task before the work, with the references it links for it, and again after compaction. A whole game touches nearly all: follow its [production order](../game-design/SKILL.md#production-order).
 
 | Work | Guide |
 |---|---|
 | Creating a new Unity project | [new project](../new-project/SKILL.md), then continue in its folder |
-| Bringing an existing project under the standards | [adopt standards](../adopt-standards/SKILL.md) |
-| Writing, refactoring or reviewing C# | [code standards](../code-standards/SKILL.md), with its [capabilities](../code-standards/references/capabilities.md), [organization](../code-standards/references/code-organization.md), [DI](../code-standards/references/dependency-injection.md), [messaging](../code-standards/references/messaging-and-state.md) and [resource lifetimes](../code-standards/references/resource-lifetimes.md) references |
-| Generic code, or a common system | [code library](../library/SKILL.md): check its [catalog](../library/CATALOG.md) before writing the code |
+| Bringing in an existing project | [adopt standards](../adopt-standards/SKILL.md) |
+| Writing, refactoring or reviewing C# | [code standards](../code-standards/SKILL.md), with the references it links |
+| Generic code, a common system | [code library](../library/SKILL.md): its [catalog](../library/CATALOG.md) first |
 | A new feature area | [new domain](../new-domain/SKILL.md) |
 | Game concepts, mechanics, features | [game design](../game-design/SKILL.md) |
-| Economy, progression, pacing, rewards | [balance](../game-design/references/balance.md) |
-| Colors, style, environments, the game's look | [art direction](../art-direction/SKILL.md) |
-| Screens, menus, HUDs, popups, world markers | [UI quality](../ui-quality/SKILL.md) |
-| Frame rate, memory, load time, build size, lighting setup | [performance](../performance/SKILL.md) |
+| Economy, progression, pacing | [balance](../game-design/references/balance.md) |
+| Colors, style, the game's look | [art direction](../art-direction/SKILL.md) |
+| Screens, menus, HUDs | [UI quality](../ui-quality/SKILL.md) |
+| Performance, lighting | [performance](../performance/SKILL.md) |
 | Sounds and music | [audio design](../audio-design/SKILL.md) |
 | Visual effects | [VFX](../vfx/SKILL.md) |
 | 3D models and environments | [game assets](../game-assets/SKILL.md), through the Blender MCP connector |
-| Characters and animals: bases, variants, rigging, skinning | [characters](../characters/SKILL.md), after [game assets](../game-assets/SKILL.md) |
-| Animation: clips, locomotion, IK, held props, keying motion | [animation](../animation/SKILL.md) |
-| How people and animals move through the world and behave | [NPC behavior](../npc-behavior/SKILL.md) |
+| Characters and animals | [characters](../characters/SKILL.md), after [game assets](../game-assets/SKILL.md) |
+| Animation | [animation](../animation/SKILL.md) |
+| How actors move and behave | [NPC behavior](../npc-behavior/SKILL.md) |
 | README, CLAUDE.md, `docs/`, `.claude/rules/` | [project docs](../project-docs/SKILL.md) |
 | Engine APIs that may have changed recently | the project's `docs/unity-version-notes.md`; to update it, [version notes](../version-notes/SKILL.md) |
-| Unity CLI, Editor link, language server or Blender connector problems | [toolchain](../toolchain/SKILL.md) |
+| Unity CLI, language server or Blender connector problems | [toolchain](../toolchain/SKILL.md) |
 
 ## Every task
 

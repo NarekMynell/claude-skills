@@ -58,7 +58,7 @@ def _():
     return settings
 
 
-@case("variants_cut_then_check", "pass", "the same character through the guide's cut: the tool has no PART_GROUPS, so one hat hides the other and its faces go")
+@case("variants_cut_then_check", "pass", "the same character through the guide's cut, which has PART_GROUPS: one hat doesn't hide the other")
 def _():
     settings = person(hat_variants)
     groups, allow = settings["PART_GROUPS"], settings["ALLOW_HIDDEN"]
@@ -66,7 +66,7 @@ def _():
     whole = check(WHOLE_PARTS=True, PROOF_DIR=PROOFS, PROOF_NAME="hats", PART_GROUPS=groups, ALLOW_HIDDEN=allow, **plain)
     print("  whole:", whole["passed"], short(whole))
     before = len(bpy.data.objects["Cap"].data.polygons)
-    done = cut(**plain)
+    done = cut(PART_GROUPS=groups, **plain)
     print("  cut:", done, "Cap faces", before, "->", len(bpy.data.objects["Cap"].data.polygons))
     bpy.data.objects["SunHat"].hide_render = True
     culling_render("variants_cut_cap_alone", TARGETS=[n for n in plain["TARGETS"] if n != "SunHat"], VIEWS=["front", "top", "front_left"], COLUMNS=3)

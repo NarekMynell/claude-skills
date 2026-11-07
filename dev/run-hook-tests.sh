@@ -116,13 +116,17 @@ waive() { # families not used in the test below
   : > "$project/docs/proofs/not-applicable.txt"
   for family in "$@"; do printf '%s: not in this test\n' "$family" >> "$project/docs/proofs/not-applicable.txt"; done
 }
-ALL="locomotion crowd balance ui scene-cost off-screen budgets inspect_animation inspect_character study validate_mesh"
+ALL="locomotion crowd balance ui scene-cost colliders off-screen budgets inspect_animation inspect_character study validate_mesh"
 
 printf 'class A {}\n' > "$project/Assets/A.cs"
 result="$(gates_from_cwd)"
 check "C# without a receipt: valid JSON that blocks, from a session started above" "block" "$(printf '%s' "$result" | json_field "d['decision']")"
 check "C# without a receipt: names architecture" "architecture" "$result"
-check "C# without a receipt: names every family it can touch" "locomotion crowd balance ui scene-cost off-screen budgets" "$result"
+absent "a line of C# doesn't ask for a balance simulation" "balance" "$result"
+absent "or for a walk test" "locomotion" "$result"
+printf 'class EnemyFactory {}\n' > "$project/Assets/EnemyFactory.cs"
+sleep 1
+absent "a factory isn't an actor" "locomotion" "$(gates '{}')"
 empty "the same state speaks once" "$(gates '{}')"
 
 newer "Assets/A.cs"
@@ -137,7 +141,11 @@ receipt architecture.txt
 newer "Assets/A.cs"
 result="$(gates '{}')"
 check "a receipt older than the change is named" "Older than what changed: architecture.txt" "$result"
-check "waivers are asked about again" "is that still true?" "$result"
+printf 'class HudView {}\n' > "$project/Assets/UI/HudView.cs"
+check "waivers of what the change touches are asked about again" "is that still true? ui" "$(gates '{}')"
+sleep 1
+receipt architecture.txt
+gates '{}' > /dev/null
 sleep 1
 receipt architecture.txt
 printf 'x\n' >> "$project/README.md"
@@ -167,7 +175,8 @@ check "an accepted failure older than the change is asked about" "Older than wha
 check "and whether it still holds" "is that still true? architecture" "$result"
 waive $ALL
 for k in 1 2 3 4 5 6 7; do printf 'passed: false\n' > "$project/docs/proofs/balance-$k.txt"; done
-newer "Assets/A.cs"
+mkdir -p "$project/Assets/Economy"
+printf 'class Prices {}\n' > "$project/Assets/Economy/Prices.cs"
 check "many failures: the first names and a count" "and 3 more" "$(gates '{"session_id":"four"}')"
 rm "$project/docs/proofs/"balance-*.txt
 receipt architecture.txt
@@ -180,7 +189,14 @@ gates '{}' > /dev/null
 
 receipt balance-casual.txt
 newer "Assets/A.cs"
-check "C# makes an existing balance receipt old" "balance-casual.txt" "$(gates '{}')"
+result="$(gates '{}')"
+check "C# elsewhere makes the architecture receipt old" "architecture.txt" "$result"
+absent "and leaves the balance receipt alone" "balance-casual.txt" "$result"
+receipt architecture.txt
+gates '{}' > /dev/null
+mkdir -p "$project/Assets/Economy"
+printf 'class PriceList {}\n' > "$project/Assets/Economy/PriceList.cs"
+check "C# of its own area makes a balance receipt old" "balance-casual.txt" "$(gates '{}')"
 receipt architecture.txt
 receipt balance-casual.txt
 gates '{}' > /dev/null
@@ -188,13 +204,15 @@ gates '{}' > /dev/null
 printf 'text\n' >> "$project/README.md"
 empty "docs alone ask for nothing" "$(gates '{}')"
 
-waive locomotion crowd balance scene-cost off-screen budgets inspect_animation inspect_character study validate_mesh
+waive locomotion crowd balance scene-cost colliders off-screen budgets inspect_animation inspect_character study validate_mesh
 printf 'x\n' > "$project/Assets/UI/Hud.uxml"
 check "UI Toolkit files need a UI receipt" "ui" "$(gates '{}')"
 receipt ui-hud.txt
 gates '{}' > /dev/null
 
-waive locomotion crowd balance scene-cost off-screen budgets inspect_animation inspect_character study
+waive locomotion crowd balance scene-cost colliders off-screen budgets inspect_animation inspect_character study
+printf 'x\n' > "$project/Assets/Art/rock.png"
+empty "a texture asks for nothing" "$(gates '{}')"
 printf 'x\n' > "$project/Assets/Art/hero.fbx"
 git -C "$project" add -A
 git -C "$project" -c user.name=t -c user.email=t@t commit -q -m art
@@ -202,12 +220,40 @@ check "a commit since the last check still counts" "validate_mesh" "$(gates '{}'
 receipt validate_mesh-hero.json
 gates '{}' > /dev/null
 
+# One model changed: its receipts, not those of the other models.
+receipt validate_mesh-rock.json
+sleep 1
+newer "Assets/Art/hero.fbx"
+result="$(gates '{}')"
+check "a changed model's own receipt is old" "validate_mesh-hero.json" "$result"
+absent "another model's isn't" "validate_mesh-rock.json" "$result"
+receipt validate_mesh-hero.json
+gates '{}' > /dev/null
+printf 'x\n' > "$project/Assets/Art/barrel.fbx"
+check "a new model with no receipt of its own" "validate_mesh" "$(gates '{}')"
+receipt validate_mesh-barrel.json
+gates '{}' > /dev/null
+printf '{\n "passed": true\n}\n' > "$project/docs/proofs/inspect_character-hero.json"
+sleep 1
+newer "Assets/Art/hero.fbx"
+check "a model with a character receipt answers for it, wherever it sits" "inspect_character-hero.json" "$(gates '{}')"
+receipt validate_mesh-hero.json
+printf '{\n "passed": true\n}\n' > "$project/docs/proofs/inspect_character-hero.json"
+sleep 1
+gates '{}' > /dev/null
+newer "Assets/Art/barrel.fbx"
+absent "a prop doesn't ask for a character check" "inspect_character" "$(gates '{}')"
+receipt validate_mesh-barrel.json
+gates '{}' > /dev/null
+rm "$project/docs/proofs/validate_mesh-rock.json" "$project/docs/proofs/validate_mesh-barrel.json" "$project/docs/proofs/inspect_character-hero.json"
+
 mkdir -p "$project/Tools"
 printf 'x\n' > "$project/Tools/build_art.py"
 check "tools that produce assets count too" "Older than what changed: validate_mesh-hero.json" "$(gates '{}')"
 receipt validate_mesh-hero.json
 printf '{\n "passed": false\n}\n' > "$project/docs/proofs/inspect_character-hero.json"
-newer "Tools/build_art.py"
+sleep 1
+newer "Assets/Art/hero.fbx"
 check "a failing Blender receipt is named" "Failing: inspect_character-hero.json" "$(gates '{}')"
 rm "$project/docs/proofs/inspect_character-hero.json"
 printf '{\n "passed": true\n}\n' > "$project/docs/proofs/inspect_character-hero-parts.json"
@@ -226,11 +272,9 @@ rm "$project/docs/proofs/inspect_character-hero.json" "$project/docs/proofs/insp
 receipt validate_mesh-hero.json
 gates '{}' > /dev/null
 printf 'x\n' > "$project/Assets/Art/hero.fbx.meta"
-check "import settings in a .meta file count" "validate_mesh-hero.json" "$(gates '{}')"
-receipt validate_mesh-hero.json
-gates '{}' > /dev/null
+empty "Unity writing a .meta on import asks for nothing" "$(gates '{}')"
 
-waive locomotion crowd balance scene-cost off-screen budgets inspect_character study
+waive locomotion crowd balance scene-cost colliders off-screen budgets inspect_character study
 printf 'x\n' > "$project/Assets/Clip.zanim"
 check "a custom animation file counts" "inspect_animation" "$(gates '{}')"
 rm "$project/Assets/Clip.zanim"
@@ -255,6 +299,31 @@ git -C "$built" add -A
 git -C "$built" -c user.name=t -c user.email=t@t commit -q -m everything
 check "a game built and committed in one turn" "architecture" "$(gates '{}' on "$built")"
 
+# A game built in one long turn answers for every proof.
+big="$work/big"
+mkdir -p "$big/ProjectSettings" "$big/Assets/_Project/Scripts" "$big/.claude" "$big/docs/proofs"
+echo "m_EditorVersion: 6000.6.2f1" > "$big/ProjectSettings/ProjectVersion.txt"
+i=0
+while [ $i -lt 35 ]; do printf 'class B%s {}\n' "$i" > "$big/Assets/_Project/Scripts/B$i.cs"; i=$((i + 1)); done
+git -C "$big" init -q
+result="$(gates '{}' on "$big")"
+check "many files and no proofs: all of them are missing" "locomotion" "$result"
+check "balance too" "balance" "$result"
+check "and art" "validate_mesh" "$result"
+for family in architecture locomotion crowd balance ui scene-cost colliders off-screen budgets inspect_animation inspect_character study validate_mesh; do
+  printf 'passed: true\n' > "$big/docs/proofs/$family-all.txt"
+done
+sleep 1
+printf 'class B0 { int a; }\n' > "$big/Assets/_Project/Scripts/B0.cs"
+result="$(gates '{}' on "$big")"
+check "one more change: its own check" "architecture-all.txt" "$result"
+absent "and no other" "balance-all.txt" "$result"
+for family in architecture; do printf 'passed: true\n' > "$big/docs/proofs/$family-all.txt"; done
+sleep 1
+i=0
+while [ $i -lt 35 ]; do printf 'class B%s { int b; }\n' "$i" > "$big/Assets/_Project/Scripts/B$i.cs"; i=$((i + 1)); done
+check "many changes since a proof make it old" "balance-all.txt" "$(gates '{}' on "$big")"
+
 # A project inside a bigger repository.
 outer="$work/outer"
 mkdir -p "$outer/games/nested/ProjectSettings" "$outer/games/nested/Assets"
@@ -275,6 +344,7 @@ plain="$work/plain"
 mkdir -p "$plain/ProjectSettings" "$plain/Assets"
 echo "m_EditorVersion: 6000.6.2f1" > "$plain/ProjectSettings/ProjectVersion.txt"
 printf 'class A {}\n' > "$plain/Assets/A.cs"
+sleep 1
 check "a project with no repository" "architecture" "$(gates '{}' on "$plain")"
 empty "no repository, nothing new" "$(sleep 1; gates '{}' on "$plain")"
 
@@ -306,6 +376,105 @@ mkdir -p "$above/other/ProjectSettings"
 echo "m_EditorVersion: 6000.6.2f1" > "$above/other/ProjectSettings/ProjectVersion.txt"
 printf 'class B {}\n' > "$above/game/Assets/B.cs"
 empty "two projects below: it doesn't guess" "$(below)"
+
+# What a review of the hook found.
+quick="$work/quick"
+mkdir -p "$quick/ProjectSettings" "$quick/Assets/_Project/Art" "$quick/Assets/_Project/Scripts/Library" "$quick/Assets/Store" "$quick/docs/proofs"
+echo "m_EditorVersion: 6000.6.2f1" > "$quick/ProjectSettings/ProjectVersion.txt"
+git -C "$quick" init -q
+printf 'x\n' > "$quick/ProjectSettings/x"
+git -C "$quick" add -A
+git -C "$quick" -c user.name=t -c user.email=t@t commit -q -m first
+gates '{}' on "$quick" > /dev/null
+sleep 1
+qreceipt() { printf '%s\n' "${2:-passed: true}" > "$quick/docs/proofs/$1"; sleep 1; }
+printf 'class C {}\n' > "$quick/Assets/_Project/Scripts/Library/C.cs"
+check "a folder of ours named Library counts" "architecture" "$(gates '{}' on "$quick")"
+qreceipt architecture.txt
+gates '{}' on "$quick" > /dev/null
+printf '{"references":[]}\n' > "$quick/Assets/_Project/Scripts/Game.asmdef"
+check "an assembly definition asks for the architecture check" "architecture" "$(gates '{}' on "$quick")"
+qreceipt architecture.txt
+git -C "$quick" add -A
+git -C "$quick" -c user.name=t -c user.email=t@t commit -q -m code
+gates '{}' on "$quick" > /dev/null
+sleep 1
+qreceipt architecture.txt
+sleep 1
+rm "$quick/Assets/_Project/Scripts/Library/C.cs"
+check "a C# file deleted after the check" "architecture.txt" "$(gates '{}' on "$quick")"
+qreceipt architecture.txt
+git -C "$quick" add -A
+git -C "$quick" -c user.name=t -c user.email=t@t commit -q -m gone
+gates '{}' on "$quick" > /dev/null
+sleep 1
+printf 'x\n' >> "$quick/README.md"
+empty "a bare commit and a document ask for nothing" "$(git -C "$quick" add -A; git -C "$quick" -c user.name=t -c user.email=t@t commit -q -m doc; gates '{}' on "$quick")"
+for k in 1 2 3; do printf 'x\n' > "$quick/Assets/_Project/Art/model$k.fbx"; done
+sleep 1
+qreceipt validate_mesh-model1.json
+result="$(gates '{}' on "$quick")"
+check "a model with no receipt of its own, beside one with" "validate_mesh:model2" "$result"
+absent "the one with a receipt isn't named" "validate_mesh:model1" "$result"
+for k in 2 3; do qreceipt validate_mesh-model$k.json; done
+printf '{\n "passed": false\n}\n' > "$quick/docs/proofs/validate_mesh-rock.json"
+sleep 1
+gates '{}' on "$quick" > /dev/null
+printf 'y\n' >> "$quick/Assets/_Project/Art/model1.fbx"
+result="$(gates '{}' on "$quick")"
+absent "another model's failure isn't this model's" "validate_mesh-rock" "$result"
+check "this model's receipt is old" "validate_mesh-model1.json" "$result"
+qreceipt validate_mesh-model1.json
+printf 'x\n' > "$quick/Assets/_Project/Art/Cliff_1.fbx"
+qreceipt validate_mesh-Cliff_10.json
+check "Cliff_10's receipt isn't Cliff_1's" "validate_mesh:Cliff_1" "$(gates '{}' on "$quick")"
+qreceipt validate_mesh-Cliff_1.json
+gates '{}' on "$quick" > /dev/null
+printf 'x\n' > "$quick/Assets/Store/Tree.fbx"
+empty "a model of a store pack isn't this project's to check" "$(gates '{}' on "$quick")"
+printf 'head LimbNode tail\n' > "$quick/Assets/_Project/Art/Knight.fbx"
+sleep 1
+qreceipt validate_mesh-Knight.json
+check "a rig in the file makes it a character, whatever its name" "inspect_character:Knight" "$(gates '{}' on "$quick")"
+printf '{\n "passed": true\n}\n' > "$quick/docs/proofs/inspect_character-Knight.json"
+sleep 1
+gates '{}' on "$quick" > /dev/null
+printf 'ui: no UI yet\n' > "$quick/docs/proofs/not-applicable.txt"
+sleep 1
+printf 'x\n' > "$quick/Assets/_Project/Hud.uxml"
+check "the first file of what was \"not yet\" asks about it" "is that still true? ui" "$(gates '{"session_id":"w"}' on "$quick")"
+sleep 1
+printf 'y\n' >> "$quick/Assets/_Project/Hud.uxml"
+empty "and only once in a session" "$(gates '{"session_id":"w"}' on "$quick")"
+printf 'passed: false\n' > "$quick/docs/proofs/architecture-we\"ird.txt"
+sleep 1
+printf 'class D {}\n' > "$quick/Assets/_Project/Scripts/D.cs"
+result="$(gates '{"session_id":"w"}' on "$quick")"
+check "a quote in a receipt's name still gives valid JSON" "block" "$(printf '%s' "$result" | json_field "d['decision']")"
+rm "$quick/docs/proofs/architecture-we\"ird.txt"
+
+# Many models with many receipts, inside the timeout.
+crowd="$work/crowd"
+mkdir -p "$crowd/ProjectSettings" "$crowd/Assets/_Project/Art" "$crowd/docs/proofs"
+echo "m_EditorVersion: 6000.6.2f1" > "$crowd/ProjectSettings/ProjectVersion.txt"
+git -C "$crowd" init -q
+i=0
+while [ $i -lt 73 ]; do
+  printf 'x\n' > "$crowd/Assets/_Project/Art/Model$i.fbx"
+  printf 'x\n' > "$crowd/Assets/_Project/Art/Model$i.fbx.meta"
+  i=$((i + 1))
+done
+sleep 1
+i=0
+while [ $i -lt 73 ]; do
+  printf 'passed: true\n' > "$crowd/docs/proofs/validate_mesh-Model$i.txt"
+  printf 'passed: true\n' > "$crowd/docs/proofs/inspect_character-Model$i.txt"
+  i=$((i + 1))
+done
+started=$(date +%s)
+gates '{}' on "$crowd" > /dev/null
+seconds=$(( $(date +%s) - started ))
+if [ "$seconds" -lt 15 ]; then echo "ok   73 models with their receipts took $seconds s"; else echo "FAIL 73 models with their receipts took $seconds s"; failed=1; fi
 
 # Receipts are written by the checks.
 edit_hook() { # path

@@ -157,6 +157,24 @@ def _planted_frames(track, limit):
     return [i for i, (center, _) in enumerate(track) if center.z < lowest + limit]
 
 
+def _steps_on_the_ground(frames_low, track, dt):
+    """The planted runs in a stretch of frames with the foot low. A sliding foot moves all the way through: one run. A foot that shuffles in
+    low steps, as when turning on the spot, stands still most of the time and moves in bursts: each stillness is a run of its own."""
+    if len(frames_low) < 4:
+        return []
+    speeds = [((track[b][0] - track[a][0]) * Vector((1.0, 1.0, 0.0))).length / dt for a, b in zip(frames_low, frames_low[1:])]
+    if sorted(speeds)[len(speeds) // 2] >= 0.05:
+        return [frames_low]
+    runs, current = [], [frames_low[0]]
+    for frame, speed in zip(frames_low[1:], speeds):
+        if speed > 0.15:
+            runs.append(current)
+            current = []
+        current.append(frame)
+    runs.append(current)
+    return [run for run in runs if len(run) >= 4]
+
+
 def _strike_phases(planted, count):
     """Where in the cycle (0..1) the foot lands: the start of its longest planted run, read cyclically."""
     if not planted or len(planted) == count:
@@ -264,7 +282,8 @@ def _natural_report(armature, roles, rotations, hips_track, travel, feet, root, 
 
     if not moving:
         hips_range = max((p - hips_track[0]).length for p in hips_track) if hips_track else 0.0
-        if not moving_bones and hips_range < 0.002:
+        # A clip of one frame is a pose.
+        if not moving_bones and hips_range < 0.002 and len(frames) >= 3:
             issues["frozen"] = "nothing moves: even an idle needs breathing and a shift of weight"
         return
 
@@ -311,7 +330,9 @@ def _natural_report(armature, roles, rotations, hips_track, travel, feet, root, 
                 leg_bones.add(bone.name)
                 bone = bone.parent
     pairs = lags = 0
-    for name in moving_bones - leg_bones:
+    # Over a long take the big movements line up whatever the joints do between them: this reads a cycle or a single action.
+    short = (frames[-1] - frames[0]) / (bpy.context.scene.render.fps / bpy.context.scene.render.fps_base) <= 6.0
+    for name in (moving_bones - leg_bones) if short else ():
         parent = bones[name].parent
         if parent is None or parent.name not in moving_bones or parent.name == root:
             continue
@@ -536,10 +557,10 @@ def _check_action(armature, action, roles, meshes, props, ground, loop, step):
                 if center.z < limit:
                     current.append(i)
                     continue
-                if len(current) >= 4:
-                    first, last = track[side][current[1]][0], track[side][current[-2]][0]
-                    phases.append((Vector((last.x - first.x, last.y - first.y, 0.0)), (current[-2] - current[1]) * dt,
-                                   side, frames[current[1]], frames[current[-2]]))
+                for run in _steps_on_the_ground(current, track[side], dt):
+                    first, last = track[side][run[1]][0], track[side][run[-2]][0]
+                    phases.append((Vector((last.x - first.x, last.y - first.y, 0.0)), (run[-2] - run[1]) * dt,
+                                   side, frames[run[1]], frames[run[-2]]))
                 current = []
         if phases and not in_place:
             worst = max(phases, key=lambda ph: ph[0].length)
@@ -607,7 +628,8 @@ def _check_action(armature, action, roles, meshes, props, ground, loop, step):
         _natural_report(armature, roles, rotations, hips_track if hips else [], travel, {label: feet[label] for label in tracked_feet}, hips,
                         moving or swinging, frames, issues, info, leg, props)
 
-    if track["LeftHand"][0] is not None and track["RightHand"][0] is not None and body and "Left" in tracked_feet and "Right" in tracked_feet:
+    # A cycle tells which leg each arm goes with. A long take, with turns and stops, doesn't.
+    if loop and track["LeftHand"][0] is not None and track["RightHand"][0] is not None and body and "Left" in tracked_feet and "Right" in tracked_feet:
         forward = travel.normalized() if travel.length > 1e-6 else Vector((0.0, -1.0, 0.0))
 
         def along(points):
@@ -630,9 +652,11 @@ def _check_action(armature, action, roles, meshes, props, ground, loop, step):
                 issues["same_side_arm_swing"] = "each arm swings forward with the leg on its own side; in a natural gait it moves with the opposite leg"
 
     pops = []
+    # A toe or a finger that flicks for a frame at contact doesn't show: mocap has that everywhere.
+    fine_bones = {roles[r] for r in roles if r.endswith(("Toes", "Proximal", "Intermediate", "Distal"))}
     for name, quaternions in rotations.items():
         changes = [_angle(a, b) for a, b in zip(quaternions, quaternions[1:])]
-        if not changes:
+        if not changes or name in fine_bones:
             continue
         # A pop leaves the path its neighbors define: fast but smooth motion stays near their midpoint.
         for i in range(1, len(quaternions) - 1):
@@ -640,7 +664,8 @@ def _check_action(armature, action, roles, meshes, props, ground, loop, step):
             if before.dot(after) < 0.0:
                 after.negate()
             deviation = _angle(quaternions[i], before.slerp(after, 0.5))
-            if deviation > 30.0:
+            # Checking every Nth frame, smooth motion leaves the midpoint further: what counts is a frame's worth.
+            if deviation > 30.0 * step:
                 pops.append((deviation, name, frames[i]))
         if loop and len(quaternions) > 2:
             seam = _angle(quaternions[-1], quaternions[0])
@@ -658,12 +683,17 @@ def _check_action(armature, action, roles, meshes, props, ground, loop, step):
     if jumps:
         worst = max(jumps)
         issues["joint_pops"] = f"{len(jumps)} poses jump off the motion, {worst[1]} by {worst[0]:.0f} deg at frame {worst[2]}"
+    # Under a tenth of a second nobody sees it.
+    seen = max(1, int(round(0.1 * fps / step)))
     for label, hit_frames in collisions.items():
-        issues.setdefault("limbs_through_body", {})[label] = _frames_text(hit_frames)
+        if len(hit_frames) >= seen:
+            issues.setdefault("limbs_through_body", {})[label] = _frames_text(hit_frames)
     for joint, open_frames in opened_joints.items():
-        issues.setdefault("joint_opens", {})[joint] = _frames_text(open_frames)
+        if len(open_frames) >= seen:
+            issues.setdefault("joint_opens", {})[joint] = _frames_text(open_frames)
     for owner, hole_frames in holes.items():
-        issues.setdefault("see_inside", {})[owner] = _frames_text(hole_frames)
+        if len(hole_frames) >= seen:
+            issues.setdefault("see_inside", {})[owner] = _frames_text(hole_frames)
     for label, hit_frames in prop_hits.items():
         issues.setdefault("hand_through_prop", {})[label] = _frames_text(hit_frames)
     return issues, info

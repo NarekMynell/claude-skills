@@ -14,7 +14,7 @@ Run it as the game-assets guide's "Running the scripts" describes. Settings, all
                                  An animal or a creature gets the checks that fit any body, and bends of its own for poses
     WHOLE_PARTS = False          True on the parts before hidden faces are cut: what is hidden goes in `info`, and the receipt
                                  is inspect_character-<PROOF_NAME>-parts.json. A cut removes what tells a poke from a bump, so
-                                 a character cut where parts cross needs this receipt too
+                                 a character cut_hidden_faces.py has cut where parts cross needs this receipt too
     SINGLE_LAYER = True          a face covered by another part is a defect; False when outfits swap
     ALLOW_HIDDEN = ["Eyes", "Body<Hair"]  covered faces that are intended: a whole object, or "Object<Cover"
     ALLOW_CROSSING = ["Arrow+Head"]  pairs of objects that cross by design: an arrow through a head, ears through a hat, a wand
@@ -38,8 +38,9 @@ Run it as the game-assets guide's "Running the scripts" describes. Settings, all
     SYMMETRIC = ["Body"]         objects that must mirror across X = 0
     LEGS_JOINED = False          True for a long robe or dress in one skin, which joins the legs on purpose
     WAIST_BULGE = False          True for a body that is widest at the waist on purpose
-    FINGERS = 5                  fingers per hand in the design; 0 for mittens or no finger bones. Humanoids only
-    POSES = True                 also check the test poses (needs the armature)
+    FINGERS = 5                  fingers per hand in the design, to hold the rig to it. By default both hands only have to match
+    POSES = True                 also check the test poses (needs the armature). A list of names keeps to the poses the character really
+                                 makes: a blocky figure that never twists at the waist, ["arms_down", "arms_up", "stride"]
     BONE_MAP = {}                Unity Humanoid role -> bone name, for names the script doesn't recognize
 
 Sets `result`: `passed`, `issues` (name -> count or detail), `examples` (name -> up to 3 cases with world locations
@@ -430,17 +431,22 @@ def _open_loops(part):
     return loops
 
 
-def _open_parts(tops, head_level):
+def _open_parts(tops, head_level, sight):
     """Holes in what covers the head. Its largest opening is where it goes on: an open underside, a hairline. Another opening
     lying wholly above the head's base is a hole, and it shows from the side too, which looking down can't see. A hood's face
-    opening starts lower than that."""
+    opening starts lower than that. A hole under another part shows nothing."""
     openings = {}
     for part in tops:
         loops = _open_loops(part)
         if len(loops) < 2:
             continue
         largest = max(loops, key=lambda loop: sum(e.calc_length() for e in loop))
-        holes = [loop for loop in loops if loop is not largest and min(v.co.z for e in loop for v in e.verts) > head_level]
+
+        def shows(loop):
+            points = [v.co for e in loop for v in e.verts]
+            return sight.visible(sum(points, Vector()) / len(points))
+
+        holes = [loop for loop in loops if loop is not largest and min(v.co.z for e in loop for v in e.verts) > head_level and shows(loop)]
         if holes:
             openings[part.name] = sum(len(loop) for loop in holes)
     return openings
@@ -614,19 +620,28 @@ def _applied(obj):
     return identity and all(abs(s - 1.0) < 1e-4 for s in obj.matrix_world.to_scale())
 
 
+def _armature_transform(armature, issues, info):
+    """A file's unit scale and axes on an imported rig skin as they should, and Unity's import check sees where they end up. A scale
+    that differs between axes shears every bone that turns."""
+    scale = armature.matrix_world.to_scale()
+    if max(abs(c) for c in scale) - min(abs(c) for c in scale) > 1e-3 * max(abs(c) for c in scale) or min(scale) < 0.0:
+        issues["armature_scale_uneven"] = f"scale {[round(c, 3) for c in scale]}: limbs shear when they turn. Apply it"
+    elif not _applied(armature):
+        info["armature_transform"] = "rotated or scaled: after export, check rotation 0 and scale 1 on the model root in Unity"
+
+
 def _creature_rig_report(armature, roles, height):
     """What holds for any skeleton: sides, facing, transforms."""
     issues, examples, info = {}, {}, {}
-    if not _applied(armature):
-        issues["armature_transform_not_applied"] = True
+    _armature_transform(armature, issues, info)
     sides = []
     for bone in armature.data.bones:
         side, x = rig.name_side(bone.name), rig.head(armature, bone.name).x
         if (side == "L" and x < 0.005 * height) or (side == "R" and x > -0.005 * height):
-            sides.append({"bone": bone.name, "x": round(x, 3)})
+            sides.append(bone.name)
+    # No avatar maps a creature by its names: whose left they mean is the artist's business.
     if sides:
-        issues["left_right_swapped"] = len(sides)
-        examples["left_right_swapped"] = sides[:MAX_EXAMPLES]
+        info["bones_named_for_the_other_side"] = len(sides)
     if "Hips" in roles and "Head" in roles and rig.head(armature, roles["Head"]).y > rig.head(armature, roles["Hips"]).y + 0.02 * height:
         issues["not_facing_minus_y"] = "the head is behind the hips along -Y: the animal faces the wrong way"
     info["deform_bones"] = sum(1 for b in armature.data.bones if b.use_deform)
@@ -638,8 +653,7 @@ def _rig_report(armature, roles, height, fingers):
     missing = [r for r in rig.REQUIRED if r not in roles]
     if missing:
         issues["missing_humanoid_bones"] = missing
-    if not _applied(armature):
-        issues["armature_transform_not_applied"] = True
+    _armature_transform(armature, issues, info)
     sides = []
     for role, bone in roles.items():
         x = rig.head(armature, bone).x
@@ -674,7 +688,7 @@ def _rig_report(armature, roles, height, fingers):
                 issues[f"{side.lower()}_arm_rest_angle"] = f"{angle:.0f} deg below horizontal; rest the arms between T-pose (0) and A-pose (about 45)"
         found = [f for f in rig.FINGERS if f"{side}{f}Proximal" in roles]
         info[f"{side.lower()}_finger_chains"] = len(found)
-        if fingers and len(found) != fingers:
+        if fingers is not None and len(found) != fingers:
             issues[f"{side.lower()}_finger_bones"] = f"{len(found)} finger chains, the design has {fingers}"
         roots = {f: rig.head(armature, roles[f"{side}{f}Proximal"]) for f in found}
         if "Thumb" in roots and "Index" in roots:
@@ -686,51 +700,59 @@ def _rig_report(armature, roles, height, fingers):
             info[f"{side.lower()}_hand_chirality"] = "not checked: the fingers are straight in the rest pose"
         elif mirrored:
             issues[f"{side.lower()}_hand_mirrored"] = "the hand is the other side's, mirrored: its fingers curl toward the back of the hand"
+    chains = [info.get(f"{side}_finger_chains", 0) for side in ("left", "right")]
+    if fingers is None and chains[0] != chains[1]:
+        issues["hands_differ"] = f"{chains[0]} finger chains on the left hand, {chains[1]} on the right"
     info["deform_bones"] = sum(1 for b in armature.data.bones if b.use_deform)
     info["roles_mapped"] = len(roles)
     return issues, examples, info
 
 
 def _hand_mirrored(armature, roles, side):
-    """Whether a hand is the other side's mirror image, whatever way the palm faces: the fingers curl toward the
-    palm, and on a left hand (along x across) points to the palm when 'across' runs from the little finger to the
-    index. None when the fingers are too straight to tell the palm side."""
+    """Whether a hand is the other side's mirror image, whatever way the palm faces: fingers bend toward the palm, and on a left
+    hand (along x across) points to the palm when 'across' runs from the little finger to the index. None when the fingers are too
+    straight to tell the palm side: straight fingers on a palm tilted at the knuckles say nothing."""
     hand, index, little = roles.get(f"{side}Hand"), roles.get(f"{side}IndexProximal"), roles.get(f"{side}LittleProximal") or roles.get(f"{side}RingProximal")
     middle = roles.get(f"{side}MiddleProximal") or index
     if not (hand and index and little):
         return None
     along = (rig.head(armature, middle) - rig.head(armature, hand)).normalized()
     across = rig.head(armature, index) - rig.head(armature, little)
-    curl, length = Vector(), 0.0
+    palm = along.cross(across).normalized()
+    bends = []
     for finger in ("Index", "Middle", "Ring", "Little"):
         base, tip = roles.get(f"{side}{finger}Proximal"), roles.get(f"{side}{finger}Distal")
-        if base and tip:
-            reach = rig.tail(armature, tip) - rig.head(armature, base)
-            curl += reach - along * reach.dot(along)
-            length += reach.length
-    if length == 0.0 or curl.length < 0.03 * length:
+        if not (base and tip):
+            continue
+        first = (rig.tail(armature, base) - rig.head(armature, base)).normalized()
+        last = (rig.tail(armature, tip) - rig.head(armature, tip)).normalized()
+        bends.append(last - first)
+    if not bends:
         return None
-    toward_palm = along.cross(across).dot(curl)
+    bend = sum(bends, Vector()) / len(bends)
+    if abs(bend.dot(palm)) < 0.17:  # about 10 degrees from the first joint to the last
+        return None
+    toward_palm = palm.dot(bend)
     return toward_palm < 0 if side == "Left" else toward_palm > 0
 
 
-def _bone_side(bone, height, humanoid):
-    """A bone's side: by name, or for a person by where it stands. A snake's spine winds from side to side and has none."""
-    side = rig.name_side(bone.name)
-    if side or not humanoid:
-        return side
-    x = bone.head_local.x
+def _bone_side(armature, bone, height, humanoid):
+    """Which side a bone stands on, if it has one. A snake's spine winds from side to side and has none: what isn't named for a
+    side counts only on a person. By where it stands: whose left a name means is no matter for the skin."""
+    if not (rig.name_side(bone.name) or humanoid):
+        return None
+    x = rig.head(armature, bone.name).x
     return "L" if x > 0.01 * height else "R" if x < -0.01 * height else None
 
 
 def _weights_report(objects, armature, height, humanoid):
     issues, examples, info = {}, {}, {}
-    deform = {b.name: _bone_side(b, height, humanoid) for b in armature.data.bones if b.use_deform}
+    deform = {b.name: _bone_side(armature, b, height, humanoid) for b in armature.data.bones if b.use_deform}
     orphans = sorted({g.name for obj in objects for g in obj.vertex_groups if g.name not in armature.data.bones})
     if orphans:
         info["vertex_groups_without_bones"] = orphans[:10]
     margin = 0.04 * height
-    unweighted, over_four, cross, cross_examples, unweighted_examples = 0, 0, 0, [], []
+    unweighted, over_four, lost, cross, cross_examples, unweighted_examples = 0, 0, 0, 0, [], []
     for obj in objects:
         groups = {g.index: g.name for g in obj.vertex_groups}
         for vertex in obj.data.vertices:
@@ -744,6 +766,9 @@ def _weights_report(objects, armature, height, humanoid):
                 continue
             if sum(1 for _, w in weights if w / total >= 0.01) > 4:
                 over_four += 1
+                # Unity keeps the four strongest. What the rest carried is how far the vertex moves from where the review saw it.
+                if sum(sorted((w for _, w in weights), reverse=True)[4:]) / total > 0.1:
+                    lost += 1
             if abs(location.x) > margin:
                 wrong = "R" if location.x > 0 else "L"
                 share = sum(w for b, w in weights if deform[b] == wrong) / total
@@ -754,8 +779,10 @@ def _weights_report(objects, armature, height, humanoid):
     if unweighted:
         issues["unweighted_vertices"] = unweighted
         examples["unweighted_vertices"] = unweighted_examples
+    if lost:
+        issues["over_four_influences"] = lost
     if over_four:
-        issues["over_four_influences"] = over_four
+        info["vertices_over_four_influences"] = over_four
     if cross:
         issues["opposite_side_weights"] = cross
         examples["opposite_side_weights"] = cross_examples
@@ -771,6 +798,9 @@ def _poses_report(character, armature, roles, humanoid, rest_lengths, floating_a
     paid for, and seen."""
     issues, examples, info = {}, {}, {}
     poses = rig.test_poses(roles) if humanoid else rig.creature_poses(armature, roles)
+    chosen = _setting("POSES", True)
+    if isinstance(chosen, (list, tuple)):
+        poses = {name: steps for name, steps in poses.items() if name in chosen}
     pose_roles = roles if humanoid else rig.identity_roles(armature)
     stretched_total, poke_total, opened_total, inside_total, still = {}, {}, {}, {}, []
     lowest = _setting("LOWEST_VIEW", 0)
@@ -817,9 +847,11 @@ def _poses_report(character, armature, roles, humanoid, rest_lengths, floating_a
                     bad = []
                     for edge, rest_length in zip(part.bm.edges, lengths):
                         if rest_length > 1e-6:
-                            ratio = edge.calc_length() / rest_length
-                            # Creases fold hard in deep poses; below a fifth the surface collapses.
-                            if ratio > 2.0 or ratio < 0.2:
+                            length = edge.calc_length()
+                            ratio = length / rest_length
+                            # Creases fold hard in deep poses; below a fifth the surface collapses. A small edge can do either
+                            # where a joint folds and nobody sees it: what shows is how far the surface moved.
+                            if (ratio > 2.0 and length - rest_length >= 0.06 * scale) or (ratio < 0.2 and rest_length - length >= 0.03 * scale):
                                 bad.append((abs(math.log(ratio)), edge, ratio))
                     if bad:
                         stretched_total[f"{name}: {part.name}"] = len(bad)
@@ -880,7 +912,7 @@ def _creature_legs(body, armature, roles, bottom, joined_ok):
     chains = rig.leg_chains(armature, roles)
     if len(chains) < 2 or joined_ok:
         return {}, {}, {}
-    lengths = [sum(b.length for b in chain) for chain in chains]
+    lengths = [sum(rig.limb_length(armature, b.name) for b in chain) for chain in chains]
     level = bottom + 0.35 * min(lengths)
     sections = _islands(body, level)
     info = {"legs": len(chains)}
@@ -889,17 +921,23 @@ def _creature_legs(body, armature, roles, bottom, joined_ok):
     return {}, {}, info
 
 
-def _parts_checked(folder, name, height, triangles):
-    """Whether the parts' own receipt exists, passed, and is of this character: as tall, with at least the faces it has now. A cut
-    takes faces away and leaves the rest as they are; anything else is another character, and its parts need their own run."""
+def _parts_checked(folder, name, height, triangles, objects):
+    """Whether the parts' own receipt exists, passed, and is of this character: the very parts the cut tool cut, or, cut some other way,
+    as tall, with at least the faces it has now. A cut takes faces away and leaves the rest as they are; anything else is another
+    character, and its parts need their own run."""
     path = os.path.join(folder, f"inspect_character-{name}-parts.json") if folder else None
     if not path or not os.path.exists(path):
         return False
     with open(path) as receipt:
         found = json.load(receipt)
+    if found.get("passed") is not True:
+        return False
+    cut_from = {o.get("cut_hidden_faces") for o in objects} - {None}
+    if cut_from:
+        return found.get("geometry") in cut_from
     info = found.get("info", {})
     same_size = abs(info.get("height_m", 0.0) - height) <= max(0.002, 0.01 * height)
-    return found.get("passed") is True and same_size and info.get("triangles", 0) >= triangles
+    return same_size and info.get("triangles", 0) >= triangles
 
 
 def inspect():
@@ -1020,7 +1058,10 @@ def inspect():
             seam_names = {(parts[i].name, parts[j].name) for i, j in seams}
             if seams:
                 info["open_where_parts_cross"] = sorted(f"{x}/{y}" for x, y in seam_names)[:10]
-                if not _parts_checked(folder, proof_name, height, sum(len(f.verts) - 2 for part in parts for f in part.bm.faces)):
+                # A model that came cut from its maker has no whole parts to check. This project's cuts are marked by the tool, and
+                # a receipt of whole parts says they exist.
+                ours = any(o.get("cut_hidden_faces") for o in objects) or (folder and os.path.exists(os.path.join(folder, f"inspect_character-{proof_name}-parts.json")))
+                if ours and not _parts_checked(folder, proof_name, height, sum(len(f.verts) - 2 for part in parts for f in part.bm.faces), objects):
                     issues["parts_not_checked_before_cut"] = (f"{len(seams)} crossings have open edges inside the other part, as after hidden faces are cut: "
                                                               "run this check on the whole parts too, with WHOLE_PARTS = True and the same PROOF_DIR and PROOF_NAME")
         pokes, rest_joints = rig.judge_rest(parts, between, judge, sight_for, seams)
@@ -1033,7 +1074,7 @@ def inspect():
             sight = sight_for(surface, surface)
             for ring in rig.rings_of(surface, surface, pairs, judge.tolerance):
                 points = [p for p in ring.points if sight.visible(p)]
-                if points and rig.extent(ring.points) >= judge.graze:
+                if points and rig.extent(ring.points) >= judge.graze and not rig.folds_on_itself(surface, ring, judge):
                     cuts[surface.owner] = cuts.get(surface.owner, 0) + len(ring.details)
                     cut_examples.append({"object": surface.owner, "what": "the surface cuts into itself", "at": _round(points[0])})
         between_report, clashes = {}, {}
@@ -1074,7 +1115,7 @@ def inspect():
             examples["shows_through"] = through_examples
         if inside_out:
             issues["inside_out"] = inside_out
-        openings = _open_parts(tops, level)
+        openings = _open_parts(tops, level, sight_for(parts[0], parts[0]))
         if openings:
             issues["open_part"] = openings
 
@@ -1161,7 +1202,7 @@ def inspect():
             issues["parts_left_out"] = left_out
 
     if armature:
-        found = _rig_report(armature, roles, height, _setting("FINGERS", 5)) if humanoid else _creature_rig_report(armature, roles, height)
+        found = _rig_report(armature, roles, height, _setting("FINGERS", None)) if humanoid else _creature_rig_report(armature, roles, height)
         issues.update(found[0])
         examples.update(found[1])
         info.update(found[2])
@@ -1190,7 +1231,13 @@ def inspect():
             sunk[f"{owner}<{cover_owner}"] = sunk.get(f"{owner}<{cover_owner}", 0) + 1
         else:
             covered[f"{owner}<{cover_owner}"] = covered.get(f"{owner}<{cover_owner}", 0) + 1
-    hidden_bucket = info if whole_parts else issues
+    # Nobody sees it: what it costs is the defect, and a mouth's few hidden faces cost nothing. Most of an object buried in the body
+    # is another matter: the player doesn't get what it was made to show.
+    worth_cutting = len(hidden) >= max(20, 0.05 * sum(len(p.vertices) - 2 for o in objects if o.type == "MESH" for p in o.data.polygons))
+    faces_of = {o.name: max(1, len(o.data.polygons)) for o in objects if o.type == "MESH"}
+    buried = any(sum(count for pair, count in sunk.items() if pair.split("<")[0] == owner) >= 0.3 * total for owner, total in faces_of.items())
+    worth_cutting = worth_cutting or buried
+    hidden_bucket = info if whole_parts or not worth_cutting else issues
     if hidden and not whole_parts:
         kept = [key for key in hidden if key in hidden_at][:MAX_EXAMPLES]
         if kept:
@@ -1201,6 +1248,8 @@ def inspect():
         hidden_bucket["sunk_into_body"] = sunk
     if covered:
         (hidden_bucket if _setting("SINGLE_LAYER", True) else info)["covered_faces"] = covered
+    if hidden and not worth_cutting:
+        examples.pop("hidden", None)
 
     report = {"passed": not issues, "issues": issues, "examples": examples, "info": info}
     if folder:
@@ -1208,8 +1257,12 @@ def inspect():
         keys = ("TARGETS", "ALLOW_HIDDEN", "ALLOW_CROSSING", "ALLOW_FLOATING", "SEE_THROUGH", "TWO_SIDED", "COVERS_FROM_ABOVE", "OPEN_ON_TOP", "NEVER_TOGETHER", "POSES", "LEGS_JOINED", "WAIST_BULGE", "SINGLE_LAYER", "HUMANOID", "WHOLE_PARTS", "GROUND", "LOWEST_VIEW")
         settings = {key: _setting(key, None) for key in keys if key in globals()}
         suffix = "-parts" if whole_parts else ""
+        if whole_parts:
+            report_out = dict(report, settings=settings, geometry=rig.geometry_key(objects))
+        else:
+            report_out = dict(report, settings=settings)
         with open(os.path.join(folder, f"inspect_character-{proof_name}{suffix}.json"), "w") as out:
-            json.dump(dict(report, settings=settings), out, indent=1, default=str)
+            json.dump(report_out, out, indent=1, default=str)
     return report
 
 

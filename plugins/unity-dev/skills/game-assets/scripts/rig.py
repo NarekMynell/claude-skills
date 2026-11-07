@@ -14,6 +14,7 @@ body built from parts joins. A defect is what the player can see go wrong:
 Blender convention assumed: the character faces -Y, its left side is +X, up is +Z.
 """
 
+import hashlib
 import math
 import re
 
@@ -57,7 +58,8 @@ _SKIP_WORDS = {
     "helper", "corrective", "meta", "metacarpal", "palm", "carpal", "jiggle", "dyn", "prop", "weapon", "attach", "eye",
     "jaw", "tongue", "teeth", "brow", "lid", "lip", "cheek", "breast", "hair", "cloth", "skirt", "cape", "tail",
 }
-_PREFIX = re.compile(r"^(mixamorig\d*[:_]|def[-_.]|cc_base_|bip\d*[ _])", re.IGNORECASE)
+_FACE_WORDS = {"jaw", "tongue", "teeth", "tooth", "eye", "eyes", "lid", "brow", "lip", "mouth"}
+_PREFIX = re.compile(r"^(.*:|mixamorig\d*_|def[-_.]|cc_base_|bip\d*[ _])", re.IGNORECASE)  # a namespace, or a tool's own mark
 
 
 def words(name):
@@ -127,16 +129,89 @@ def map_roles(armature, overrides=None):
         prefix = "Left" if side == "L" else "Right"
         for segment, bone in zip(SEGMENTS, sorted(chain, key=_depth)):
             roles[f"{prefix}{finger}{segment}"] = bone.name
+    _fill_from_chain(armature, roles)
     roles.update(overrides or {})
     return {role: name for role, name in roles.items() if name in armature.data.bones}
+
+
+def _fill_from_chain(armature, roles):
+    """Names differ between tools, the chain of a limb doesn't: a clavicle called so makes the bone called shoulder the upper arm."""
+    bones = armature.data.bones
+    for side in ("Left", "Right"):
+        for upper, lower, end in (("UpperArm", "LowerArm", "Hand"), ("UpperLeg", "LowerLeg", "Foot")):
+            if side + lower not in roles and side + end in roles and bones[roles[side + end]].parent:
+                roles[side + lower] = bones[roles[side + end]].parent.name
+            if side + upper not in roles and side + lower in roles and bones[roles[side + lower]].parent:
+                roles[side + upper] = bones[roles[side + lower]].parent.name
+        collar = roles.get(side + "Shoulder")
+        if collar and collar == roles.get(side + "UpperArm"):
+            parent = bones[collar].parent
+            if parent is not None and name_side(parent.name):
+                roles[side + "Shoulder"] = parent.name
+            else:
+                del roles[side + "Shoulder"]
 
 
 def head(armature, bone_name):
     return armature.matrix_world @ armature.data.bones[bone_name].head_local
 
 
+_LIMB_ENDS = {}
+
+
+def _limb_ends(armature):
+    """Where each bone really ends, at rest in the armature's space. A bone made in Blender ends at its tail. An imported FBX's
+    bones have tails that point anywhere, because the file stores joints: there, a bone ends where the bones it carries start."""
+    data = armature.data
+    # Another armature can take the place and the name of one that was removed: its bones tell them apart.
+    key = (data.as_pointer(), len(data.bones), tuple(data.bones[-1].head_local), tuple(data.bones[-1].tail_local)) if data.bones else None
+    if key in _LIMB_ENDS:
+        return _LIMB_ENDS[key]
+
+    def apart(bone):
+        return [c for c in bone.children if (c.head_local - bone.head_local).length > 1e-6]
+
+    singles = [b for b in data.bones if len(apart(b)) == 1]
+    follow = sum(1 for b in singles if (apart(b)[0].head_local - b.tail_local).length <= 0.25 * (apart(b)[0].head_local - b.head_local).length)
+    tails_hold = follow * 2 >= len(singles)
+    ends = {}
+    for bone in sorted(data.bones, key=_depth):
+        children = apart(bone)
+        if not children:
+            parent = bone.parent
+            axis = bone.tail_local - bone.head_local
+            if tails_hold or parent is None:
+                ends[bone.name] = bone.tail_local.copy()
+            else:
+                # The end of a chain has nothing to end at: it goes on as the bone before it did, and no further than half of it.
+                before = bone.head_local - parent.head_local
+                reach = min(axis.length, 0.5 * before.length) if before.length > 1e-6 else axis.length
+                ends[bone.name] = bone.head_local + (before.normalized() * reach if before.length > 1e-6 else axis)
+            continue
+        if any((c.head_local - bone.tail_local).length <= 0.1 * (c.head_local - bone.head_local).length for c in children):
+            ends[bone.name] = bone.tail_local.copy()
+            continue
+        far = max((c.head_local - bone.head_local).length for c in children)
+        carried = [c.head_local for c in children if (c.head_local - bone.head_local).length > 0.6 * far]
+        ends[bone.name] = sum(carried, Vector()) / len(carried)
+    _LIMB_ENDS[key] = ends
+    return ends
+
+
 def tail(armature, bone_name):
-    return armature.matrix_world @ armature.data.bones[bone_name].tail_local
+    """Where a bone ends at rest, in world space."""
+    return armature.matrix_world @ _limb_ends(armature)[bone_name]
+
+
+def posed_tail(armature, bone_name):
+    """Where a bone ends in the current pose, in world space."""
+    bone = armature.data.bones[bone_name]
+    return armature.matrix_world @ armature.pose.bones[bone_name].matrix @ bone.matrix_local.inverted() @ _limb_ends(armature)[bone_name]
+
+
+def limb_length(armature, bone_name):
+    """How long a bone really is, in metres."""
+    return (tail(armature, bone_name) - head(armature, bone_name)).length
 
 
 def is_ancestor(armature, ancestor, bone_name):
@@ -216,7 +291,7 @@ def _rotate_about_head(armature, pose_bone, world_rotation):
 def point_bone(armature, bone_name, direction):
     """Turns a pose bone so that it points along `direction` (world space), around its head."""
     pose_bone = armature.pose.bones[bone_name]
-    current = (armature.matrix_world.to_3x3() @ pose_bone.matrix.to_3x3() @ Vector((0.0, 1.0, 0.0))).normalized()
+    current = (posed_tail(armature, bone_name) - armature.matrix_world @ pose_bone.head).normalized()
     target = Vector(direction).normalized()
     _rotate_about_head(armature, pose_bone, current.rotation_difference(target).to_matrix())
 
@@ -275,8 +350,7 @@ def apply_pose(armature, roles, steps):
             turn_bone(armature, bone, target[1], target[2])
         elif isinstance(target[0], str) and target[0] == "curl":
             palm = palm_normal(armature, roles, target[1])
-            pose_bone = armature.pose.bones[bone]
-            direction = (armature.matrix_world.to_3x3() @ pose_bone.matrix.to_3x3() @ Vector((0.0, 1.0, 0.0))).normalized()
+            direction = (posed_tail(armature, bone) - armature.matrix_world @ armature.pose.bones[bone].head).normalized()
             if palm is None or abs(direction.dot(palm)) > 0.95:
                 continue
             turn_bone(armature, bone, direction.cross(palm), target[2])
@@ -319,7 +393,7 @@ def _center_chain(armature):
     roots = [b for b in data if b.parent is None]
     if not roots:
         return []
-    size = max(max(abs(c) for c in b.tail_local) for b in data) or 1.0
+    size = max(max(abs(c) for c in b.head_local) for b in data) or 1.0
     bone = max(roots, key=lambda b: len(b.children_recursive))
     chain = []
     while bone is not None:
@@ -327,7 +401,7 @@ def _center_chain(armature):
         center = [c for c in bone.children if abs(c.head_local.x) < 0.02 * size and name_side(c.name) is None]
         bone = max(center, key=lambda c: len(c.children_recursive)) if center else None
     # Tiny end bones, such as Mixamo's HeadTop_End, carry nothing.
-    while len(chain) > 2 and chain[-1].length < 0.4 * chain[-2].length and not chain[-1].children:
+    while len(chain) > 2 and limb_length(armature, chain[-1].name) < 0.4 * limb_length(armature, chain[-2].name) and not chain[-1].children:
         chain.pop()
     return chain
 
@@ -350,7 +424,7 @@ def trunk_bones(armature, roles=None):
     trunk.update(b.name for b in chain if b.name != top)
     for bone in chain:
         for child in bone.children:
-            if child not in chain and len(child.children) == 1 and child.length < 0.6 * child.children[0].length:
+            if child not in chain and len(child.children) == 1 and limb_length(armature, child.name) < 0.6 * limb_length(armature, child.children[0].name):
                 trunk.add(child.name)
     trunk.discard(top)
     return trunk
@@ -387,7 +461,14 @@ def creature_poses(armature, roles=None):
     Name -> list of (bone, target), for `apply_pose` with `identity_roles`."""
     legs = leg_chains(armature, roles)
     in_legs = {b.name for chain in legs for b in chain}
-    others = [b.name for b in armature.data.bones if b.use_deform and b.parent is not None and b.name not in in_legs and name_side(b.name) is None]
+    top = head_bone(armature, roles)
+    # What is in the head moves on its own: a jaw, a tongue, the eyes. And so does what is too small to carry the body.
+    in_head = {b.name for b in armature.data.bones[top].children_recursive} if top else set()
+    in_head |= {b.name for b in armature.data.bones if set(words(b.name)) & _FACE_WORDS}
+    heads = [head(armature, b.name) for b in armature.data.bones]
+    span = max(max(p[k] for p in heads) - min(p[k] for p in heads) for k in range(3)) if heads else 0.0
+    others = [b.name for b in armature.data.bones if b.use_deform and b.parent is not None and b.name not in in_legs and b.name not in in_head
+              and name_side(b.name) is None and limb_length(armature, b.name) >= 0.015 * span]
     side, up = (1.0, 0.0, 0.0), (0.0, 0.0, 1.0)
     poses = {}
     if legs:
@@ -428,11 +509,11 @@ class Joints:
             self.node[bone.name] = "trunk" if bone.name in trunk else bone.name
         for bone in data:
             parent = bone.parent
-            if parent is not None and not bone.children and bone.name not in trunk and _sits_on(bone, parent):
+            if parent is not None and not bone.children and bone.name not in trunk and _sits_on(armature, bone, parent):
                 self.node[bone.name] = self.node[parent.name]
         hands = [roles[r] for r in ("LeftHand", "RightHand") if r in roles]
         if not hands and not is_humanoid(armature, roles):
-            hands = [b.name for b in data if b.name not in trunk and _is_hand_like(b)]
+            hands = [b.name for b in data if b.name not in trunk and _is_hand_like(armature, b)]
         for name in hands:
             for child in data[name].children_recursive:
                 self.node[child.name] = self.node[name]
@@ -461,12 +542,9 @@ class Joints:
 
     def line(self, name):
         """Where a bone is now, start and end, in world space."""
-        world = self.armature.matrix_world
         if self.armature.data.pose_position == "REST":
-            bone = self.armature.data.bones[name]
-            return world @ bone.head_local, world @ bone.tail_local
-        bone = self.armature.pose.bones[name]
-        return world @ bone.head, world @ bone.tail
+            return head(self.armature, name), tail(self.armature, name)
+        return self.armature.matrix_world @ self.armature.pose.bones[name].head, posed_tail(self.armature, name)
 
     def entry(self, a, b):
         """Whether one of two surfaces hangs from the other on the rig: (the one that hangs, the bone of it nearest the other),
@@ -540,19 +618,21 @@ class Joints:
         return link is not None and all(inside(high, self.line(name)[0]) for name in chain)
 
 
-def _sits_on(bone, parent):
+def _sits_on(armature, bone, parent):
     """Whether a childless bone is a helper on its parent, such as a twist bone: it starts along the parent, not at its end."""
-    start = (bone.head_local - parent.head_local).dot((parent.tail_local - parent.head_local).normalized()) if parent.length > 1e-6 else 0.0
-    return start < 0.9 * parent.length
+    axis = _limb_ends(armature)[parent.name] - parent.head_local
+    if axis.length <= 1e-6:
+        return True
+    return (bone.head_local - parent.head_local).dot(axis.normalized()) < 0.9 * axis.length
 
 
-def _is_hand_like(bone):
+def _is_hand_like(armature, bone):
     """Three or more short chains from one bone: fingers on a hand, toes on a paw."""
     if len(bone.children) < 3:
         return False
     for child in bone.children:
         chain = [child] + list(child.children_recursive)
-        if any(len(link.children) > 1 for link in chain) or sum(link.length for link in chain) > bone.length:
+        if any(len(link.children) > 1 for link in chain) or sum(limb_length(armature, link.name) for link in chain) > limb_length(armature, bone.name):
             return False
     return True
 
@@ -766,6 +846,16 @@ def free(surfaces):
         surface.free()
 
 
+def geometry_key(objects):
+    """A fingerprint of the objects' meshes: whether what was checked is still what is there."""
+    digest = hashlib.md5()
+    for obj in sorted((o for o in objects if o.type == "MESH"), key=lambda o: o.name):
+        digest.update(obj.name.encode())
+        for vertex in obj.data.vertices:
+            digest.update(("%.4f %.4f %.4f;" % tuple(vertex.co)).encode())
+    return digest.hexdigest()
+
+
 def appearing_together(surfaces, groups, never_together=()):
     """Each variant with the first of every other group it can appear with: what can be on screen at once. The character alone
     when it has no variants."""
@@ -801,7 +891,7 @@ def _triangles(face):
     return [(corners[0], corners[k], corners[k + 1]) for k in range(1, len(corners) - 1)]
 
 
-def _in_triangle(point, a, b, c):
+def _in_triangle(point, a, b, c, margin=-1e-6):
     v0, v1, v2 = c - a, b - a, point - a
     d00, d01, d02, d11, d12 = v0.dot(v0), v0.dot(v1), v0.dot(v2), v1.dot(v1), v1.dot(v2)
     denominator = d00 * d11 - d01 * d01
@@ -809,21 +899,27 @@ def _in_triangle(point, a, b, c):
         return False
     u = (d11 * d02 - d01 * d12) / denominator
     v = (d00 * d12 - d01 * d02) / denominator
-    return u >= -1e-6 and v >= -1e-6 and u + v <= 1.0 + 1e-6
+    return u >= margin and v >= margin and u + v <= 1.0 - margin
 
 
-def _edges_through(face, other):
-    points = []
+def _crossing_edges(face, other, margin=-1e-6):
+    """The edges of a face that pass through another, as (start, end, where)."""
+    found = []
     corners = [v.co for v in face.verts]
     for p, q in zip(corners, corners[1:] + corners[:1]):
         for a, b, c in _triangles(other):
             normal = (b - a).cross(c - a)
             dp, dq = normal.dot(p - a), normal.dot(q - a)
-            if dp * dq < 0.0:
+            # A corner on the other's plane, as of two boxes that touch, is no crossing, whichever side rounding puts it on.
+            if dp * dq < 0.0 and min(abs(dp), abs(dq)) > 1e-5 * normal.length:
                 point = p.lerp(q, dp / (dp - dq))
-                if _in_triangle(point, a, b, c):
-                    points.append(point)
-    return points
+                if _in_triangle(point, a, b, c, margin):
+                    found.append((p, q, point))
+    return found
+
+
+def _edges_through(face, other):
+    return [point for _, _, point in _crossing_edges(face, other)]
 
 
 def crossing_points(a, face_a, b, face_b):
@@ -831,6 +927,25 @@ def crossing_points(a, face_a, b, face_b):
     fa, fb = a.bm.faces[face_a], b.bm.faces[face_b]
     points = _edges_through(fa, fb) + _edges_through(fb, fa)
     return points or [(fa.calc_center_median() + fb.calc_center_median()) / 2]
+
+
+def _really_cross(a, face_a, b, face_b):
+    """Whether two faces cut each other, and don't only touch. An edge through the inside of the other face does. An edge that meets its rim
+    may be two boxes meeting at a corner, or mirrored parts whose edges meet exactly: there, it has to go from outside the other surface to
+    inside it."""
+    fa, fb = a.bm.faces[face_a], b.bm.faces[face_b]
+    if _crossing_edges(fa, fb, 1e-4) or _crossing_edges(fb, fa, 1e-4):
+        return True
+    for edges, other in ((_crossing_edges(fa, fb), b), (_crossing_edges(fb, fa), a)):
+        for p, q, point in edges:
+            step = (q - p).normalized() * min(0.05 * (q - p).length, 0.01)
+            if _deep_inside(other, point - step) != _deep_inside(other, point + step):
+                return True
+    return False
+
+
+def _deep_inside(surface, point):
+    return surface.tree.find_nearest(point)[3] > 1e-4 and inside(surface, point)
 
 
 def extent(points):
@@ -853,7 +968,10 @@ class Ring:
 
 def rings_of(a, b, found, tolerance):
     """The separate lines of a crossing: its face pairs, grouped where their points run on from each other."""
-    details = [(pair, crossing_points(a, pair[0], b, pair[1])) for pair in found]
+    # Boxes that touch face to face overlap and don't cross: no edge of one goes through the other.
+    details = [(pair, crossing_points(a, pair[0], b, pair[1])) for pair in found if _really_cross(a, pair[0], b, pair[1])]
+    if not details:
+        return []
     count = len(details)
     tree = KDTree(sum(len(points) for _, points in details))
     index = 0
@@ -895,6 +1013,7 @@ class Sight:
                 self.owners.append(surface)
         self.tree = BVHTree.FromPolygons(coords, polygons) if polygons else None
         self.height = max(height, 0.001)
+        self.bottom = min((c.z for c in coords), default=0.0)
         self.reach = 3.0 * self.height
         self.margin = 0.002 * self.height
 
@@ -917,7 +1036,8 @@ def _along_edge(edge, spacing):
 
 def see_inside(surface, sight, lowest_view=0.0):
     """Open edges past which a look from outside meets the surface's own back: a hole into its inside, which backface culling
-    shows as a gap. Up to where the camera can go: `lowest_view` is in degrees above the horizon."""
+    shows as a gap. Up to where the camera can go: `lowest_view` is in degrees above the horizon. An edge low on the asset that opens
+    downward is the bottom a rock or a brick leaves off where the ground takes over, and only from below the ground would it show."""
     found = []
     nudge = 0.001 * sight.height
     floor = math.sin(math.radians(lowest_view))
@@ -933,6 +1053,8 @@ def see_inside(surface, sight, lowest_view=0.0):
         outward.normalize()
         if outward.dot((edge.verts[0].co + edge.verts[1].co) / 2 - face.calc_center_median()) < 0.0:
             outward = -outward
+        if outward.z < -0.5 and lowest_view >= 0.0 and (edge.verts[0].co.z + edge.verts[1].co.z) / 2 < sight.bottom + 0.2 * sight.height:
+            continue
         if any(_shows_back(surface, point + outward * nudge, face.normal, views, sight) for point in _along_edge(edge, spacing)):
             found.append(edge.index)
     return found
@@ -1002,7 +1124,9 @@ def hidden_faces(surfaces, see_through, reach, allowed=(), among=None, spacing=N
             directions = cone(face.normal)
             cover = None
             for point in _face_samples(face, spacing):
-                cover_here = _cover_of(tree, owners, point + face.normal * 1e-5, directions, surface, face.index, reach)
+                # Far from the origin a small step vanishes in single precision, and a face hits itself.
+                nudge = 1e-5 + 1e-6 * max(abs(point.x), abs(point.y), abs(point.z))
+                cover_here = _cover_of(tree, owners, point + face.normal * nudge, directions, surface, face.index, reach, nudge)
                 if cover_here is None or f"{surface.owner}<{cover_here.owner}" in allowed:
                     cover = None
                     break
@@ -1012,12 +1136,12 @@ def hidden_faces(surfaces, see_through, reach, allowed=(), among=None, spacing=N
     return hidden
 
 
-def _cover_of(tree, owners, origin, directions, surface, face, reach):
+def _cover_of(tree, owners, origin, directions, surface, face, reach, nudge=1e-5):
     cover = None
     for direction in directions:
         location, normal, index, _ = tree.ray_cast(origin, direction, reach)
         if location is not None and owners[index] == (surface, face):
-            location, normal, index, _ = tree.ray_cast(location + direction * 1e-5, direction, reach)
+            location, normal, index, _ = tree.ray_cast(location + direction * nudge, direction, reach)
         if location is None or normal.dot(direction) <= 0.0:
             return None
         cover = cover or owners[index][0]
@@ -1128,7 +1252,7 @@ class Judge:
         if close:
             center = sum(ring.points, Vector()) / len(ring.points)
             for bone in {x for pair in pairs for x in pair} - {None}:
-                if (center - self.joints.line(bone)[0]).length <= 1.5 * self.joints.armature.data.bones[bone].length:
+                if (center - self.joints.line(bone)[0]).length <= 1.5 * limb_length(self.joints.armature, bone):
                     return "joint"
         return "apart"
 
@@ -1162,7 +1286,8 @@ class Judge:
         seen = []
         for group in groups:
             depth = max(cover.tree.find_nearest(verts[i].co)[3] for i in group)
-            if depth >= self.graze or extent([verts[i].co for i in group]) >= 10.0 * self.graze:
+            # Wide and shallow still shows. On the cover's own surface, as a ring of hair exactly on a cap's rim, nothing has come out.
+            if depth >= self.graze or (depth >= 0.1 * self.graze and extent([verts[i].co for i in group]) >= 10.0 * self.graze):
                 seen.append(group)
         result = (seen, members - outside, fine, members)
         self.pieces_cache[key] = result
@@ -1288,7 +1413,8 @@ class Judge:
         # A body under what it wears shows through it. A small part in a large one, such as an eye in a head, doesn't; nor does a
         # ring on what it sits on, such as a belt on a tunic. What covers the head has its own rule, above.
         cover_total = cover.area if region is None else sum(f.calc_area() for f in cover.bm.faces if cover.face_bone[f.index] in surface.bones)
-        if cover.name not in self.tops and total >= 0.33 * cover_total and not self._wraps(surface, cover):
+        # And the cover has to be big enough to wear: a tooth set in a jaw isn't worn by it.
+        if cover.name not in self.tops and 0.1 * total <= cover_total <= total / 0.33 and cover.area >= 0.01 * surface.area and not self._wraps(surface, cover):
             for piece in outer:
                 area = fine.area_of(piece)
                 if area >= total - area:
@@ -1300,7 +1426,8 @@ class Judge:
                 if self._one_place(around) and all(self._is_cuff(surface, ring) or self._at_opening(cover, ring) for ring in around):
                     continue
                 return f"{surface.name} runs under {cover.name} and shows through it"
-        if len(outer) >= 2 and not self._worn(surface, cover, outer, fine, rings):
+        # What goes through is the smaller of the two: a body doesn't go through a tooth set in it.
+        if len(outer) >= 2 and surface.area <= cover.area and not self._worn(surface, cover, outer, fine, rings):
             return f"{surface.name} goes right through {cover.name}"
         return None
 
@@ -1350,7 +1477,7 @@ class Judge:
         if any(self.joints.node.get(name) == trunk for name in (surface.bones | cover.bones)):
             return False
         joint = self.joints.line(hanging[1])[0]
-        reach = self.joints.armature.data.bones[hanging[1]].length
+        reach = limb_length(self.joints.armature, hanging[1])
         groups, _, fine, _ = outer
         ends = 0
         for group in groups:
@@ -1529,13 +1656,17 @@ def pose_pokes(surfaces, judge, sight_for, skip_pairs=frozenset(), rest_within=N
                 continue
             x, y, points = ring.details[0]
             ba, bb = s.bone_at(x, points), s.bone_at(y, points)
-            if bones.near(ba, bb) or _ordered(ba, bb) in known or (bones.mirrored(ba, bb) and sunk_depth(s, s, ring.details) < 0.015 * judge.scale):
+            # A thumb that touches a thigh on the way past isn't through it: what shows is how deep it goes.
+            if bones.near(ba, bb) or _ordered(ba, bb) in known or sunk_depth(s, s, ring.details) < 0.015 * judge.scale:
                 brushing[s.name] = brushing.get(s.name, 0) + len(ring.details)
             else:
                 pokes.append({"label": f"{ba} into {bb}", "count": len(ring.details), "at": ring.points[0], "why": f"{ba} goes into {bb}"})
     for (i, j), found in sorted(between.items()):
         a, b = surfaces[i], surfaces[j]
         if (a.name, b.name) in skip_pairs or (judge.skip and judge.skip(a, b)):
+            continue
+        # Both carried by one bone alone: they move as one, and nothing a pose does can change how they sit.
+        if len(a.bones | b.bones) == 1:
             continue
         sight = sight_for(a, b)
         if a.owner in judge.see_through or b.owner in judge.see_through:
@@ -1548,21 +1679,35 @@ def pose_pokes(surfaces, judge, sight_for, skip_pairs=frozenset(), rest_within=N
         rings = rings_of(a, b, found, judge.tolerance)
         result, _ = judge.pair(a, b, found, sight)
         if result:
-            # Thighs brush each other in a stride: no joint connects them, and it's no poke until one sinks into the other.
-            if result[0].endswith("no joint connects them") and _only_brushing(a, b, rings, judge):
+            # Thighs brush each other in a stride, a hand a hip on the way past: no joint connects them, and it's no poke until one sinks
+            # into the other.
+            if result[0].endswith("no joint connects them") and _only_brushing(a, b, judge):
                 continue
             pokes.append({"label": _through(a, b), "count": result[2], "at": result[1], "why": result[0]})
     return pokes, brushing, between
 
 
-def _only_brushing(a, b, rings, judge):
-    """Whether two parts press into each other only a little, on the two sides' bones of one joint."""
-    for ring in rings:
-        x, y, points = ring.details[0]
-        if not judge.joints.mirrored(a.bone_at(x, points), b.bone_at(y, points)):
-            return False
+def _only_brushing(a, b, judge):
+    """Whether two parts press into each other only a little."""
     _, covered, fine, _ = judge.outer(a, b)
     return not covered or max(b.tree.find_nearest(fine.bm.verts[i].co)[3] for i in covered) < 0.015 * judge.scale
+
+
+def folds_on_itself(surface, ring, judge):
+    """Whether a surface's crossing of itself is a fold: on bones a joint connects, or pressed in only a little, as in a crease at the
+    crotch or two thighs that touch. Deeper than that on one bone, where nothing bends, it is crumpled. With no bones nothing
+    tells, and it counts."""
+    bones = judge.joints
+    if not bones.node:
+        return False
+    pressed = []
+    for x, y, points in ring.details:
+        ba, bb = surface.bone_at(x, points), surface.bone_at(y, points)
+        if ba == bb or bones.mirrored(ba, bb):
+            pressed.append((x, y, points))
+        elif not bones.near(ba, bb):
+            return False
+    return not pressed or sunk_depth(surface, surface, pressed) < 0.015 * judge.scale
 
 
 def _through(a, b):

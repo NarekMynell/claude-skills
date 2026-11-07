@@ -8,6 +8,8 @@ Run it as the game-assets guide's "Running the scripts" describes. Settings:
     CHARACTER_CHECK = {}         inspect_character.py settings for a rigged asset, such as {"FINGERS": 4}
     ANIMATION = False            a rigged asset: also export its current action, unreduced
     FORCE = False                export despite failed checks: only after the user accepted each listed issue
+    PROOF_DIR = "/abs/docs/proofs"  the checks leave their receipts there, so nothing has to run them again
+    PROOF_NAME = "crate"         default: the name of the file
 
 Sets `result`: `exported` (the path, or None), `issues` (what failed) and `checks` (the full reports). Selection and
 the active object are restored.
@@ -53,14 +55,17 @@ def export():
         objects.append(armature)
 
     checks, issues = {}, {}
-    mesh_settings = {"TARGETS": [o.name for o in meshes], "TRIANGLE_BUDGET": _setting("TRIANGLE_BUDGET", None)}
+    proofs = {}
+    if _setting("PROOF_DIR", None):
+        proofs = {"PROOF_DIR": _setting("PROOF_DIR", None), "PROOF_NAME": _setting("PROOF_NAME", None) or os.path.splitext(os.path.basename(filepath))[0]}
+    mesh_settings = {"TARGETS": [o.name for o in meshes], "TRIANGLE_BUDGET": _setting("TRIANGLE_BUDGET", None), **proofs}
     mesh_settings.update(_setting("MESH_CHECK", {}))
     checks["mesh"] = _run("validate_mesh.py", mesh_settings)
     for entry in checks["mesh"]["objects"]:
         if entry["issues"]:
             issues[entry["name"]] = entry["issues"]
     if armature:
-        character_settings = {"TARGETS": [o.name for o in meshes], "ARMATURE": armature.name}
+        character_settings = {"TARGETS": [o.name for o in meshes], "ARMATURE": armature.name, **proofs}
         character_settings.update(_setting("CHARACTER_CHECK", {}))
         checks["character"] = _run("inspect_character.py", character_settings)
         if checks["character"]["issues"]:
@@ -110,6 +115,12 @@ def export():
         for obj in selected:
             obj.select_set(True)
         view_layer.objects.active = active
+    # The checks ran on what was just written: their receipts aren't older than the file.
+    if proofs:
+        for family in ("validate_mesh", "inspect_character"):
+            receipt = os.path.join(proofs["PROOF_DIR"], f"{family}-{proofs['PROOF_NAME']}.json")
+            if os.path.exists(receipt):
+                os.utime(receipt)
     return {"exported": filepath, "issues": issues, "checks": checks}
 
 

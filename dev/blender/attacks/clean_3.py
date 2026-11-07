@@ -135,6 +135,7 @@ def nick(body, x_range, z_range, sign):
     bm.from_mesh(body.data)
     tree = helpers.BVHTree.FromBMesh(bm)
     bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
     best = None
     for v in bm.verts:
         if x_range[0] < abs(v.co.x) < x_range[1] and z_range[0] < v.co.z < z_range[1] and v.co.x * sign > 0:
