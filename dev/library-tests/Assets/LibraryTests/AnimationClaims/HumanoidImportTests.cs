@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace LibraryTests.AnimationClaims
 {
-    // What the characters and animation guides claim about Unity's Humanoid import, checked on a mannequin that
+    // What unity-dev's models and animation guides claim about Unity's Humanoid import, checked on a mannequin that
     // dev/blender/make_fixtures.py exports from Blender with the guides' settings: it faces -Y in Blender, its bones
     // are named hand.L, thigh.R and so on, and its walk moves it at 1 m/s. A failure after a Unity or Blender upgrade
     // means a guide is out of date: fix the guide, not the test.

@@ -1,7 +1,7 @@
 {
   "name": "unity-dev",
-  "version": "0.11.0",
-  "description": "Professional Unity development: SOLID interface-based architecture and C# standards (VContainer, MessagePipe, UniTask) with automated audits, project setup, game design and proven balance, art direction, UI, performance, audio, VFX, Blender 3D models, characters, animation and NPC behavior, docs, a tested code library and a toolchain check",
+  "version": "0.12.0",
+  "description": "Unity development: SOLID interface-based architecture and C# standards (VContainer, MessagePipe, UniTask) with automated audits, a tested code library, project setup, performance, UI, audio, VFX, NPC behavior, 3D models and animation in Unity, version notes and a toolchain check.",
   "author": {
     "name": "Narek"
   },
@@ -17,17 +17,13 @@
     "unitask",
     "messagepipe",
     "performance",
-    "blender",
-    "3d",
-    "documentation",
-    "characters",
-    "animation",
-    "rigging",
-    "balance",
     "ui",
-    "art-direction"
+    "animation"
   ],
   "dependencies": [
+    "core",
+    "game-design",
+    "modeling",
     "unity@claude-plugins-official",
     "csharp-lsp@claude-plugins-official"
   ]

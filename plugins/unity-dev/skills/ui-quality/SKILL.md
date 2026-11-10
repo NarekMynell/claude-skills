@@ -41,7 +41,7 @@ A theme is not a UI. Hierarchy, restraint and craft make it one.
 
 ## How to work
 
-1. **Look first.** Study real screens of the genre's top games: [Game UI Database](https://www.gameuidatabase.com), [Interface In Game](https://interfaceingame.com), store screenshots. Write down what each does and why: shapes, depth, how buttons are built, how much screen the HUD takes, where the primary action sits. Learn the principles; never copy an identity. Keep the images as references for the review (see the [art direction guide](../art-direction/SKILL.md#references) on getting them).
+1. **Look first.** Study real screens of the genre's top games: [Game UI Database](https://www.gameuidatabase.com), [Interface In Game](https://interfaceingame.com), store screenshots. Write down what each does and why: shapes, depth, how buttons are built, how much screen the HUD takes, where the primary action sits. Learn the principles; never copy an identity. Keep the images as references for the review (`game-design:art-direction` says how to get them).
 2. **Three concepts,** truly different, each from the game's own world: where would this interface exist if the game were real, what is it made of? Write each in a few lines with one key screen sketched. Choose the best yourself, tell the user why.
 3. **Tokens.** Write them in `docs/ui-design.md` before any screen: radius scale, spacing scale, type scale, color roles, light direction, stroke weights, icon grid and style, motion durations. The radius scale, type scale and fonts also go in a [UiAuditSettings](../library/code/Core/Editor/UiChecks/README.md) asset, so every screen is held to them.
 4. **Kit first.** Build every component in every state, render them on one sheet, and critique that sheet at device scale. Most craft problems show here and are cheap to fix.
@@ -124,5 +124,5 @@ Markers over the world are where clutter starts, and a tycoon or strategy game h
 
 1. **[UiAudit](../library/code/Core/Editor/UiChecks/README.md)** on each open screen, at each target aspect ratio, in Play Mode for UI built at runtime: `UiAudit.AuditAllCanvases(receiptName: "shop-20x9")`, with `noPanelOpen: true` for the HUD alone. It reports capsules, stretched sprites, squeezed corners, corners and text off the project's scales, shapes it can't measure, text and spacing problems. Copy it into every project with UI.
 2. **Screenshots at device size,** captured from the running game through the Unity CLI: several resolutions and aspect ratios, looked at one by one.
-3. **[study_screenshot.py](../game-assets/scripts/study_screenshot.py)** on the key screen next to its references: blur and gray show the hierarchy.
-4. **The written [UI review](references/review.md),** then a [fresh review](../standards/references/fresh-review.md) at milestones.
+3. **`study_screenshot.py`** (`game-design:art-direction`) on the key screen next to its references: blur and gray show the hierarchy.
+4. **The written [UI review](references/review.md),** then a [fresh review](../standards/references/reviews.md) at milestones.

@@ -1,4 +1,4 @@
-# A test animal for the animation script tests: built by game-assets/scripts/build_body.py, facing -Y, left at +X, with a
+# A test animal for the animation script tests: built by modeling/scripts/build_body.py, facing -Y, left at +X, with a
 # walk whose paws are placed by two-bone IK. Offsets choose the gait: when each paw lands, as a share of the cycle.
 import math
 import os
@@ -6,7 +6,7 @@ import os
 import bpy
 from mathutils import Matrix, Vector
 
-SCRIPTS = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "plugins", "unity-dev", "skills", "game-assets", "scripts"))
+SCRIPTS = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "plugins", "modeling", "scripts"))
 FRAMES = 40
 STEP = 0.3
 LIFT = 0.05

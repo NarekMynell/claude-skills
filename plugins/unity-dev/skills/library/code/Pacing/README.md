@@ -1,6 +1,6 @@
 # Pacing
 
-Turns a simulated player's timeline into pacing measures, and finds where the game breaks the promises the design states: dead zones, walls, repetition, dominant choices, overflow, runaway numbers. How to use it in a balance proof: [balance guide](../../../game-design/references/balance.md).
+Turns a simulated player's timeline into pacing measures, and finds where the game breaks the promises the design states: dead zones, walls, repetition, dominant choices, overflow, runaway numbers. How to use it in a balance proof: the balance reference of `game-design:game-design`.
 
 - **Destination:** `Pacing/`, its own assembly with no engine references, so a balance simulation in plain C# can use it from Edit Mode tests or outside Unity.
 - **Depends on:** nothing. Its assembly stays free of the engine; a test assembly that references Core can write the receipt.

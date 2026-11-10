@@ -1,6 +1,6 @@
 # Writes dev/library-tests/Fixtures/Mannequin.fbx for the Unity tests in LibraryTests/AnimationClaims: the test
 # mannequin (facing -Y, .L/.R bone names) with a root-motion walk at gait.SPEED (1 m/s along -Y), exported by
-# game-assets/scripts/export_fbx.py with the guides' settings.
+# modeling/scripts/export_fbx.py with the guides' settings.
 # Run: blender -b --factory-startup --python-exit-code 1 --python dev/blender/make_fixtures.py
 import os
 import sys
@@ -11,7 +11,7 @@ import gait  # noqa: E402
 import mannequin  # noqa: E402
 
 root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-scripts = os.path.join(root, "plugins", "unity-dev", "skills", "game-assets", "scripts")
+scripts = os.path.join(root, "plugins", "modeling", "scripts")
 output = os.path.join(root, "dev", "library-tests", "Fixtures", "Mannequin.fbx")
 
 

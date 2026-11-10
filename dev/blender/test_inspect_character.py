@@ -1,4 +1,4 @@
-# Runs game-assets/scripts/inspect_character.py against test mannequins with known defects and checks each report.
+# Runs modeling/scripts/inspect_character.py against test mannequins with known defects and checks each report.
 # Run by dev/run-blender-tests.sh: blender -b --factory-startup --python-exit-code 1 --python <this> -- <inspect_character.py>
 import math
 import os

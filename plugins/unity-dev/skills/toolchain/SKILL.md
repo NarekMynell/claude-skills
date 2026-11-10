@@ -1,6 +1,6 @@
 ---
 name: toolchain
-description: Checks, repairs and updates the Unity toolchain for Claude Code - Unity CLI, the Unity Pipeline package for live Editor control, the official Unity plugin, the C# language server, and the Blender connector.
+description: Checks, repairs and updates the Unity toolchain for Claude Code - Unity CLI, the Unity Pipeline package for live Editor control, the official Unity plugin, the C# language server.
 disable-model-invocation: true
 allowed-tools:
   - Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh *)
@@ -15,7 +15,7 @@ Every tool must be **installed**, **reachable** and **up to date**. When an upda
 
 ## Check
 
-Run this command exactly as written, with nothing added (it always exits 0): `bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh "${CLAUDE_PROJECT_DIR}" "${CLAUDE_PLUGIN_DATA}"`. In a Unity project it checks the tools below and prints only the problems; `/unity-dev:standards` runs the same check, and so does the start of every session in a project that has the standards on. Fix what it reports, plus any problem the user describes that it doesn't cover, such as the live Editor connection or the Blender connector.
+Run this command exactly as written, with nothing added (it always exits 0): `bash ${CLAUDE_PLUGIN_ROOT}/skills/toolchain/scripts/check.sh "${CLAUDE_PROJECT_DIR}" "${CLAUDE_PLUGIN_DATA}"`. In a Unity project it checks the tools below and prints only the problems; `/unity-dev:standards` runs the same check, and so does the start of every session in a project that has the standards on. Fix what it reports, plus any problem the user describes that it doesn't cover, such as the live Editor connection. The Blender connector is modeling's: `modeling:models` checks it before 3D work.
 
 ## Tools
 
@@ -26,7 +26,6 @@ Run this command exactly as written, with nothing added (it always exits 0): `ba
 | Live Editor connection | `unity status --format json` shows the project with state `ready` | Ask the user to open the project in the Editor. If it doesn't connect, check for Safe Mode (compile errors) with `unity pipeline list` and fix the errors first. |
 | Unity plugin for Claude Code (`unity@claude-plugins-official`) | `claude plugin list --json` | Installed automatically as a unity-dev dependency. Update: `claude plugin update unity@claude-plugins-official`. |
 | C# language server | `csharp-ls --version` (also try `~/.dotnet/tools/csharp-ls`); plugin `csharp-lsp@claude-plugins-official` in `claude plugin list --json` | Server: `dotnet tool install --global csharp-ls`, update with `dotnet tool update --global csharp-ls`. The plugin is installed automatically as a unity-dev dependency. If the server is installed but not found, `~/.dotnet/tools` is missing from the PATH that Claude Code sees. |
-| Blender connector | Only before 3D work: the Blender MCP `get_objects_summary` tool responds | Ask the user to start Blender with the connector enabled. |
 
 Plugin updates and installs apply after Claude Code restarts: tell the user. Third-party marketplaces don't auto-update by default; the user enables it once in `/plugin` → Marketplaces.
 

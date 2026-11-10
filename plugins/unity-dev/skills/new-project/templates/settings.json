@@ -4,7 +4,10 @@
   },
   "permissions": {
     "allow": [
-      "Read(~/.claude/plugins/cache/*/unity-dev/**)"
+      "Read(~/.claude/plugins/cache/*/unity-dev/**)",
+      "Read(~/.claude/plugins/cache/*/core/**)",
+      "Read(~/.claude/plugins/cache/*/game-design/**)",
+      "Read(~/.claude/plugins/cache/*/modeling/**)"
     ]
   },
   "extraKnownMarketplaces": {
@@ -18,6 +21,9 @@
   },
   "enabledPlugins": {
     "unity-dev@narek-skills": true,
+    "core@narek-skills": true,
+    "game-design@narek-skills": true,
+    "modeling@narek-skills": true,
     "unity@claude-plugins-official": true,
     "csharp-lsp@claude-plugins-official": true
   }

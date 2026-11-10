@@ -1,0 +1,21 @@
+{
+  "name": "game-design",
+  "version": "0.1.0",
+  "description": "Game design for any engine: research, concepts with a hook, the game design document, core and meta loops, production order, game feel, calculated balance and pacing, and art direction with screenshot studies against references.",
+  "author": {
+    "name": "Narek"
+  },
+  "homepage": "https://github.com/NarekMynell/claude-skills",
+  "repository": "https://github.com/NarekMynell/claude-skills",
+  "license": "MIT",
+  "keywords": [
+    "gamedev",
+    "game-design",
+    "balance",
+    "pacing",
+    "art-direction"
+  ],
+  "dependencies": [
+    "core"
+  ]
+}

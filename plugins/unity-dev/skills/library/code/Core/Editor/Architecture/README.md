@@ -1,6 +1,6 @@
 # Architecture audit
 
-Checks the project's compiled code against what a script can tell of the [architecture rules](../../../../../code-standards/SKILL.md#architecture), from an Edit Mode test, so those violations fail the test run. Green is the floor, not a good design: whether the interfaces are real capabilities and whether the next feature fits are for the [fresh review](../../../../../standards/references/fresh-review.md#architecture), and the report's signals point it where to look.
+Checks the project's compiled code against what a script can tell of the [architecture rules](../../../../../code-standards/SKILL.md#architecture), from an Edit Mode test, so those violations fail the test run. Green is the floor, not a good design: whether the interfaces are real capabilities and whether the next feature fits are for the [fresh review](../../../../../standards/references/reviews.md#architecture), and the report's signals point it where to look.
 
 - **Destination:** `Core/Editor/Architecture/`
 - **Depends on:** Proofs.

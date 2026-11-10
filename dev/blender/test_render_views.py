@@ -1,4 +1,4 @@
-# Runs game-assets/scripts/render_views.py and checks the contact sheet: its size and layout, the colors in its
+# Runs modeling/scripts/render_views.py and checks the contact sheet: its size and layout, the colors in its
 # tiles, the character preset's close-ups, frames, and that the scene is restored with no helper left behind.
 # Run by dev/run-blender-tests.sh: blender -b --factory-startup --python-exit-code 1 --python <this> -- <render_views.py> <output dir>
 import json

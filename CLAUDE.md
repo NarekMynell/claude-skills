@@ -1,78 +1,88 @@
 # Skills marketplace
 
-This repo is a Claude Code plugin marketplace with one plugin, `unity-dev`: a pack of skills for Unity game development, including Blender 3D assets and project documentation. People install it from GitHub, so everything here has to work on any machine, for anyone.
+`narek-skills` is a Claude Code plugin marketplace organized by **domain**: each domain is one plugin, and each project turns on the domains and skills it needs. People install it from GitHub, so everything here has to work on any machine, for anyone.
 
-## Layout
+## Architecture
 
-- `.claude-plugin/marketplace.json` lists the plugins. A new plugin needs an entry here.
-- `plugins/<plugin>/.claude-plugin/plugin.json` is the plugin's manifest. Bump its `version` (semver) with every change users should receive.
-- `plugins/<plugin>/skills/<skill>/SKILL.md` is one skill. Its supporting files (`references/`, `scripts/`, `templates/`) sit next to it. When a skill runs, Claude receives its base directory, so link supporting files with paths relative to the skill folder.
-- `plugins/unity-dev/skills/standards/` is the one command users need: it loads the standards and routes Claude to every other skill, which it reads as a guide. A new skill gets a row in its table.
-- `plugins/unity-dev/skills/library/` holds the Unity code library: `CATALOG.md`, and `code/`, which mirrors a project's `Assets/_Project/Scripts/` with the placeholder root namespace `ProjectName`. Projects copy from it under their own root namespace. Authoring rules: `plugins/unity-dev/skills/library/references/authoring.md`.
+<!-- catalog:architecture -->
+| Domain | Builds on | Skills |
+|---|---|---|
+| [core](plugins/core/README.md) | - | project-docs, skills, standards, version-notes |
+| [game-design](plugins/game-design/README.md) | core | art-direction, game-design, standards |
+| [modeling](plugins/modeling/README.md) | core | animation, characters, models, standards |
+| [unity-dev](plugins/unity-dev/README.md) | core, game-design, modeling | adopt-standards, animation, audio-design, code-standards, library, models, new-domain, new-project, npc-behavior, performance, standards, toolchain, ui-quality, version-notes, vfx |
+<!-- /catalog -->
 
-Put every new skill in `unity-dev`, so one command reaches it. A skill in another plugin couldn't be read from `standards`: each plugin is copied to its own folder.
+A domain builds on others through `dependencies` in its `plugin.json`: they install with it, and come on with it in a project. Every domain builds on core, the base: its standards define musts, guides, receipts and verification for all the others, so it loads wherever any domain does.
 
-## Nothing loads unless the user asks
+```
+.claude-plugin/marketplace.json   the domains, in order; one entry per plugin
+plugins/<domain>/
+  .claude-plugin/plugin.json      version, description, dependencies
+  README.md                       what the domain is; its skills table between catalog markers
+  hooks/hooks.json                the domain's hooks; lib.sh, context.sh and domains.txt beside it are copies
+  skills/standards/SKILL.md       the hub: what the domain loads (see below)
+  skills/<skill>/SKILL.md         one skill; its references/, scripts/ and templates/ beside it
+  scripts/                        tools several skills of the domain share (modeling's Blender checks)
+shared/hooks/                     the hook code every domain runs; dev/sync.py copies it into each plugin
+dev/                              generators and tests; never shipped
+```
 
-The user decides when a plugin acts: no skill Claude can load by itself, and hooks that do nothing until the user turns them on for a project.
+**Generated, never edited by hand:** the tables between `<!-- catalog:... -->` markers here, in `README.md` and in each plugin's `README.md`; `plugins/core/skills/skills/catalog.md`, which `/core:skills` reads; `shared/hooks/domains.txt`; the plugins' copies of `shared/hooks/`. `python3 dev/sync.py` rewrites them from the manifests and each skill's frontmatter. Run it after any change to a domain, a skill's name or description, or `shared/hooks/`.
 
-- Every skill sets `disable-model-invocation: true`, so it loads only when the user types its command. Claude never sees the descriptions: `description` is for people browsing the `/` menu, one sentence on what the skill does.
-- Every skill pre-approves reading its own plugin's files with `allowed-tools: Read(~/.claude/plugins/cache/*/<plugin>/**)`. Plugin files sit outside the project, so without the rule each read asks for permission.
-- Skills link each other with relative paths (`../library/SKILL.md`), never by skill name: Claude can't invoke them, so it reads the linked file. A plugin can't link another plugin's files, because each plugin is copied on its own; point the user to that plugin's command instead.
-- `${CLAUDE_PLUGIN_ROOT}` and the other variables are substituted only in the skill the user invoked, not in files Claude reads from it. Use them only in `standards` and `toolchain`, and relative paths everywhere else.
-- Every-session loading is a per-project switch: `UNITY_DEV_STANDARDS` set to `on` under `env` in the project's `.claude/settings.json` (or `.claude/settings.local.json`), next to the plugin's read rule, because outside a command nothing pre-approves those reads. `/unity-dev:standards` writes both on its first run in a project; `new-project` and `adopt-standards` write them through the team settings template. With the switch on:
-  - the SessionStart hook (`hooks/standards.sh`) adds `skills/standards/SKILL.md` up to its `## When the user types the command` heading to the context on startup, `/clear` and compaction. That part must work without the command, use no variable but `${CLAUDE_SKILL_DIR}`, which the hook resolves, and stay under about 9,500 characters: the cap on hook output is 10,000, and the toolchain report can follow it;
-  - the SubagentStart hook, the same script, gives it to subagents, except those that only read;
-  - the Stop hook (`hooks/gates.sh`) compares what changed with the receipts in the project's `docs/proofs/`, and asks once to deal with those the change can have made wrong: C# for the architecture check, a model for that model's receipts, a whole-game check for its own area by the file's path, or after 30 changed files. A failure told once in a session isn't repeated until it changes. With the receipts in order, it costs nothing. A check family a project has no use for goes in `docs/proofs/not-applicable.txt`, and so does a failing receipt the user accepted, with their words;
-  - the PreToolUse hook on Write and Edit (`hooks/receipts.sh`) refuses hand edits of receipts.
+### How a domain reaches Claude
 
-  The hooks find the switch from the session's current folder when the variable isn't set (`hooks/common.sh`): a session that started above a new project has no variable, and is exactly the session that builds the game.
-- Templates copied into projects hold project knowledge only: what the project is, its decisions, its docs index. A project's `CLAUDE.md` loads in every session, so it never tells Claude to load or follow these skills; the switch does that.
+- **Only when the user asks.** Every skill sets `disable-model-invocation: true`, so Claude can't load one by itself; `description` is one sentence for people browsing the `/` menu. A command (`/<domain>:<skill>`) loads one skill; `/<domain>:standards` loads the domain.
+- **The hub.** `skills/standards/SKILL.md` up to its `## When the user types the command` heading is what the domain loads: one line of scope, a **Musts** table, `## Verify before relying on them` (the domain's sources), a **Guides** table with one row per kind of work, and what the domain adds to the done checklist. A row's first `../<skill>/` link names the skill it belongs to: that is how a switch removes it. Another skill linked after it in the row is one it needs, such as `[characters](../characters/SKILL.md), after [models](../models/SKILL.md)`. The hub stays under 9,500 characters: the hook cap is 10,000, and unity-dev's toolchain report can follow it.
+- **Switches,** under `env` in a project's `.claude/settings.json`, or `.claude/settings.local.json`, which wins key by key: `<DOMAIN>_STANDARDS` turns a domain on or off, `<DOMAIN>_SKILL_<SKILL>` one skill (`UNITY_DEV_SKILL_VFX`). A domain with no switch is on wherever a domain that builds on it is on, so `UNITY_DEV_STANDARDS` brings game-design and modeling; a single skill switched on brings no other domain. Core is the base: it is on wherever any domain is active (has a skill on), and can't be switched off while one is. A domain that is on also needs its read rule there, `Read(~/.claude/plugins/cache/*/<domain>/**)`, because nothing else pre-approves reading plugin files outside a command. `/core:skills` writes them; each `/<domain>:standards` writes its own on its first run in a project.
+- **The hook,** `shared/hooks/context.sh`, run by each domain for itself. SessionStart (startup, `/clear`) and SubagentStart give an active domain's hub, with the rows of skills that are off removed and its variables resolved; read-only subagents get nothing. UserPromptSubmit gives a domain's hub in the same turn when the user types `/<domain>:standards <task>` of a domain that builds on it, and once when the domain came on during the session. Each hook notes the sessions that have its hub (in its plugin's data folder): compaction gives them the hub again, whether it came from the switches or from a command, and a resumed or forked session, whose transcript has it, gets nothing twice. The hooks find the switches from the session's current folder when the variables aren't set (a session that started above a new project has none).
+- **Proofs.** Checks write receipts to the project's `docs/proofs/`. Core's PreToolUse hook refuses hand edits of receipts wherever a domain is on. In a Unity project, unity-dev's Stop hook (`gates.sh`) compares what changed with the receipts, only for families whose skill is on, and asks once about those the change can have made wrong; a family a project has no use for goes in `docs/proofs/not-applicable.txt`, and so does a failing receipt the user accepted, with their words.
+- **Across domains.** A plugin can't read another plugin's files: each is copied on its own. Inside a domain, link with relative paths. Name another domain's guide as `` `domain:skill` `` (`` `modeling:characters` ``): its path is in that domain's hub in context. `${CLAUDE_PLUGIN_ROOT}` and the other variables are substituted only in the SKILL.md the user invoked, and by the hook in a hub; everywhere else use relative paths.
+- **Templates** copied into projects hold project knowledge only. A project's `CLAUDE.md` never tells Claude to load these skills: the switches do.
+
+### Adding
+
+- **A skill:** `plugins/<domain>/skills/<name>/SKILL.md`, the folder named as `name`; a row in the hub's Guides table, and in its Musts table if the skill has a must; then `python3 dev/sync.py`.
+- **A check that writes receipts:** a new family also goes into `family_on` and the sweep list in `plugins/unity-dev/hooks/gates.sh`, with the skill whose must it proves, or the gate never asks for it; and into `dev/run-hook-tests.sh`.
+- **A domain:** `plugins/<domain>/` with `plugin.json` (`dependencies`: core and every domain it builds on), `README.md` with `<!-- catalog:skills -->` and `<!-- /catalog -->`, a hub, and `hooks/hooks.json` running `context.sh <domain>` on SessionStart (`startup|clear|compact`), SubagentStart and UserPromptSubmit; an entry in `marketplace.json`; then `python3 dev/sync.py`. Engine knowledge stays in its engine's domain: modeling and game-design name the engine's guide (`unity-dev:models`), never hold its settings.
 
 ## Musts and guides
 
-Every guide separates what is binding from what is advice, and the user asked for both: quality that can't be traded, and solutions Claude chooses per project.
+Every guide separates what is binding from what is advice; the user asked for both: quality that can't be traded, and solutions Claude chooses per project.
 
-- **A must** is a bar for the result, with a proof that can fail: a script, a test, a measurement, a review. A plain instruction with a clear trigger, such as JSON through Newtonsoft, is proven by review: it needs no script. It opens the guide under `## Must`, and the standards table lists it, because the table stays in context after compaction. Only the user changes a must.
+- **A must** is a bar for the result, with a proof that can fail: a script, a test, a measurement, a review. A plain instruction with a clear trigger, such as JSON through Newtonsoft, is proven by review. It opens the guide under `## Must`, and the domain's hub lists it, because the hub stays in context after compaction. Only the user changes a must.
 - **Everything else is a guide:** methods known to work, failures seen, strong defaults. It says what worked and why, not "always".
-- **Text alone doesn't hold.** A real game ran for hours under these standards, with them in context, and ended with 136 classes on 6 interfaces, none of the Blender checks run, and its own "Decisions" replacing them. So a rule that matters gets a check that fails on its own: in the library (`ProjectArchitectureTests`, `UiAudit`, `SceneCostAudit`, `ColliderAudit`, `PacingAnalyzer`, `FootSlideMeter`) or in `game-assets/scripts`. Each has a case with the defect and a clean case, and writes a receipt in the project's `docs/proofs/`, so what ran doesn't rest on anyone's word.
-- **A check has to earn its cost.** It costs a run, code to keep, and a turn each time it speaks. It earns that when text has already failed on the rule, when the defect shows late and costs much to fix, or when Claude can't see the defect without a measurement, as with everything in a mesh, a UV map or a rig. Otherwise a sentence does the job. And a script says only what a script can tell: what takes judgement, such as whether an architecture is good, belongs to a review, and a number that points there is a signal, not a failure, or it gets gamed.
-- **A check is attacked before it is trusted, from both sides.** Run an adversarial review that tries to pass a real defect through it, and to fail a good result built another way. Each check here passed its own tests and still let real defects through on the first such review. `inspect_character.py` failed 71 of 73 characters of a real game, because every clean case in its tests was built the same way: a check that fails everything hides real defects as surely as one that passes everything. So a check gets a clean case per way of building the thing, and each test scene is confirmed by a render: one "head through a hat" here turned out to graze it by 2 mm where nobody could see.
-- **Clean cases come from work the check didn't help build.** After all that, the same check still failed every professional character inside Unity's own packages, and `validate_mesh.py` half of its models: test poses tore apart any imported rig, and a palette texture counted as a defect. `dev/run-real-assets.sh` holds the checks to those models and clips, and `dev/run-real-colliders.sh` holds `ColliderAudit` to the prefabs and scenes of Unity's samples. When one fails a professional model, it is wrong until a render says otherwise. A rule that sounds right gets the same test: "a mirrored collider isn't where the model is" failed 25 colliders there, and a physics query showed Unity's colliders follow the mirror.
-- **The hook speaks only about what a change can have broken.** It costs a turn, and one that lists eight checks on each line of C# is one that nobody hears.
-- **A report is for the user.** A check says what the player would see and where, not only an issue's name: the user decides on it, and can't decide on a name.
-- **Failures stay in the guides,** as "what has failed": they are the most useful part, and they stop Claude from trying the obvious first idea again.
+- **Text alone doesn't hold.** A real game ran for hours under these standards, with them in context, and ended with 136 classes on 6 interfaces, none of the Blender checks run, and its own "Decisions" replacing them. A rule that matters gets a check that fails on its own, with a case for the defect and a clean case, writing a receipt in `docs/proofs/`.
+- **A check has to earn its cost:** a run, code to keep, and a turn each time it speaks. It earns that when text has already failed on the rule, when the defect shows late and costs much to fix, or when Claude can't see the defect without a measurement, as in a mesh, a UV map or a rig. A script says only what a script can tell: what takes judgement, such as whether an architecture is good, belongs to a review, and a number that points there is a signal, not a failure.
+- **A check is attacked before it is trusted, from both sides:** a review that tries to pass a real defect through it, and to fail a good result built another way. `inspect_character.py` once failed 71 of 73 characters of a real game, because every clean case in its tests was built the same way: a check that fails everything hides real defects as surely as one that passes everything. So a check gets a clean case per way of building the thing, and each test scene is confirmed by a render.
+- **Clean cases come from work the check didn't help build:** `dev/run-real-assets.sh` holds the Blender checks to the professional models and clips inside a Unity install, and `dev/run-real-colliders.sh` holds `ColliderAudit` to Unity's samples. When a check fails professional work, it is wrong until a render says otherwise. A rule that sounds right gets the same test: "a mirrored collider isn't where the model is" failed 25 colliders there, and a physics query showed Unity's colliders follow the mirror.
+- **The hook speaks only about what a change can have broken,** and **a report is for the user:** it says what the player would see and where, not only an issue's name.
+- **Failures stay in the guides,** as "what has failed": they stop Claude from trying the obvious first idea again.
 
 ## Writing a skill
 
-- The folder name matches `name` in the frontmatter: lowercase, hyphens.
-- Every skill and reference opens, right after its title, with the line saying it can be wrong or out of date and must be verified, linked to the rule in `standards` (copy it from an existing skill). The user asked for this on every guide: Claude must never treat these files as unquestionable.
-- Write only what Claude doesn't already know: decisions, conventions, gotchas. Skip textbook explanations.
-- Keep SKILL.md under ~500 lines. Move details into `references/` and link them from SKILL.md.
-- Verify every command, API name and URL before writing it: in the official docs, in the package source, or by running it. Name the version a fact depends on when it is new or version-specific.
-- C# rules and library code follow the resource-lifetime rules in `plugins/unity-dev/skills/code-standards/references/resource-lifetimes.md`.
+- Every skill and reference opens, right after its title, with the line saying it can be wrong or out of date and must be verified, linked to its domain's `standards#verify-before-relying-on-them` (copy it from an existing skill). The user asked for this on every guide.
+- Every skill sets `disable-model-invocation: true` and pre-approves reading its own plugin, `allowed-tools: Read(~/.claude/plugins/cache/*/<domain>/**)`; a hub also pre-approves the domains it builds on.
+- Write only what Claude doesn't already know: decisions, conventions, gotchas, failures. No textbook explanations, no filler: every sentence carries information.
+- SKILL.md under ~500 lines; details in `references/`, one level deep, linked from it.
+- Verify every command, API name and URL before writing it: in the official docs, the package source, or by running it. Name the version a fact depends on when it is new or version-specific.
+- C# rules and library code follow `plugins/unity-dev/skills/code-standards/references/resource-lifetimes.md`. The Unity code library's authoring rules: `plugins/unity-dev/skills/library/references/authoring.md`.
+- Don't duplicate what the official `unity` plugin covers: link to its skills.
 
 ## Keeping it shareable
 
-- Write everything in English.
-- No personal preferences (reply language, tone, names). Those belong in each user's own `~/.claude/CLAUDE.md`.
-- No absolute paths, usernames or secrets.
-- Scripts are bash 3.2 compatible (macOS default), use only POSIX tools, always exit 0, and print nothing when there is nothing to report.
-- Don't duplicate what the official `unity` plugin already covers: link to its skills.
+- Everything in English. No personal preferences (reply language, tone, names), absolute paths, usernames or secrets.
+- Scripts are bash 3.2 compatible (macOS default), use only POSIX tools, always exit 0, and print nothing when there is nothing to report. The hooks run on every prompt: no subshell or process they can do without.
 
 ## Testing
 
-- `claude plugin validate .` and `claude plugin validate plugins/<plugin>` before pushing.
-- `claude --plugin-dir plugins/<plugin> plugin details <plugin>` shows the per-skill token cost. Its always-on figure counts descriptions that `disable-model-invocation` keeps out of context.
-- End-to-end: run `claude -p --plugin-dir <repo>/plugins --add-dir <repo>/plugins "<prompt>"` from a test project outside this repo (this file would leak into one inside it). Check both directions: a plain prompt loads nothing from these plugins, and a command loads what it should. With the switch in the test project's `.claude/settings.json`, a plain prompt gets the standards. `--add-dir` stands in for the read rule, which matches only the installed cache.
-- Blender scripts: `dev/run-blender-tests.sh` runs them headless against scenes with known results (`dev/blender/`; the test mannequin, animal and walk cycles are built by `mannequin.py`, `quadruped.py` and `gait.py`, and bodies of overlapping parts by `partsbody.py`). A new check or script gets a case there, both a defect it must catch and a clean case it must pass, on each way of building: one skin, separate parts, one merged mesh, an animal. `dev/run-attack-tests.sh` runs the 321 scenes an adversarial review built against `inspect_character.py`, from both sides; a verdict that differs from what its scene asks for needs a line with its reason in `dev/blender/attacks/accepted.txt`, and the "open" lines there are work left. `dev/run-real-assets.sh` runs the checks over the professional models and clips inside a Unity install, against `dev/blender/real_assets_expected.txt`; none of them is copied here.
-- Colliders: `dev/run-real-colliders.sh` runs `ColliderAudit` over the prefabs and scenes in Unity's package samples, against `dev/library-tests/real_colliders_expected.txt`, copying what it needs into the test project only for the run.
-- Hooks: `dev/run-hook-tests.sh` runs them against known inputs in a temporary repository.
-- A change to what a guide tells Claude to do is tested on Claude: run the end-to-end command above with a real task, and read what it did, not what it says it did.
-- Humanoid import claims (sides, facing, root-motion speed) are tested in `LibraryTests/AnimationClaims/` on `dev/library-tests/Fixtures/Mannequin.fbx`. Regenerate the fixture with `dev/blender/make_fixtures.py` when the export settings or the mannequin change.
-- Library modules: see the authoring rules, including the player runs (`dev/run-library-tests.sh player`).
-- A C# snippet added to or changed in a guide or README is mirrored in `dev/library-tests/Assets/LibraryTests/SnippetCheck/SnippetCheck.cs`; a claim about how VContainer, MessagePipe, UniTask or Unity behaves gets a test in `LibraryTests/GuideClaims/`.
+- `python3 dev/sync.py --check` and `python3 dev/check-links.py`: the generated files are current, and every relative link, heading and `domain:skill` name resolves.
+- `claude plugin validate --strict .` and the same for each `plugins/<domain>`. `claude --plugin-dir plugins/<domain> plugin details <domain>` shows each skill's token cost; its always-on figure counts descriptions that `disable-model-invocation` keeps out of context.
+- Hooks: `dev/run-hook-tests.sh` runs every hook against known inputs: the switches and what each domain brings, the commands that pull domains in, the gates and the receipts.
+- End-to-end: from a test project outside this repository (this file would leak into one inside it), `claude -p --plugin-dir <repo>/plugins --add-dir <repo>/plugins "<prompt>"`. Check both directions: a plain prompt loads nothing, and a command or a switch loads what it should. `--add-dir` stands in for the read rules, which match only the installed cache. A change to what a guide tells Claude to do is tested on Claude this way: read what it did, not what it says it did.
+- Blender scripts: `dev/run-blender-tests.sh` runs them headless against scenes with known results (`dev/blender/`), a defect and a clean case on each way of building: one skin, separate parts, one merged mesh, an animal. `dev/run-attack-tests.sh` runs the 321 scenes of an adversarial review of `inspect_character.py`; a verdict that differs from its scene needs a line with its reason in `dev/blender/attacks/accepted.txt`, and its "open" lines are work left. `dev/run-real-assets.sh` holds the checks to professional models against `dev/blender/real_assets_expected.txt`.
+- Unity: `dev/run-library-tests.sh` (and `player`, `player WebGL`) for the library; `dev/run-real-colliders.sh` for `ColliderAudit`. A C# snippet added to or changed in a guide is mirrored in `dev/library-tests/Assets/LibraryTests/SnippetCheck/`; a claim about how VContainer, MessagePipe, UniTask or Unity behaves gets a test in `LibraryTests/GuideClaims/`; Humanoid import claims are tested in `LibraryTests/AnimationClaims/` on `dev/library-tests/Fixtures/Mannequin.fbx`, regenerated by `dev/blender/make_fixtures.py`.
 
 ## Releasing
 
-A plugin's `version` pins users to it, so every release bumps it in `plugin.json` (never also in `marketplace.json`). Tag the release from the plugin folder with `claude plugin tag --push`, which creates `<plugin>--v<version>`; dependency version ranges resolve against these tags.
+A plugin's `version` pins its users, so every change users should receive bumps it in that plugin's `plugin.json` (never in `marketplace.json`). A change to `shared/hooks/`, or to the domains and skills (which changes `domains.txt`), reaches every plugin's copy: bump every plugin, or the installed copies disagree. Tag each changed plugin from its folder with `claude plugin tag --push`, which creates `<plugin>--v<version>`; dependencies resolve against these tags.

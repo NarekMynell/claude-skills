@@ -10,7 +10,7 @@ import bpy
 
 args = sys.argv[sys.argv.index("--") + 1:]
 repo, packages = args[0], args[1]
-scripts = os.path.join(repo, "plugins/unity-dev/skills/game-assets/scripts")
+scripts = os.path.join(repo, "plugins/modeling/scripts")
 
 
 def compiled(name):

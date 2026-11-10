@@ -1,4 +1,4 @@
-# Runs game-assets/scripts/study_screenshot.py on generated pictures with known structure.
+# Runs game-design's art-direction/scripts/study_screenshot.py on generated pictures with known structure.
 # Run by dev/run-blender-tests.sh: blender -b --factory-startup --python-exit-code 1 --python <this> -- <study_screenshot.py> <output dir>
 import json
 import os

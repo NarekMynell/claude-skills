@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# unity-dev Stop hook. When a turn ends in a project that turned the standards on, it compares what changed since the last stop with
-# the receipts the checks write in docs/proofs/, and asks Claude once to deal with those the change can have made wrong: failing, older
+# unity-dev Stop hook. When a turn ends in a Unity project with unity-dev on, it compares what changed since the last stop with the
+# receipts the checks write in docs/proofs/, and asks Claude once to deal with those the change can have made wrong: failing, older
 # than the change, or missing. Only those: it costs a turn each time it speaks, and one that always speaks is one nobody hears.
 #   - C# and assembly definitions ask for the architecture check.
 #   - A model or a clip asks for the receipts named after it, not those of the other 72.
 #   - A check of the whole game answers for its own area, by the file's kind or by words in its path, or after many changes.
+# A family is asked for only where the skill whose must it proves is on (family_on): models need modeling, balance game-design.
 # A family that doesn't apply to the project is listed, with its reason, in docs/proofs/not-applicable.txt, and so is a failing receipt
 # the user accepted, with their words. A failure, or a proof many changes have made old, is told once in a session until it changes.
 # It says nothing when the receipts are in order or nothing changed. Always exits 0.
 
 root="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-. "$root/hooks/common.sh"
+hooks_dir="$root/hooks"
+[ -f "$hooks_dir/domains.txt" ] || exit 0
+. "$hooks_dir/lib.sh"
 
 input="$(cat)"
 session="$(printf '%s' "$input" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
@@ -19,7 +22,28 @@ case "$input" in
 esac
 
 cwd="$(working_folder "$(hook_cwd "$input")")"
-[ "$(standards_state "$cwd")" = on ] || exit 0
+load_domains
+load_settings "$cwd"
+any_switch && domain_active unity-dev || exit 0
+
+# The skill whose must a family of receipts proves.
+family_on() { # family
+  case "$1" in
+    architecture) skill_on unity-dev code-standards ;;
+    ui) skill_on unity-dev ui-quality ;;
+    locomotion) skill_on unity-dev animation ;;
+    crowd) skill_on unity-dev npc-behavior ;;
+    scene-cost | off-screen | budgets) skill_on unity-dev performance ;;
+    colliders) skill_on unity-dev models ;;
+    balance) skill_on game-design game-design ;;
+    study) skill_on game-design art-direction ;;
+    validate_mesh) skill_on modeling models || skill_on modeling characters ;;
+    inspect_character) skill_on modeling characters ;;
+    inspect_animation) skill_on modeling animation ;;
+    *) return 0 ;;
+  esac
+}
+
 project="$(unity_root "$cwd")"
 [ -n "$project" ] || project="$(unity_root "${CLAUDE_PROJECT_DIR:-$PWD}")"
 [ -n "$project" ] || exit 0
@@ -210,6 +234,7 @@ question_waiver() { # family, file
 
 # A family's receipts against the newest changed file of its area.
 check_family() { # family, file (empty: a deletion, given in `gone_cs`), file of the family's own kind, if any
+  family_on "$1" || return 0
   found=""
   for receipt in "$proofs"/*; do
     [ -f "$receipt" ] || continue
@@ -249,6 +274,7 @@ names_file() { # stem, plain
 
 # Models and clips: each file against the receipts named after it.
 check_files() { # family, list of files
+  family_on "$1" || return 0
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     plain="${file##*/}"
@@ -285,6 +311,7 @@ FILES
 
 # A tool that makes assets: some receipt has to have come after it.
 check_tool() { # family, file
+  family_on "$1" || return 0
   newest=""
   for receipt in "$proofs"/*; do
     [ -f "$receipt" ] || continue
@@ -375,6 +402,7 @@ elif many_since "$sweep"; then
 fi
 
 for family in architecture locomotion crowd balance ui scene-cost colliders off-screen budgets inspect_animation inspect_character study validate_mesh; do
+  family_on "$family" || continue
   newest=""
   for receipt in "$proofs"/*; do
     [ -f "$receipt" ] || continue

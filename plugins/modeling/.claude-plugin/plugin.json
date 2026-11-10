@@ -1,0 +1,22 @@
+{
+  "name": "modeling",
+  "version": "0.1.0",
+  "description": "3D modeling in Blender for games and real-time apps: models, environments and modular kits, characters and animals with rigs, animation clips, automated mesh, character and motion checks, contact-sheet reviews, light baking and gated export.",
+  "author": {
+    "name": "Narek"
+  },
+  "homepage": "https://github.com/NarekMynell/claude-skills",
+  "repository": "https://github.com/NarekMynell/claude-skills",
+  "license": "MIT",
+  "keywords": [
+    "blender",
+    "3d",
+    "modeling",
+    "characters",
+    "rigging",
+    "animation"
+  ],
+  "dependencies": [
+    "core"
+  ]
+}

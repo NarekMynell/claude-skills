@@ -4,16 +4,35 @@
     "name": "Narek"
   },
   "metadata": {
-    "description": "A Claude Code plugin for professional Unity game development: standards, guides, a code library and Blender 3D assets"
+    "description": "Claude Code skills by domain: working standards for any project, game design, 3D modeling in Blender and Unity development. Each project turns on the domains and skills it needs."
   },
   "allowCrossMarketplaceDependenciesOn": [
     "claude-plugins-official"
   ],
   "plugins": [
     {
+      "name": "core",
+      "source": "./plugins/core",
+      "category": "development",
+      "description": "Working standards for any project, the documentation layout, version notes, and the switches that choose a project's domains and skills"
+    },
+    {
+      "name": "game-design",
+      "source": "./plugins/game-design",
+      "category": "development",
+      "description": "Game design for any engine: concepts, the game design document, loops, production order, calculated balance and art direction"
+    },
+    {
+      "name": "modeling",
+      "source": "./plugins/modeling",
+      "category": "development",
+      "description": "3D modeling in Blender: models, characters, rigs and animation clips, with automated checks, contact sheets and gated export"
+    },
+    {
       "name": "unity-dev",
       "source": "./plugins/unity-dev",
-      "description": "Professional Unity development in one command: architecture and C# standards, project setup, game design, UI, performance, audio, VFX, Blender 3D models, docs, a code library and a toolchain check"
+      "category": "development",
+      "description": "Unity development: architecture and C# standards with audits, a tested code library, project setup, performance, UI, audio, VFX, 3D models and animation in Unity"
     }
   ]
 }

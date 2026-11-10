@@ -1,4 +1,4 @@
-# Runs game-assets/scripts/build_body.py: a cartoon figure, low and mid poly, must pass inspect_character.py, and a
+# Runs modeling/scripts/build_body.py: a cartoon figure, low and mid poly, must pass inspect_character.py, and a
 # skeleton with two roots must be refused.
 # Run by dev/run-blender-tests.sh: blender -b --factory-startup --python-exit-code 1 --python <this> -- <build_body.py>
 import json

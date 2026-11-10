@@ -12,9 +12,9 @@ This guide can be wrong or out of date: verify what you rely on, as the [standar
 
 ## Must
 
-- **Optimization is a top priority, equal to beauty:** as beautiful and as cheap as possible. Neither excuses the other: the [art direction](../art-direction/SKILL.md) techniques cost almost nothing, and that is the point of them.
+- **Optimization is a top priority, equal to beauty:** as beautiful and as cheap as possible. Neither excuses the other: the techniques of `game-design:art-direction` cost almost nothing, and that is the point of them.
 - **Nothing is paid for that the player can't see:** what never moves is static, light that doesn't change is baked, work off screen stops, triangles and layers that never show are gone.
-- **Budgets are set and measured:** `docs/performance-budgets.md`, from the start of the [vertical slice](../game-design/SKILL.md#production-order) at the latest, with assumed devices marked as assumptions; checked at every milestone, on the target device or, until there is one, with numbers from the Frame Debugger and Profiler, and the report says which.
+- **Budgets are set and measured:** `docs/performance-budgets.md`, from the start of the vertical slice (`game-design:game-design`, its production order) at the latest, with assumed devices marked as assumptions; checked at every milestone, on the target device or, until there is one, with numbers from the Frame Debugger and Profiler, and the report says which.
 - **The proof:** [SceneCostAudit](../library/code/Core/Editor/CostChecks/README.md) clean, each exception with its reason; `OffScreenTests` and `BudgetTests` green, with their receipts.
 
 Which technique reaches this is your decision, by thinking through this project: the sections below are options with their costs, not a recipe. Whatever you choose stays in the [architecture](../code-standards/SKILL.md#architecture): modular, behind interfaces, through DI.
@@ -123,7 +123,7 @@ public IEnumerator TheBusiestView_StaysInBudget()
 
 The look comes first, and most of it can be baked. Cheapest first:
 
-1. **Light in the asset:** [bake_light.py](../game-assets/scripts/bake_light.py) bakes Blender's light into vertex colors or a texture, then a simple shader draws it. Costs nothing per light at runtime, and lamps can glow at night through a shader global. The bake belongs to the asset, so shadows cast by its neighbors need a shared ground texture, or a bake after placement.
+1. **Light in the asset:** `bake_light.py` (`modeling:models`) bakes Blender's light into vertex colors or a texture, then a simple shader draws it. Costs nothing per light at runtime, and lamps can glow at night through a shader global. The bake belongs to the asset, so shadows cast by its neighbors need a shared ground texture, or a bake after placement.
 2. **Unity's lightmaps:** Baked lights, Progressive Lightmapper, a second UV set. Costs lightmap memory; Directional mode takes about twice Non-Directional's memory. URP's **Baked Lit** shader takes base map, normal map, alpha clip and GPU instancing, with no realtime light: Unity's mobile advice is Baked Lit for static objects and Simple Lit for moving ones on lower-end devices. Web supports baked GI with Non-Directional lightmaps only.
 3. **What moves:** light probes (their main use), or a few shader globals for sun color and ambient, which also gives a day cycle for nothing. Adaptive Probe Volumes work in URP with per-vertex evaluation, but no page confirms mobile or Web: test before relying on them.
 4. **Shadows of what moves:** a blob, or a planar shadow in the shader, far cheaper than a shadow map. A realtime shadow draws the scene again; Soft Shadows have a high impact on mobile. If realtime shadows are needed: Low soft quality, one main light, a short distance. Subtractive mixed lighting is the cheap mixed mode, Baked Indirect uses realtime shadow maps.
@@ -184,7 +184,7 @@ Objects that share a mesh and differ in position, rotation, scale or color, such
 ## Memory
 
 - **Textures:** size and compression set per platform (ASTC on mobile), mipmaps on 3D textures, none on UI. Data textures (normal, mask, metallic, smoothness) have sRGB off; normal maps use the Normal Map texture type.
-- **Meshes:** **Read/Write** off unless the CPU reads the mesh: code, a Mesh Collider, a Particle System's Shape module (or its Renderer without GPU instancing) or a Terrain detail. Turn it on for those yourself. Unity 6000.6.2f1 still handles them during the build, with a warning that future versions won't (seen once in a build); its documentation already says the build fails. Treat that warning as an error. Mesh Collider meshes also get pre-baked collision: [export reference](../game-assets/references/export.md#unity-import-settings).
+- **Meshes:** **Read/Write** off unless the CPU reads the mesh: code, a Mesh Collider, a Particle System's Shape module (or its Renderer without GPU instancing) or a Terrain detail. Turn it on for those yourself. Unity 6000.6.2f1 still handles them during the build, with a warning that future versions won't (seen once in a build); its documentation already says the build fails. Treat that warning as an error. Mesh Collider meshes also get pre-baked collision: [models](../models/SKILL.md#import-settings).
 - **Mesh Compression** only shrinks the files on disk. It costs load time, can create artifacts, and turns off vertex compression for that mesh. Runtime mesh memory is set by **Vertex Compression** in Player Settings, whose defaults suit most projects.
 - Audio import settings: the official `unity:optimize-audio` skill.
 - Every Addressables load has a matching release. Check for leaks with Memory Profiler snapshots taken before and after a level, as the [resource lifetimes](../code-standards/references/resource-lifetimes.md#finding-leaks) rules describe.

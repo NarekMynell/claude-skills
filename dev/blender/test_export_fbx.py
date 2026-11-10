@@ -1,4 +1,4 @@
-# Runs game-assets/scripts/export_fbx.py: it refuses assets that fail their checks, exports the rest, and the FBX it
+# Runs modeling/scripts/export_fbx.py: it refuses assets that fail their checks, exports the rest, and the FBX it
 # writes imports back with the expected bones, weights and animation frames.
 # Run by dev/run-blender-tests.sh: blender -b --factory-startup --python-exit-code 1 --python <this> -- <export_fbx.py> <output dir>
 import json
@@ -65,6 +65,19 @@ mannequin.clear()
 cube("Crate")
 result = export(TARGETS=["Crate"], FILEPATH=path)
 expect(result["exported"] == path and os.path.getsize(path) > 0, f"clean cube not exported: {result['issues']}")
+
+size = max(max(o.dimensions) for o in reimport(path) if o.type == "MESH")
+expect(abs(size - 1.0) < 0.01, f"the default export changed the cube's size: {size}")
+
+# FBX lays another engine's exporter options over the defaults: a scale here, read back from the file. The file stays the script's.
+mannequin.clear()
+cube("Crate")
+scaled = os.path.join(output_dir, "Scaled.fbx")
+result = export(TARGETS=["Crate"], FILEPATH=scaled, FBX={"global_scale": 2.0, "filepath": os.path.join(output_dir, "Elsewhere.fbx")})
+expect(result["exported"] == scaled and os.path.exists(scaled), f"an FBX option moved or blocked the export: {result['exported']}")
+expect(not os.path.exists(os.path.join(output_dir, "Elsewhere.fbx")), "FBX changed the file path")
+size = max(max(o.dimensions) for o in reimport(scaled) if o.type == "MESH")
+expect(abs(size - 2.0) < 0.01, f"FBX's global_scale didn't reach the file: {size}")
 
 mannequin.clear()
 cube("Broken", duplicate_face=True)

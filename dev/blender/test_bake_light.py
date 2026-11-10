@@ -1,4 +1,4 @@
-# Runs game-assets/scripts/bake_light.py: a box on a ground under a sun. The shadowed part of the ground must bake darker
+# Runs modeling/scripts/bake_light.py: a box on a ground under a sun. The shadowed part of the ground must bake darker
 # than the lit part, into vertex colors and into a texture, and the scene must be restored.
 # Run by dev/run-blender-tests.sh: blender -b --factory-startup --python-exit-code 1 --python <this> -- <bake_light.py> <output dir>
 import json

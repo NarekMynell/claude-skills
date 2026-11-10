@@ -1,64 +1,53 @@
 # narek-skills
 
-[Claude Code](https://claude.com/claude-code) plugin `unity-dev` for professional Unity game development: SOLID, interface-based architecture and C# standards with automated audits, new-project setup, game design and proven balance, art direction, UI, performance, audio and VFX, game-ready 3D models, characters, animation and NPC behavior through Blender, project documentation, a tested code library and a toolchain check.
+[Claude Code](https://claude.com/claude-code) skills by domain: working standards for any project, game design, 3D modeling in Blender and Unity development. Each domain is a plugin of this marketplace, and each project turns on the domains and skills it needs.
+
+## Domains
+
+<!-- catalog:domains -->
+| Domain | What it covers | Comes on with | Switch |
+|---|---|---|---|
+| [core](plugins/core/README.md) | Working standards for any project: musts with proofs and guides, receipts, verification against the project's own versions, fresh reviews and honest reports, the documentation layout, version notes, and the switches that choose a project's domains and skills. | game-design, modeling, unity-dev | `CORE_STANDARDS` |
+| [game-design](plugins/game-design/README.md) | Game design for any engine: research, concepts with a hook, the game design document, core and meta loops, production order, game feel, calculated balance and pacing, and art direction with screenshot studies against references. | unity-dev | `GAME_DESIGN_STANDARDS` |
+| [modeling](plugins/modeling/README.md) | 3D modeling in Blender for games and real-time apps: models, environments and modular kits, characters and animals with rigs, animation clips, automated mesh, character and motion checks, contact-sheet reviews, light baking and gated export. | unity-dev | `MODELING_STANDARDS` |
+| [unity-dev](plugins/unity-dev/README.md) | Unity development: SOLID interface-based architecture and C# standards (VContainer, MessagePipe, UniTask) with automated audits, a tested code library, project setup, performance, UI, audio, VFX, NPC behavior, 3D models and animation in Unity, version notes and a toolchain check. | - | `UNITY_DEV_STANDARDS` |
+<!-- /catalog -->
+
+Each domain's README lists its skills. A domain brings the domains it builds on: installing unity-dev installs core, game-design and modeling, and turning it on in a project turns them on too, unless the project switches one off.
 
 ## How it works
 
-You need one command. `/unity-dev:standards` gives Claude every guide in the plugin, and the text you type after it is the task:
+Nothing loads unless you ask for it: Claude doesn't see the skills until you type a command, or until a project turns a domain on.
+
+**Commands.** `/<domain>:standards` loads a domain's standards and guides, and the text after it is the task:
 
 ```text
 /unity-dev:standards Create a new mobile puzzle game: <concept, mechanics, art style, models, screens...>
 ```
 
-Claude reads the guides the task needs, from the new-project setup to game design, code, UI, the Blender models, characters and their animation.
+Every skill also has its own command, such as `/modeling:characters` or `/unity-dev:vfx`, to load that topic alone.
 
-The standards have two levels:
+**Every session.** The first `/<domain>:standards` in a project turns that domain on there, and from then on its standards load at the start of every session, after `/clear`, after compaction and in subagents, so you don't type the command again and a long session doesn't lose them. The switches live under `env` in the project's `.claude/settings.json`:
 
-- **Musts** are the bar for the result, each with a proof that can fail: the architecture, JSON through Newtonsoft, colliders, optimization, the look, characters where nothing pokes through, natural motion, UI, balance. Only you change a must.
-- **Guides** are everything else: methods known to work, failures already seen, strong defaults. The solution is Claude's to find for your project, inside the guides or outside them. It tells you why, and records it in the project's `CLAUDE.md`.
-
-The guides and the code library can contain mistakes or fall behind new Unity and package versions, and they say so. Claude checks every API, setting and library module it relies on against the official documentation or the package source for your project's exact versions, reviews library code before copying it, and tells you when a guide turns out wrong.
-
-Nothing loads unless you ask for it: Claude doesn't see the plugin's skills until you type a command, so they cost no context in other sessions.
-
-| Command | Does |
+| Switch | Turns on or off |
 |---|---|
-| `/unity-dev:standards [task \| on \| off]` | Loads every standard and guide for the session, checks the toolchain, and turns the standards on for every session in a Unity project |
+| `<DOMAIN>_STANDARDS`: `on` or `off` | a domain and all its skills, such as `UNITY_DEV_STANDARDS` |
+| `<DOMAIN>_SKILL_<SKILL>`: `on` or `off` | one skill, whatever its domain says, such as `UNITY_DEV_SKILL_VFX` |
 
-Every guide also has its own command, such as `/unity-dev:vfx`, `/unity-dev:new-project` or `/unity-dev:game-assets`, to load that topic alone. The plugins unity-dev depends on come from other publishers and keep their own behavior: the official Unity plugin's skills load automatically.
+`/core:skills` shows what a project has on, turns domains and skills on or off, or looks at the project and turns on what it needs. Committed, the file sets them for the whole team; `.claude/settings.local.json` overrides them for one person.
 
-### Standards in every session
+**Two levels.** Each domain's standards have **musts**, the bar for the result, each with a proof that can fail and only you can change, and **guides**: methods known to work and failures seen, where Claude finds the solution for your project, tells you why, and records it in the project's `CLAUDE.md`. Checks write receipts in `docs/proofs/`; in a Unity project, a hook compares them with what changed when a turn ends.
 
-The first `/unity-dev:standards` in a project turns the standards on for that project. From then on they load at the start of every session there, and again after `/clear` and after the conversation is compacted, so you don't type the command again and a long session doesn't lose them. `/unity-dev:new-project` and `/unity-dev:adopt-standards` turn them on too. Other projects don't change.
-
-With the switch on, subagents get the standards too, and when a turn ends, what changed is compared with the receipts the checks write in `docs/proofs/`: Claude is asked once to deal with any that fail, are out of date or don't exist. Receipts can't be edited by hand through Claude's file tools.
-
-The switch is `UNITY_DEV_STANDARDS` under `env` in the project's `.claude/settings.json`, next to a rule that lets those sessions read the plugin's guides without asking; Claude Code's trust dialog lists that rule the first time someone opens the folder. `/unity-dev:standards off` turns it off, and `/unity-dev:standards on` turns it back on. Committed, the file turns the standards on for the whole team; a teammate turns them off for themselves alone with `"UNITY_DEV_STANDARDS": "off"` under `env` in `.claude/settings.local.json`.
-
-## Quality
-
-- The unity-dev code library is covered by 391 automated tests: 345 Edit Mode and 46 Play Mode, 23 of which check what the guides claim about VContainer, MessagePipe, UniTask and Unity. They include allocation tests on hot paths and disposal tests on disposable types. The library compiles with no warnings on Unity 6000.6, and the Play Mode tests also pass in macOS and WebGL (IL2CPP) player builds. Run them with `dev/run-library-tests.sh`, `dev/run-library-tests.sh player` and `dev/run-library-tests.sh player WebGL`.
-- Every C# example in the guides and module READMEs compiles against the real packages (`dev/library-tests/Assets/LibraryTests/SnippetCheck`).
-- The guides' technical claims were checked against the official documentation and package sources for Unity 6.6, URP, VContainer 1.19, UniTask 2.5, MessagePipe 1.8, Addressables 4.1 and Blender 5.2, and the ones that can run were run: FBX exports from Blender into Unity, player builds, package behavior. Where a run contradicted the documentation, the guides follow the run. That lowers the risk of mistakes but doesn't remove it, which is why Claude verifies again in each project.
-- The Blender scripts (mesh validation, contact sheets with the game camera, skeleton-first bodies, light baking, character checks over all variants and every way of building a body, cutting what stays hidden, animation checks for any number of legs and for robotic motion, screenshot studies, gated FBX export) are tested headless against scenes with known defects and clean scenes built each way: `dev/run-blender-tests.sh`, and `dev/run-attack-tests.sh` for the 321 scenes an adversarial review built to fool the character check. A mannequin exported through them is imported as a Unity Humanoid by the library tests, which check its sides, facing, root-motion speed and foot sliding.
-- The audits that hold the musts (`ArchitectureAudit`, `UiAudit`, `SceneCostAudit`, `PacingAnalyzer`, `FootSlideMeter`) have a case for every defect they report, and the library passes its own architecture test. Run on a real game built before they existed, the first version of the architecture audit found 264 violations there. They have also been through adversarial review that tried to pass real defects through them.
-- The hooks are tested against known inputs: `dev/run-hook-tests.sh`.
-- `claude plugin validate` passes for the marketplace and the plugin.
-
-## Requirements
-
-- Claude Code; tested with 2.1.312.
-- **unity-dev:** the [Unity CLI](https://docs.unity.com/en-us/unity-cli) and the C# language server `csharp-ls` (`dotnet tool install --global csharp-ls`). Installing unity-dev also installs its dependencies, the official Unity plugin and `csharp-lsp`. The toolchain check and the every-session loading are bash scripts; on Windows they need Git Bash.
-- For 3D models: Blender with the Blender MCP connector.
+**Verified, not trusted.** The guides and the code library can contain mistakes or fall behind new versions, and they say so. Claude checks every API, setting and library module it relies on against the official documentation or the source for your project's exact versions, and tells you when a guide turns out wrong. The guides' claims were checked against the official documentation and package sources (Unity 6.6, URP, VContainer 1.19, UniTask 2.5, MessagePipe 1.8, Addressables 4.1, Blender 5.2), and what can run was run.
 
 ## Install
 
 ```sh
 claude plugin marketplace add NarekMynell/claude-skills
-claude plugin install unity-dev@narek-skills
+claude plugin install unity-dev@narek-skills     # or core, game-design, modeling
 ```
 
-Or browse and install from `/plugin` inside Claude Code.
+Or browse and install from `/plugin` inside Claude Code. Requires Claude Code (tested with 2.1.322). The hooks are bash scripts: on Windows they need Git Bash. Each domain's README lists what else it needs.
 
 ## Update
 
@@ -69,10 +58,12 @@ claude plugin marketplace update narek-skills
 claude plugin update unity-dev@narek-skills
 ```
 
+A project set up before the domains split (unity-dev 0.11 and earlier) keeps working: `UNITY_DEV_STANDARDS` brings the new domains with it. Run `/core:skills` there once to add their read rules, so their guides open without asking.
+
 ## Use in a team project
 
-Commit a `.claude/settings.json` that lists the marketplace and the plugin and turns the standards on (`/unity-dev:new-project` writes it for new projects). Each teammate then runs `claude plugin install unity-dev@narek-skills --scope project` once, and the standards load in their sessions too.
+Commit a `.claude/settings.json` that lists the marketplace, the plugins and the switches (`/unity-dev:new-project` writes it for new Unity projects). Each teammate then runs `claude plugin install <plugin>@narek-skills --scope project` once, after trusting the folder, and the standards load in their sessions too.
 
 ## Contributing
 
-Open Claude Code in this repo and ask it to add or change a skill. The conventions are in [CLAUDE.md](CLAUDE.md).
+Open Claude Code in this repository and ask it to add or change a skill or a domain. The architecture and the rules are in [CLAUDE.md](CLAUDE.md).

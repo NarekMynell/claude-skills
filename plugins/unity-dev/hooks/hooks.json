@@ -2,11 +2,11 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|clear|compact",
+        "matcher": "startup|resume|clear|compact|fork",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/standards.sh\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/context.sh\" unity-dev",
             "timeout": 30
           }
         ]
@@ -17,8 +17,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/standards.sh\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/context.sh\" unity-dev",
             "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/context.sh\" unity-dev",
+            "timeout": 10
           }
         ]
       }
@@ -30,18 +41,6 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/gates.sh\"",
             "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/receipts.sh\"",
-            "timeout": 5
           }
         ]
       }

@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Runs the plugin's hooks against known inputs in temporary Unity-like git repositories.
+# Runs the plugins' hooks against known inputs in temporary projects and Unity-like git repositories.
 # Usage: dev/run-hook-tests.sh
 set -u
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
-plugin="$root/plugins/unity-dev"
+plugins="$root/plugins"
+plugin="$plugins/unity-dev"
 work="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$work"' EXIT
 failed=0
-unset UNITY_DEV_STANDARDS
+# The switches of the session running the tests mustn't decide them.
+for variable in $(env | cut -d = -f 1 | grep -E '_STANDARDS$|_SKILL_'); do unset "$variable"; done
 
 check() {
   label="$1"; expected="$2"; actual="$3"
@@ -32,7 +34,7 @@ empty() {
 }
 
 standards() { # input, switch, plugin root
-  printf '%s' "$1" | UNITY_DEV_STANDARDS="${2:-on}" CLAUDE_PLUGIN_ROOT="${3:-$plugin}" CLAUDE_PROJECT_DIR="$work/none" CLAUDE_PLUGIN_DATA="$work/data" bash "${3:-$plugin}/hooks/standards.sh"
+  printf '%s' "$1" | UNITY_DEV_STANDARDS="${2:-on}" CLAUDE_PLUGIN_ROOT="${3:-$plugin}" CLAUDE_PROJECT_DIR="$work/none" CLAUDE_PLUGIN_DATA="$work/data" bash "${3:-$plugin}/hooks/context.sh" unity-dev
 }
 
 json_field() {
@@ -43,8 +45,8 @@ context_of() {
   printf '%s' "$1" | json_field "d['hookSpecificOutput']['additionalContext']"
 }
 
-empty "standards off" "$(standards '{"source":"startup"}' off)"
-started="$(standards '{"source":"startup"}')"
+empty "standards off" "$(standards '{"hook_event_name":"SessionStart","source":"startup"}' off)"
+started="$(standards '{"hook_event_name":"SessionStart","source":"startup"}')"
 check "standards at startup" "SessionStart" "$(printf '%s' "$started" | json_field "d['hookSpecificOutput']['hookEventName']")"
 context="$(context_of "$started")"
 check "the musts are in the text" "ProjectArchitectureTests" "$context"
@@ -58,7 +60,7 @@ cat > "$long_root/skills/toolchain/scripts/check.sh" <<'CHECK'
 i=0
 while [ $i -lt 60 ]; do echo "Problem number $i: a tool is out of date and a long explanation follows it here."; i=$((i + 1)); done
 CHECK
-worst="$(context_of "$(standards '{"source":"startup"}' on "$long_root")")"
+worst="$(context_of "$(standards '{"hook_event_name":"SessionStart","source":"startup"}' on "$long_root")")"
 size="$(printf '%s' "$worst" | wc -m | tr -d ' ')"
 if [ "$size" -lt 10000 ]; then echo "ok   worst case is $size characters"; else echo "FAIL worst case is $size characters, over the 10,000 cap"; failed=1; fi
 check "worst case keeps the standards" "Before reporting a task as done" "$worst"
@@ -79,7 +81,7 @@ git -C "$project" -c user.name=t -c user.email=t@t commit -q -m settings
 
 # A session that started above the project has no variable, and finds the switch from where it is now.
 from_cwd() {
-  printf '{"source":"compact","cwd":"%s"}' "$1" | CLAUDE_PLUGIN_ROOT="$plugin" CLAUDE_PROJECT_DIR="$work/parent" CLAUDE_PLUGIN_DATA="$work/data" bash "$plugin/hooks/standards.sh"
+  printf '{"hook_event_name":"SessionStart","source":"compact","cwd":"%s"}' "$1" | CLAUDE_PLUGIN_ROOT="$plugin" CLAUDE_PROJECT_DIR="$work/parent" CLAUDE_PLUGIN_DATA="$work/data" bash "$plugin/hooks/context.sh" unity-dev
 }
 check "no variable, inside the project: on" "ProjectArchitectureTests" "$(from_cwd "$project")"
 check "no variable, deep inside the project: on" "ProjectArchitectureTests" "$(mkdir -p "$project/Assets/Deep"; from_cwd "$project/Assets/Deep")"
@@ -478,11 +480,205 @@ if [ "$seconds" -lt 15 ]; then echo "ok   73 models with their receipts took $se
 
 # Receipts are written by the checks.
 edit_hook() { # path
-  printf '{"tool_name":"Write","tool_input":{"file_path":"%s"},"cwd":"%s"}' "$1" "$project" | CLAUDE_PLUGIN_ROOT="$plugin" bash "$plugin/hooks/receipts.sh"
+  printf '{"tool_name":"Write","tool_input":{"file_path":"%s"},"cwd":"%s"}' "$1" "$project" | CLAUDE_PLUGIN_ROOT="$plugins/core" bash "$plugins/core/hooks/receipts.sh"
 }
 check "writing a receipt by hand is refused" "deny" "$(edit_hook "$project/docs/proofs/architecture.txt" | json_field "d['hookSpecificOutput']['permissionDecision']")"
 empty "the list of what doesn't apply can be edited" "$(edit_hook "$project/docs/proofs/not-applicable.txt")"
 empty "any other file costs nothing" "$(edit_hook "$project/Assets/A.cs")"
+
+
+# --- Domains: switches, what each brings, and when a domain's standards reach the session ---
+
+if python3 "$root/dev/sync.py" --check > /dev/null; then echo "ok   the plugins' shared hooks and tables are in sync"; else echo "FAIL dev/sync.py --check: run python3 dev/sync.py"; failed=1; fi
+
+proj="$work/domains"
+mkdir -p "$proj/.claude"
+mkdir -p "$work/home"
+ctx() { # plugin, input, folder; a home of its own, so the user's own settings don't decide the tests
+  printf '%s' "$2" | HOME="$work/home" CLAUDE_PLUGIN_ROOT="$plugins/$1" CLAUDE_PROJECT_DIR="$3" CLAUDE_PLUGIN_DATA="$work/data-$1" bash "$plugins/$1/hooks/context.sh" "$1"
+}
+session_start() { # plugin, session
+  ctx "$1" "{\"hook_event_name\":\"SessionStart\",\"source\":\"compact\",\"session_id\":\"$2\",\"cwd\":\"$proj\"}" "$proj"
+}
+prompt() { # plugin, session, prompt as it appears in JSON
+  ctx "$1" "{\"hook_event_name\":\"UserPromptSubmit\",\"session_id\":\"$2\",\"cwd\":\"$proj\",\"prompt\":\"$3\"}" "$proj"
+}
+subagent() { # plugin, session, agent type
+  ctx "$1" "{\"hook_event_name\":\"SubagentStart\",\"session_id\":\"$2\",\"agent_type\":\"${3:-general-purpose}\",\"cwd\":\"$proj\"}" "$proj"
+}
+switches() { # the env object's content
+  printf '{"env":{%s}}\n' "$1" > "$proj/.claude/settings.json"
+}
+
+switches ''
+for domain in core game-design modeling unity-dev; do empty "$domain: nothing on, nothing loads" "$(session_start "$domain" s0)"; done
+
+switches '"UNITY_DEV_STANDARDS":"on"'
+for domain in core game-design modeling unity-dev; do check "$domain comes on with unity-dev" "SessionStart" "$(session_start "$domain" s1)"; done
+check "core names what the project has on" "Switched on in this project: core; game-design; modeling; unity-dev" "$(session_start core s1 | json_field "d['systemMessage']")"
+empty "only core names it" "$(session_start modeling s1 | json_field "d.get('systemMessage','')")"
+
+message="$(session_start core s1 | json_field "d['systemMessage']")"
+check "core names the domains without a read rule" "No read rule for: core, game-design, modeling, unity-dev" "$message"
+printf '{"env":{"UNITY_DEV_STANDARDS":"on"},"permissions":{"allow":["Read(~/.claude/plugins/cache/*/unity-dev/**)"]}}\n' > "$proj/.claude/settings.json"
+check "a project set up before the split lacks the new domains' rules" "No read rule for: core, game-design, modeling" "$(session_start core s1 | json_field "d['systemMessage']")"
+check "and the session is told to say so once" "tell the user once" "$(context_of "$(session_start core s1)")"
+printf '{"env":{"UNITY_DEV_STANDARDS":"on"},"permissions":{"allow":["Read(~/.claude/plugins/cache/*/unity-dev/**)","Read(~/.claude/plugins/cache/*/core/**)","Read(~/.claude/plugins/cache/*/game-design/**)","Read(~/.claude/plugins/cache/*/modeling/**)"]}}\n' > "$proj/.claude/settings.json"
+absent "with every rule, nothing about them" "No read rule" "$(session_start core s1 | json_field "d['systemMessage']")"
+
+switches '"UNITY_DEV_STANDARDS":"on","MODELING_STANDARDS":"off"'
+empty "a domain switched off stays off" "$(session_start modeling s2)"
+check "the others stay on" "SessionStart" "$(session_start game-design s2)"
+check "and core says so" "Switched on in this project: core; game-design; unity-dev" "$(session_start core s2 | json_field "d['systemMessage']")"
+
+switches '"UNITY_DEV_STANDARDS":"on","UNITY_DEV_SKILL_VFX":"off"'
+context="$(context_of "$(session_start unity-dev s3)")"
+absent "a skill switched off loses its row" "../vfx/SKILL.md" "$context"
+check "and the session is told" "so their rows are left out: vfx" "$context"
+check "the other rows stay" "../audio-design/SKILL.md" "$context"
+check "a must of a skill that is on stays" "ProjectArchitectureTests" "$context"
+
+switches '"UNITY_DEV_STANDARDS":"on","UNITY_DEV_SKILL_CODE_STANDARDS":"off"'
+absent "a must of a skill switched off goes with it" "ProjectArchitectureTests" "$(context_of "$(session_start unity-dev s3b)")"
+
+switches '"MODELING_SKILL_CHARACTERS":"on"'
+context="$(context_of "$(session_start modeling s4)")"
+check "one skill on alone: its row" "| [characters](../characters/SKILL.md)" "$context"
+absent "and not the others" "| [animation](../animation/SKILL.md)" "$context"
+check "it brings core" "SessionStart" "$(session_start core s4)"
+empty "not unity-dev" "$(session_start unity-dev s4)"
+empty "nor game-design" "$(session_start game-design s4)"
+
+switches '"UNITY_DEV_SKILL_VFX":"on"'
+check "one unity-dev skill on alone brings core" "SessionStart" "$(session_start core s4b)"
+empty "but not game-design" "$(session_start game-design s4b)"
+empty "nor modeling" "$(session_start modeling s4b)"
+check "and its own row" "../vfx/SKILL.md" "$(context_of "$(session_start unity-dev s4b)")"
+
+switches '"UNITY_DEV_STANDARDS":"on","CORE_STANDARDS":"off"'
+check "core can't be switched off while a domain is on" "SessionStart" "$(session_start core s4c)"
+switches '"UNITY_DEV_STANDARDS":"on","CORE_SKILL_PROJECT_DOCS":"off","CORE_SKILL_SKILLS":"off","CORE_SKILL_VERSION_NOTES":"off"'
+context="$(context_of "$(session_start core s4d)")"
+check "with all its guides off, core still gives its standards" "How the work runs" "$context"
+absent "without their rows" "../project-docs/SKILL.md" "$context"
+switches '"CORE_STANDARDS":"off"'
+empty "core switched off with nothing else on: nothing" "$(session_start core s4e)"
+
+switches '"UNITY_DEV_STANDARDS":"on"'
+printf '{"env":{"GAME_DESIGN_STANDARDS":"off"}}\n' > "$proj/.claude/settings.local.json"
+empty "the personal file wins" "$(session_start game-design s5)"
+check "for its own key only" "SessionStart" "$(session_start unity-dev s5)"
+rm "$proj/.claude/settings.local.json"
+empty "the session's variable wins over the files" "$(MODELING_STANDARDS=off session_start modeling s5)"
+
+for domain in core game-design modeling unity-dev; do
+  size="$(context_of "$(session_start "$domain" "size-$domain")" | wc -m | tr -d ' ')"
+  if [ "$size" -lt 9500 ]; then echo "ok   $domain's standards are $size characters"; else echo "FAIL $domain's standards are $size characters, too close to the 10,000 cap"; failed=1; fi
+done
+
+# A standards command brings what its domain builds on in the same turn; the command itself brings its own.
+switches ''
+check "a standards command pulls in core" 'typed `/modeling:standards`' "$(context_of "$(prompt core p1 '/modeling:standards make a chair')")"
+empty "not its own domain: the command gives it" "$(prompt modeling p1 '/modeling:standards make a chair')"
+empty "nor domains it doesn't build on" "$(prompt unity-dev p1 '/modeling:standards make a chair')"
+empty "nor twice in a session" "$(prompt core p1 'go on')"
+empty "and the command's own domain isn't added later" "$(prompt modeling p1 'go on')"
+check "unity-dev's pulls modeling" "UserPromptSubmit" "$(prompt modeling p2 '/unity-dev:standards build a level')"
+check "and game-design" "UserPromptSubmit" "$(prompt game-design p2 '/unity-dev:standards build a level')"
+empty "another skill's command pulls nothing" "$(prompt core p3 '/unity-dev:vfx sparks')"
+empty "nor a mention in plain words" "$(prompt core p3 'use /unity-dev:standards later')"
+check "a command followed by a new line" "UserPromptSubmit" "$(prompt core p4 '/game-design:standards\nan idle game')"
+switches '"MODELING_STANDARDS":"off"'
+empty "a domain switched off isn't pulled" "$(prompt modeling p5 '/unity-dev:standards build a level')"
+switches '"GAME_DESIGN_SKILL_ART_DIRECTION":"off"'
+context="$(context_of "$(prompt game-design p6 '/unity-dev:standards build a level')")"
+check "a pulled domain keeps the skills that are on" "../game-design/SKILL.md" "$context"
+absent "and leaves out one switched off" "../art-direction/SKILL.md" "$context"
+
+switches ''
+empty "\`/unity-dev:standards off\` pulls nothing" "$(prompt core p7 '/unity-dev:standards off')"
+empty "nor \`on\`" "$(prompt core p8 '/unity-dev:standards on')"
+check "a word after on is a task" "UserPromptSubmit" "$(prompt core p9 '/unity-dev:standards on second thought, build it')"
+
+# What a command brought comes back after compaction; a session resumed from its transcript gets nothing twice.
+prompt game-design p10 '/unity-dev:standards build a level' > /dev/null
+prompt unity-dev p10 '/unity-dev:standards build a level' > /dev/null
+started_as() { # plugin, source, session
+  ctx "$1" "{\"hook_event_name\":\"SessionStart\",\"source\":\"$2\",\"session_id\":\"$3\",\"cwd\":\"$proj\"}" "$proj"
+}
+compacted() { # plugin, session
+  started_as "$1" compact "$2"
+}
+check "a pulled domain is given again after compaction" "load here again" "$(context_of "$(compacted game-design p10)")"
+check "and the command's own domain too" "load here again" "$(context_of "$(compacted unity-dev p10)")"
+empty "a session that never had it gets nothing" "$(compacted game-design p11)"
+switches '"MODELING_STANDARDS":"on"'
+empty "a resumed session gets nothing at its start" "$(started_as modeling resume r1)"
+empty "nor at its next prompt: its transcript has them" "$(prompt modeling r1 'go on')"
+switches ''
+
+# Without a data folder of their own, the plugins don't share their notes of what a session has.
+shared_tmp="$work/shared-tmp"
+mkdir -p "$shared_tmp"
+no_data() { # plugin, session, prompt
+  printf '{"hook_event_name":"UserPromptSubmit","session_id":"%s","cwd":"%s","prompt":"%s"}' "$2" "$proj" "$3" | env -u CLAUDE_PLUGIN_DATA TMPDIR="$shared_tmp" HOME="$work/home" CLAUDE_PLUGIN_ROOT="$plugins/$1" CLAUDE_PROJECT_DIR="$proj" bash "$plugins/$1/hooks/context.sh" "$1"
+}
+no_data unity-dev n1 '/unity-dev:standards build' > /dev/null
+check "one plugin's note doesn't silence another's" "UserPromptSubmit" "$(no_data core n1 '/unity-dev:standards build')"
+
+# A byte that isn't UTF-8 leaves the rest of the text whole.
+escaped="$(printf 'abc\351def' | LC_ALL=en_US.UTF-8 bash -c ". '$plugins/core/hooks/lib.sh'; json_escape")"
+check "json_escape keeps what follows a byte that isn't UTF-8" "def" "$escaped"
+
+# A domain turned on during a session loads with the next prompt, once.
+switches ''
+empty "before the switch" "$(prompt modeling t1 'hello')"
+switches '"MODELING_STANDARDS":"on"'
+check "the next prompt after it loads the domain" "turned on in this project during this session" "$(context_of "$(prompt modeling t1 'hello again')")"
+empty "once" "$(prompt modeling t1 'and again')"
+session_start modeling t2 > /dev/null
+empty "a session that started with it doesn't get it twice" "$(prompt modeling t2 'hi')"
+
+# Subagents.
+check "a subagent gets the domains that are on" "You are a subagent" "$(context_of "$(subagent modeling t2)")"
+empty "a read-only one doesn't" "$(subagent modeling t2 Explore)"
+switches ''
+check "a subagent of a session a command gave a domain gets it too" "SubagentStart" "$(subagent core p1)"
+empty "a subagent of a session without it doesn't" "$(subagent core nobody)"
+
+# Receipts are protected wherever any domain is on.
+receipt_edit() { # folder
+  printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/docs/proofs/validate_mesh-Chair.json"},"cwd":"%s"}' "$1" "$1" | CLAUDE_PLUGIN_ROOT="$plugins/core" bash "$plugins/core/hooks/receipts.sh"
+}
+switches ''
+empty "receipts in a project with nothing on are left alone" "$(receipt_edit "$proj")"
+content_edit() { # file path, content
+  printf '{"tool_name":"Write","tool_input":{"file_path":"%s","content":"%s"},"cwd":"%s"}' "$1" "$2" "$proj" | HOME="$work/home" CLAUDE_PLUGIN_ROOT="$plugins/core" bash "$plugins/core/hooks/receipts.sh"
+}
+switches '"UNITY_DEV_STANDARDS":"on"'
+empty "a file that mentions docs/proofs/ in its content is no receipt" "$(content_edit "$proj/CLAUDE.md" 'Receipts live in docs/proofs/.')"
+check "a receipt whose content names not-applicable.txt is still a receipt" "deny" "$(content_edit "$proj/docs/proofs/architecture.txt" 'see docs/proofs/not-applicable.txt')"
+empty "not-applicable.txt itself can be written" "$(content_edit "$proj/docs/proofs/not-applicable.txt" 'ui: no UI yet')"
+switches '"UNITY_DEV_STANDARDS":"on","CORE_STANDARDS":"off"'
+check "receipts stay protected with core switched off" "deny" "$(receipt_edit "$proj")"
+switches '"MODELING_STANDARDS":"on"'
+check "with modeling on, a hand edit of a receipt is refused" "deny" "$(receipt_edit "$proj")"
+
+# The Stop hook asks only for the receipts of skills that are on.
+families="$work/families"
+mkdir -p "$families/ProjectSettings" "$families/Assets/_Project/Art" "$families/docs/proofs" "$families/.claude"
+echo "m_EditorVersion: 6000.6.2f1" > "$families/ProjectSettings/ProjectVersion.txt"
+git -C "$families" init -q
+family_gate() { # env object content
+  printf '{"env":{%s}}\n' "$1" > "$families/.claude/settings.json"
+  printf '{"cwd":"%s","session_id":"f%s"}' "$families" "$RANDOM" | CLAUDE_PLUGIN_ROOT="$plugin" CLAUDE_PROJECT_DIR="$families" CLAUDE_PLUGIN_DATA="$work/data-families-$RANDOM" bash "$plugin/hooks/gates.sh"
+}
+printf 'x\n' > "$families/Assets/_Project/Art/Chair.fbx"
+check "a model asks for its mesh check with modeling on" "validate_mesh" "$(family_gate '"UNITY_DEV_STANDARDS":"on"')"
+absent "and not with modeling off" "validate_mesh" "$(family_gate '"UNITY_DEV_STANDARDS":"on","MODELING_STANDARDS":"off"')"
+absent "nor with modeling's models and characters off" "validate_mesh" "$(family_gate '"UNITY_DEV_STANDARDS":"on","MODELING_SKILL_MODELS":"off","MODELING_SKILL_CHARACTERS":"off"')"
+check "characters on keep the mesh check of their models" "validate_mesh" "$(family_gate '"UNITY_DEV_STANDARDS":"on","MODELING_SKILL_MODELS":"off"')"
+empty "and the gate is off without unity-dev" "$(family_gate '"MODELING_STANDARDS":"on"')"
 
 [ "$failed" = 0 ] && echo "all hook tests passed"
 exit "$failed"

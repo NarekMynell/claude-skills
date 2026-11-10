@@ -15,7 +15,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
-SCRIPTS = REPO + "/plugins/unity-dev/skills/game-assets/scripts"
+SCRIPTS = REPO + "/plugins/modeling/scripts"
 P = SCRIPTS + "/inspect_character.py"
 A = SCRIPTS + "/inspect_animation.py"
 C = SCRIPTS + "/cut_hidden_faces.py"

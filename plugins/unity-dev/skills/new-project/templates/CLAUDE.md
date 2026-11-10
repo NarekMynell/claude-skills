@@ -3,7 +3,7 @@
 <What the game or app is, in one or two sentences.> Unity <version>, URP, targets <platforms>.
 
 - Root namespace: `<Root>`. Every assembly is `<Root>.<Domain>`.
-- Code standards: unity-dev. The unity-dev plugin loads them at the start of every session (`UNITY_DEV_STANDARDS` in `.claude/settings.json`). The decisions below beat its guides, never its musts.
+- Standards: the narek-skills domains switched on in `.claude/settings.json` (`UNITY_DEV_STANDARDS`, which brings core, game-design and modeling) load at the start of every session. The decisions below beat their guides, never their musts.
 
 ## Musts the user changed
 
@@ -11,7 +11,7 @@
 
 ## Decisions
 
-<Conventions of this project that differ from the unity-dev guides, each with its reason. A decision can't change a must. Remove this section when there are none.>
+<Conventions of this project that differ from the guides, each with its reason. A decision can't change a must. Remove this section when there are none.>
 
 ## Documentation
 

@@ -16,7 +16,7 @@ What people and animals do in the world, and how they move through it. The clips
 
 - **Every action has a visible reason:** hunger, tiredness, curiosity, a thing to look at. The player can guess why an actor does what it does. Random choice picks among sensible actions, it never replaces them.
 - **Actors spend most of their time not walking.** Constant wandering reads as a machine. Each species and kind of person has an activity budget in `docs/`, and a long run of the behavior code, measured with `ActivityShares`, stays near it.
-- **Movement looks like walking,** not like an arrow along a path: turns take time, speed changes take time, feet never slide, in the running game ([proof](../animation/SKILL.md#8-check)).
+- **Movement looks like walking,** not like an arrow along a path: turns take time, speed changes take time, feet never slide, in the running game ([proof](../animation/SKILL.md#5-check-in-the-game)).
 - **Actors don't walk through each other,** through walls or through props, at the densities the game really reaches.
 - **The proof:** frame sequences of the real game from its camera, for the busiest scene the balance simulation predicts, with a written account of what is unnatural; `LocomotionTests` ([animation](../animation/SKILL.md#must)) at the real speeds; Play Mode tests at that density with [CrowdOverlapMeter and ActivityShares](../library/code/Core/Motion/README.md), and `FootSlideMeter` on a few actors inside the crowd, where avoidance shoves them, leaving their receipts (`crowd-*`, `locomotion-*`); the cost within budgets.
 
@@ -50,12 +50,12 @@ Variety costs little, and a world without it looks copied.
 
 - **Activity budgets.** Animals rest far more than they move. Measured in zoos and studies: ring-tailed lemurs 48% resting, 19% moving, 16% feeding; an oncilla 66% resting, 21% moving, 3% feeding; lions about two thirds resting (figures from single studies, as a guide to proportions). Give each species a budget, and let it drive the choice of action.
 - **Places, not points.** They go to water, food, shade, a favorite rock, the group; they don't wander to random coordinates. Planet Zoo 2's description of its animals is similar: routines such as exploring, resting and enrichment, with distractions such as joining a herd; players of the first game complained that its animals were almost always moving.
-- **Each species has its own rhythm and character:** how it stands, how it moves ([gaits](../animation/references/motion-craft.md#four-legs)), what it does at rest, how it reacts to others. A herd keeps together and follows a leader; a cat is alone and still for a long time, then quick.
+- **Each species has its own rhythm and character:** how it stands, how it moves (gaits: the motion craft of `modeling:animation`), what it does at rest, how it reacts to others. A herd keeps together and follows a leader; a cat is alone and still for a long time, then quick.
 - **Groups.** Who is near whom matters: they rest together, one looks up and others follow.
 
 ## Steering
 
-- **Limits, not interpolation.** Each actor has a maximum acceleration and a maximum turn rate. Speed changes through a ramp, and heading follows the velocity, or the velocity follows the heading for heavy animals. Start and stop clips, or a fade matched to the ramp, cover the changes ([no sliding](../animation/SKILL.md#4-locomotion-without-sliding)).
+- **Limits, not interpolation.** Each actor has a maximum acceleration and a maximum turn rate. Speed changes through a ramp, and heading follows the velocity, or the velocity follows the heading for heavy animals. Start and stop clips, or a fade matched to the ramp, cover the changes ([no sliding](../animation/SKILL.md#2-locomotion-without-sliding)).
 - **Smooth paths.** Cut corners with a look-ahead point, or curves, and slow down before sharp turns. A sharp turn at full speed is a slide.
 - **Turning on the spot** needs stepping: a turn clip, or small steps. A character rotating with feet planted is sliding.
 - **Paths are shared.** People keep to one side, slow down behind others, and don't all use the same line: a small lane offset per actor, chosen at the start of a segment, spreads a crowd with no extra cost.
@@ -84,4 +84,4 @@ Behavior far away or off screen runs as cheap simulation or stops: nobody sees i
 1. **Frame sequences from the running game,** from its camera, at the density the balance simulation predicts: a sequence of 8 to 12 frames over a few seconds shows sliding, popping and repetition that one screenshot can't.
 2. **The questions:** Why is each of them doing that? Could I tell two of them apart? Does anything move in sync? Does anything slide, snap or pass through something? Is the scene alive when I do nothing?
 3. **Numbers:** `FootSlideMeter` at every speed and `CrowdOverlapMeter` at peak density, in Play Mode tests; the behavior system's share of the frame.
-4. A [fresh review](../standards/references/fresh-review.md) on the frame sequences.
+4. A [fresh review](../standards/references/reviews.md) on the frame sequences.

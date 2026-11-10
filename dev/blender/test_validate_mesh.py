@@ -1,4 +1,4 @@
-# Runs game-assets/scripts/validate_mesh.py against meshes with known defects and checks each report.
+# Runs modeling/scripts/validate_mesh.py against meshes with known defects and checks each report.
 # Run by dev/run-blender-tests.sh: blender -b --factory-startup --python-exit-code 1 --python <this> -- <validate_mesh.py>
 import json
 import warnings
@@ -670,6 +670,19 @@ scene_case("a collision mesh that fits", {"Crate": [], "Crate_COL": []}, collisi
 scene_case("a collision mesh with a hole", {"Crate": [], "Crate_COL": ["collision_not_closed"]}, collision_mesh(closed=False))
 scene_case("a collision mesh three times the model", {"Crate": [], "Crate_COL": ["collision_doesnt_fit"]}, collision_mesh(far=True))
 scene_case("a dented mesh on a convex collider", {"Crate": [], "Crate_COL": ["convex_with_dents"]}, collision_mesh(dented=True), CONVEX=["Crate_COL"])
+
+
+def round_collision():
+    def build():
+        from_bmesh("Crate", cube)
+        from_bmesh("Crate_COL", lambda bm: bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=0.5), uv=False)
+        return ["Crate", "Crate_COL"]
+    return build
+
+
+# The hull limit is the engine's: Unity's (PhysX) by default, another engine's when it says so.
+scene_case("a convex collider over the engine's triangle limit", {"Crate": [], "Crate_COL": ["convex_over_limit"]}, round_collision(), CONVEX=["Crate_COL"])
+scene_case("the same collider under a higher limit", {"Crate": [], "Crate_COL": []}, round_collision(), CONVEX=["Crate_COL"], CONVEX_LIMIT=2000)
 
 
 def stacked_objects(gap):
