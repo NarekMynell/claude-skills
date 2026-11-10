@@ -9,8 +9,8 @@ Switch: `CORE_STANDARDS`. Its hooks also refuse hand edits of receipts in `docs/
 
 ## Install
 
-```text
-/plugin install core --marketplace NarekMynell/claude-skills
+```sh
+claude plugin install core --marketplace NarekMynell/claude-skills
 ```
 
 ## Skills

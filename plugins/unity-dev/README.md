@@ -10,8 +10,9 @@ Switch: `UNITY_DEV_STANDARDS`. Builds on core, game-design and modeling, and ins
 
 ## Install
 
-```text
-/plugin install unity-dev --marketplace NarekMynell/claude-skills
+```sh
+claude plugin marketplace add anthropics/claude-plugins-official   # unity and csharp-lsp come from there
+claude plugin install unity-dev --marketplace NarekMynell/claude-skills
 ```
 
 ## Skills

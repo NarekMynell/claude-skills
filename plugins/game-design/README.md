@@ -8,8 +8,8 @@ Switch: `GAME_DESIGN_STANDARDS`. Builds on core.
 
 ## Install
 
-```text
-/plugin install game-design --marketplace NarekMynell/claude-skills
+```sh
+claude plugin install game-design --marketplace NarekMynell/claude-skills
 ```
 
 ## Skills

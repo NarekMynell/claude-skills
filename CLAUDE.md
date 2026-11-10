@@ -44,7 +44,8 @@ dev/                              generators and tests; never shipped
 
 - **A skill:** `plugins/<domain>/skills/<name>/SKILL.md`, the folder named as `name`; a row in the hub's Guides table, and in its Musts table if the skill has a must; then `python3 dev/sync.py`.
 - **A check that writes receipts:** a new family also goes into `family_on` and the sweep list in `plugins/unity-dev/hooks/gates.sh`, with the skill whose must it proves, or the gate never asks for it; and into `dev/run-hook-tests.sh`.
-- **A domain:** `plugins/<domain>/` with `plugin.json` (`dependencies`: core and every domain it builds on), `README.md` with `<!-- catalog:skills -->` and `<!-- /catalog -->`, a hub, and `hooks/hooks.json` running `context.sh <domain>` on SessionStart (`startup|clear|compact`), SubagentStart and UserPromptSubmit; an entry in `marketplace.json`; then `python3 dev/sync.py`. Engine knowledge stays in its engine's domain: modeling and game-design name the engine's guide (`unity-dev:models`), never hold its settings.
+- **A domain:** `plugins/<domain>/` with `plugin.json` (`dependencies`: core and every domain it builds on), `README.md` with `<!-- catalog:skills -->` and `<!-- /catalog -->`, a hub, and `hooks/hooks.json` running `context.sh <domain>` on SessionStart (`startup|resume|clear|compact|fork`), SubagentStart and UserPromptSubmit; an entry in `marketplace.json`; then `python3 dev/sync.py`. Engine knowledge stays in its engine's domain: modeling and game-design name the engine's guide (`unity-dev:models`), never hold its settings.
+- **A dependency from another marketplace,** such as unity-dev's `unity` and `csharp-lsp`: that marketplace goes into `allowCrossMarketplaceDependenciesOn` in `marketplace.json`, the install steps of `README.md` and the domain's README, and the team settings (`/core:skills`, the new-project template). Where it isn't added, the domain fails to load.
 
 ## Musts and guides
 

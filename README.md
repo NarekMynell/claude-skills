@@ -43,6 +43,7 @@ Every skill also has its own command, such as `/modeling:characters` or `/unity-
 ## Install
 
 ```sh
+claude plugin marketplace add anthropics/claude-plugins-official   # unity-dev needs its unity and csharp-lsp
 claude plugin marketplace add NarekMynell/claude-skills
 claude plugin install unity-dev@narek-skills     # or core, game-design, modeling
 ```
@@ -62,7 +63,7 @@ A project set up before the domains split (unity-dev 0.11 and earlier) keeps wor
 
 ## Use in a team project
 
-Commit a `.claude/settings.json` that lists the marketplace, the plugins and the switches (`/unity-dev:new-project` writes it for new Unity projects). Each teammate then runs `claude plugin install <plugin>@narek-skills --scope project` once, after trusting the folder, and the standards load in their sessions too.
+Commit a `.claude/settings.json` that lists the marketplaces, the plugins and the switches (`/core:skills` writes it, and `/unity-dev:new-project` for new Unity projects). Each teammate adds the marketplaces once, as in [Install](#install), and runs `claude plugin install <plugin>@narek-skills --scope project`; the standards then load in their sessions too.
 
 ## Contributing
 

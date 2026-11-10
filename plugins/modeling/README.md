@@ -8,8 +8,8 @@ The checks and tools are in [scripts/](scripts/): mesh validation, contact sheet
 
 ## Install
 
-```text
-/plugin install modeling --marketplace NarekMynell/claude-skills
+```sh
+claude plugin install modeling --marketplace NarekMynell/claude-skills
 ```
 
 ## Skills
