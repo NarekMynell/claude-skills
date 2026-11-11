@@ -27,14 +27,7 @@ Nothing loads unless you ask for it: Claude doesn't see the skills until you typ
 
 Every skill also has its own command, such as `/modeling:characters` or `/unity-dev:vfx`, to load that topic alone.
 
-**Every session.** The first `/<domain>:standards` in a project turns that domain on there, and from then on its standards load at the start of every session, after `/clear`, after compaction and in subagents, so you don't type the command again and a long session doesn't lose them. The switches live under `env` in the project's `.claude/settings.json`:
-
-| Switch | Turns on or off |
-|---|---|
-| `<DOMAIN>_STANDARDS`: `on` or `off` | a domain and all its skills, such as `UNITY_DEV_STANDARDS` |
-| `<DOMAIN>_SKILL_<SKILL>`: `on` or `off` | one skill, whatever its domain says, such as `UNITY_DEV_SKILL_VFX` |
-
-`/core:skills` shows what a project has on, turns domains and skills on or off, or looks at the project and turns on what it needs. Committed, the file sets them for the whole team; `.claude/settings.local.json` overrides them for one person.
+**Every session.** A project turns domains and skills on in its settings, and from then on their standards load at the start of every session, after `/clear`, after compaction and in subagents, so you don't type the command again and a long session doesn't lose them. [Use in a project](#use-in-a-project) shows how.
 
 **Two levels.** Each domain's standards have **musts**, the bar for the result, each with a proof that can fail and only you can change, and **guides**: methods known to work and failures seen, where Claude finds the solution for your project, tells you why, and records it in the project's `CLAUDE.md`. Checks write receipts in `docs/proofs/`; in a Unity project, a hook compares them with what changed when a turn ends.
 
@@ -50,6 +43,59 @@ claude plugin install unity-dev@narek-skills     # or core, game-design, modelin
 
 Or browse and install from `/plugin` inside Claude Code. Requires Claude Code (tested with 2.1.322). The hooks are bash scripts: on Windows they need Git Bash. Each domain's README lists what else it needs.
 
+## Use in a project
+
+To start a new Unity game, open Claude Code in the folder that will hold it and type `/unity-dev:new-project <your game idea>`. In any other project, new or old, type `/core:skills`: it looks at the project and turns on what it needs. Both only write the project's settings, which you can also write and change by hand.
+
+**Switches.** They go under `env` in the project's `.claude/settings.json`, which the team shares, or in `.claude/settings.local.json`, which is yours alone and wins switch by switch. Each is `on` or `off`:
+
+| Switch | Turns on or off |
+|---|---|
+| `<DOMAIN>_STANDARDS` | a domain with all its skills: `UNITY_DEV_STANDARDS` |
+| `<DOMAIN>_SKILL_<SKILL>` | one skill, whatever its domain's switch says: `UNITY_DEV_SKILL_VFX` |
+
+A Unity game with no 3D models and no VFX work: unity-dev on, which brings core and game-design; modeling off; unity-dev's VFX skill off.
+
+```json
+{
+  "env": {
+    "UNITY_DEV_STANDARDS": "on",
+    "MODELING_STANDARDS": "off",
+    "UNITY_DEV_SKILL_VFX": "off"
+  },
+  "permissions": {
+    "allow": [
+      "Read(~/.claude/plugins/cache/*/core/**)",
+      "Read(~/.claude/plugins/cache/*/game-design/**)",
+      "Read(~/.claude/plugins/cache/*/unity-dev/**)"
+    ]
+  }
+}
+```
+
+- **What you leave out follows what is above it.** A skill follows its domain. A domain follows the domains that build on it, as the [Domains](#domains) table's "Comes on with" column says: `UNITY_DEV_STANDARDS` brings game-design and modeling. Core is on wherever anything else is, and stays on while anything else is; its own skills can be switched off.
+- **A skill's switch wins over its domain's.** Turn a domain on and some of its skills off, or leave the domain off and turn one skill on. A skill on its own brings no other domain, and works only with the skills it needs on: `modeling:characters` needs `modeling:models`.
+- **Read rules.** Every domain that is on, core included, needs `Read(~/.claude/plugins/cache/*/<domain>/**)` under `permissions.allow`. Without it, Claude asks before opening each of the domain's guides.
+- **Off** means Claude doesn't get that domain or skill, and the check at the end of a turn doesn't ask for its receipts. Its command still runs when you type it.
+- **When it applies:** what you turn on loads with your next message; what you turn off leaves in the next session, or after `/clear`.
+
+| Project | `env` | Read rules for |
+|---|---|---|
+| Unity game | `"UNITY_DEV_STANDARDS": "on"` | core, game-design, modeling, unity-dev |
+| 2D Unity game | `"UNITY_DEV_STANDARDS": "on", "MODELING_STANDARDS": "off"` | core, game-design, unity-dev |
+| 3D models in Blender | `"MODELING_STANDARDS": "on"` | core, modeling |
+| Characters in Blender, nothing else | `"MODELING_SKILL_CHARACTERS": "on", "MODELING_SKILL_MODELS": "on"` | core, modeling |
+| A game's design | `"GAME_DESIGN_STANDARDS": "on"` | core, game-design |
+| Any other project | `"CORE_STANDARDS": "on"` | core |
+
+The [catalog](plugins/core/skills/skills/catalog.md) lists every domain and skill with its switch, its read rule and the skills it needs.
+
+**Commands that write them.** `/core:skills on modeling` or `/core:skills off unity-dev:vfx` switches the domains and skills you name, with their read rules. The first `/<domain>:standards` in a project turns that domain on there, and `/<domain>:standards off` turns it off.
+
+## Use in a team project
+
+Commit a `.claude/settings.json` that lists the marketplaces, the plugins and the switches (`/core:skills` writes it, and `/unity-dev:new-project` for new Unity projects). Each teammate adds the marketplaces once, as in [Install](#install), and runs `claude plugin install <plugin>@narek-skills --scope project`; the standards then load in their sessions too.
+
 ## Update
 
 Third-party marketplaces don't auto-update by default. Turn it on once in `/plugin` → Marketplaces → narek-skills, or update by hand:
@@ -59,11 +105,7 @@ claude plugin marketplace update narek-skills
 claude plugin update unity-dev@narek-skills
 ```
 
-A project set up before the domains split (unity-dev 0.11 and earlier) keeps working: `UNITY_DEV_STANDARDS` brings the new domains with it. Run `/core:skills` there once to add their read rules, so their guides open without asking.
-
-## Use in a team project
-
-Commit a `.claude/settings.json` that lists the marketplaces, the plugins and the switches (`/core:skills` writes it, and `/unity-dev:new-project` for new Unity projects). Each teammate adds the marketplaces once, as in [Install](#install), and runs `claude plugin install <plugin>@narek-skills --scope project`; the standards then load in their sessions too.
+A project set up before the domains split (unity-dev 0.11 and earlier) keeps working: `UNITY_DEV_STANDARDS` brings the new domains with it. Run `/core:skills` there once, or add the read rules of core, game-design and modeling by hand, so their guides open without asking.
 
 ## Contributing
 
